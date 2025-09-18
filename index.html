@@ -147,6 +147,7 @@
   }
 
   function draw(){
+    ctx.clearRect(0, 0, innerWidth, innerHeight);
     drawBackground();
     const px=player.x, py=player.y;
     if(spriteReady){ const {sx,sy,sw,sh}=frameRect(player.dir,player.frame); ctx.imageSmoothingEnabled=false; ctx.drawImage(sprite, sx,sy,sw,sh, Math.round(px-sw/2), Math.round(py-sh/2), sw, sh); }
