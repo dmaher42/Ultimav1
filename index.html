@@ -23,11 +23,15 @@
 
   <div id="notice" class="notice" style="display:none"></div>
 
-  <div class="toolbar">
+  <div class="toolbar" style="opacity:0.95">
     <label>Sprite URL: <input id="spriteUrl" type="text" placeholder="Male 17-3.png or https://..." /></label>
     <button id="btnLoad">Load</button>
     <input id="fileInput" type="file" accept="image/png,image/jpeg" style="display:none" />
     <button id="btnFile">Choose File…</button>
+    <select id="spriteSelect" style="margin-left:8px">
+      <option value="assets/Male 02-2.png">Male 02-2</option>
+      <option value="assets/Male 17-3.png">Male 17-3</option>
+    </select>
   </div>
   <div id="drop" class="drop">Drop a PNG/JPG sprite sheet here (3 frames × 4 rows)</div>
 
@@ -38,6 +42,8 @@
   const gameC = document.getElementById('game');
   const bg = bgC.getContext('2d');
   const ctx = gameC.getContext('2d');
+  ctx.imageSmoothingEnabled=false;
+  bg.imageSmoothingEnabled=false;
   function resize(){ bgC.width=innerWidth*dpr; bgC.height=innerHeight*dpr; bg.setTransform(dpr,0,0,dpr,0,0); gameC.width=innerWidth*dpr; gameC.height=innerHeight*dpr; ctx.setTransform(dpr,0,0,dpr,0,0);} resize(); addEventListener('resize',resize);
   function drawBackground(){ const g=bg.createLinearGradient(0,0,0,innerHeight); g.addColorStop(0,'#1a2b45'); g.addColorStop(1,'#0b1326'); bg.fillStyle=g; bg.fillRect(0,0,innerWidth,innerHeight); }
 
@@ -57,9 +63,15 @@
   let currentObjectUrl=null;// revoke blob URLs when replaced
 
   const DEFAULT_SOURCES = [
-    'Male 17-3.png',
-    './Male 17-3.png',
-    'Male%2017-3.png'
+    ...(localStorage.getItem("spriteURL") ? [localStorage.getItem("spriteURL")] : []),
+    "assets/Male 02-2.png",
+    "assets/Male 17-3.png",
+    "Male 02-2.png",
+    "Male 17-3.png",
+    "./Male 02-2.png",
+    "./Male 17-3.png",
+    "Male%2002-2.png",
+    "Male%2017-3.png"
   ];
 
   function generateFallbackSprite(size=32){
@@ -106,21 +118,70 @@
   function trySources(list){ _tryList=list.slice(); _tryIndex=0; tryNextSource(); }
   function tryNextSource(){ if(_tryIndex<_tryList.length){ const nxt=_tryList[_tryIndex++]; loadSprite(nxt); } else { useFallback(); } }
 
-  // Initial attempt: query param overrides default list
-  const qp = getParam('sprite');
-  if(qp){ trySources([qp]); } else { trySources(DEFAULT_SOURCES); }
+  const qp = getParam("sprite");
+  const saved = localStorage.getItem("spriteURL");
 
-  // UI: URL field, file picker, drag & drop
-  const urlInput=document.getElementById('spriteUrl'); urlInput.value = qp || DEFAULT_SOURCES[0];
-  document.getElementById('btnLoad').onclick=()=>{ const v=urlInput.value.trim(); if(v){ trySources([v]); } };
+  if(qp){
+    trySources([qp]);
+  } else if(saved){
+    trySources([saved]);
+  } else {
+    trySources(DEFAULT_SOURCES);
+  }
+
+  const urlInput=document.getElementById('spriteUrl');
+  urlInput.value = qp || saved || DEFAULT_SOURCES[0] || "";
+
+  document.getElementById("btnLoad").onclick = () => {
+    const v = document.getElementById("spriteUrl").value.trim();
+    if (v) {
+      localStorage.setItem("spriteURL", v);
+      trySources([v]);
+    }
+  };
+
+  const spriteSelect = document.getElementById("spriteSelect");
+  if (spriteSelect) {
+    const current = localStorage.getItem("spriteURL") || urlInput.value;
+    if (current) {
+      for (const opt of spriteSelect.options) {
+        if (opt.value === current) spriteSelect.value = current;
+      }
+    }
+    spriteSelect.addEventListener("change", () => {
+      const url = spriteSelect.value;
+      localStorage.setItem("spriteURL", url);
+      urlInput.value = url;
+      trySources([url]);
+    });
+  }
 
   const fileInput=document.getElementById('fileInput');
   document.getElementById('btnFile').onclick=()=>fileInput.click();
-  fileInput.onchange=()=>{ const f=fileInput.files&&fileInput.files[0]; if(!f) return; const url=URL.createObjectURL(f); currentObjectUrl=url; trySources([url]); };
+  fileInput.onchange = () => {
+    const f = fileInput.files && fileInput.files[0];
+    if (!f) return;
+    const url = URL.createObjectURL(f);
+    currentObjectUrl = url;
+    localStorage.setItem("spriteURL", url);
+    trySources([url]);
+  };
 
   const drop=document.getElementById('drop');
   ['dragenter','dragover'].forEach(ev=>addEventListener(ev,e=>{e.preventDefault(); drop.classList.add('show');}));
-  ['dragleave','drop'].forEach(ev=>addEventListener(ev,e=>{e.preventDefault(); if(ev==='drop'){ const f=e.dataTransfer.files&&e.dataTransfer.files[0]; if(f){ const url=URL.createObjectURL(f); currentObjectUrl=url; trySources([url]); } } drop.classList.remove('show'); }));
+  ['dragleave','drop'].forEach(ev => addEventListener(ev, e => {
+    e.preventDefault();
+    if (ev === 'drop') {
+      const f = e.dataTransfer.files && e.dataTransfer.files[0];
+      if (f) {
+        const url = URL.createObjectURL(f);
+        currentObjectUrl = url;
+        localStorage.setItem("spriteURL", url);
+        trySources([url]);
+      }
+    }
+    drop.classList.remove('show');
+  }));
 
   // ===== Player, input, animation (3×4 locked) =====
   const player={ x:200, y:200, speed:160, frame:1, dir:'down', tick:0 };
