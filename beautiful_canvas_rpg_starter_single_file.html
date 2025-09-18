@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Canvas RPG — Robust Sprite Loading (3×4 locked)</title>
+  <style>
+    html,body{margin:0;height:100%;background:#0a0f1f;color:#e5e7eb;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;overflow:hidden}
+    #root{height:100%;position:relative}
+    canvas{position:absolute;inset:0;display:block}
+    .notice{position:fixed;top:10px;left:50%;transform:translateX(-50%);background:#111827cc;border:1px solid #243b55;border-radius:10px;padding:8px 12px;font:12px/1.4 ui-monospace,monospace;z-index:9999}
+    .toolbar{position:fixed;right:10px;bottom:10px;background:#111827cc;border:1px solid #243b55;border-radius:10px;padding:8px 12px;font:12px/1.4 ui-monospace,monospace;z-index:9999;display:flex;gap:8px;align-items:center}
+    .toolbar input[type="text"]{width:260px}
+    .drop{position:fixed;inset:0;border:2px dashed #47556955;border-radius:12px;display:none;place-items:center;background:#0a0f1faa;color:#cbd5e1;font:14px/1.4 ui-monospace,monospace;z-index:9998}
+    .drop.show{display:grid}
+  </style>
+</head>
+<body>
+  <div id="root">
+    <canvas id="bg"></canvas>
+    <canvas id="game" tabindex="0"></canvas>
+  </div>
+
+  <div id="notice" class="notice" style="display:none"></div>
+
+  <div class="toolbar">
+    <label>Sprite URL: <input id="spriteUrl" type="text" placeholder="Male 17-3.png or https://..." /></label>
+    <button id="btnLoad">Load</button>
+    <input id="fileInput" type="file" accept="image/png,image/jpeg" style="display:none" />
+    <button id="btnFile">Choose File…</button>
+  </div>
+  <div id="drop" class="drop">Drop a PNG/JPG sprite sheet here (3 frames × 4 rows)</div>
+
+  <script>
+  // ===== Canvas setup =====
+  const dpr = Math.min(devicePixelRatio||1,2);
+  const bgC = document.getElementById('bg');
+  const gameC = document.getElementById('game');
+  const bg = bgC.getContext('2d');
+  const ctx = gameC.getContext('2d');
+  function resize(){ bgC.width=innerWidth*dpr; bgC.height=innerHeight*dpr; bg.setTransform(dpr,0,0,dpr,0,0); gameC.width=innerWidth*dpr; gameC.height=innerHeight*dpr; ctx.setTransform(dpr,0,0,dpr,0,0);} resize(); addEventListener('resize',resize);
+  function drawBackground(){ const g=bg.createLinearGradient(0,0,0,innerHeight); g.addColorStop(0,'#1a2b45'); g.addColorStop(1,'#0b1326'); bg.fillStyle=g; bg.fillRect(0,0,innerWidth,innerHeight); }
+
+  // ===== UI notice helper =====
+  const noticeEl = document.getElementById('notice');
+  function showNotice(msg){ noticeEl.textContent=msg; noticeEl.style.display='block'; clearTimeout(showNotice._t); showNotice._t=setTimeout(()=>noticeEl.style.display='none',7000); }
+  function getParam(name){ const u=new URL(location.href); return u.searchParams.get(name); }
+
+  // ===== Sprite loading (robust) =====
+  // Layout is permanently locked: 4 rows (down,left,right,up) × 3 columns (frames)
+  const SHEET_COLS = 3, SHEET_ROWS = 4;
+  const DIR_ROW={ down:0, left:1, right:2, up:3 };
+
+  let sprite=null;          // HTMLImageElement
+  let spriteReady=false;    // ready flag
+  let frameW=32, frameH=32; // computed on load
+  let currentObjectUrl=null;// revoke blob URLs when replaced
+
+  const DEFAULT_SOURCES = [
+    'Male 17-3.png',
+    './Male 17-3.png',
+    'Male%2017-3.png'
+  ];
+
+  function generateFallbackSprite(size=32){
+    // 3×4 sheet with simple placeholder character
+    const cols=3, rows=4, w=size*cols, h=size*rows;
+    const c=document.createElement('canvas'); c.width=w; c.height=h; const g=c.getContext('2d');
+    const cloaks=['#60a5fa','#34d399','#f59e0b','#ef4444'];
+    for(let r=0;r<rows;r++){
+      for(let f=0; f<cols; f++){
+        const x=f*size, y=r*size;
+        g.fillStyle = r%2? '#0f172a' : '#111827'; g.fillRect(x,y,size,size);
+        g.fillStyle = cloaks[r]; g.fillRect(x+8,y+10,size-16,size-14);
+        g.fillStyle = '#e5e7eb'; g.beginPath(); g.arc(x+size/2, y+8, 6, 0, Math.PI*2); g.fill();
+        g.fillStyle = '#0b0f19'; g.fillRect(x+8+(f%2?4:0), y+size-8, 6, 4); g.fillRect(x+size-14-(f%2?4:0), y+size-8, 6, 4);
+      }
+    }
+    return c.toDataURL('image/png');
+  }
+
+  function useFallback(){
+    spriteReady=false; const url=generateFallbackSprite(32); const img=new Image();
+    img.onload=()=>{ sprite=img; spriteReady=true; frameW=Math.floor(img.naturalWidth/SHEET_COLS); frameH=Math.floor(img.naturalHeight/SHEET_ROWS); showNotice('Using fallback sprite. Place \"Male 17-3.png\" next to this file, paste a URL, or drop a file.'); };
+    img.onerror=()=>{ spriteReady=false; showNotice('Fallback sprite failed to load (unexpected).'); };
+    img.src=url;
+  }
+
+  function loadSprite(url){
+    if(currentObjectUrl && url!==currentObjectUrl){ URL.revokeObjectURL(currentObjectUrl); currentObjectUrl=null; }
+    spriteReady=false; const img=new Image(); img.decoding='async'; img.loading='eager'; img.crossOrigin='anonymous';
+    img.onload=()=>{
+      if(img.naturalWidth>0 && img.naturalHeight>0){
+        sprite=img; spriteReady=true;
+        frameW=Math.floor(img.naturalWidth/SHEET_COLS);
+        frameH=Math.floor(img.naturalHeight/SHEET_ROWS);
+        showNotice('Loaded sprite: '+url);
+      } else { showNotice('Sprite loaded but has no size — using fallback.'); useFallback(); }
+    };
+    img.onerror=()=>{ showNotice('Failed to load sprite at: '+url); tryNextSource(); };
+    img.src=url;
+  }
+
+  // Try a list of sources in order, then fallback
+  let _tryList=[]; let _tryIndex=0;
+  function trySources(list){ _tryList=list.slice(); _tryIndex=0; tryNextSource(); }
+  function tryNextSource(){ if(_tryIndex<_tryList.length){ const nxt=_tryList[_tryIndex++]; loadSprite(nxt); } else { useFallback(); } }
+
+  // Initial attempt: query param overrides default list
+  const qp = getParam('sprite');
+  if(qp){ trySources([qp]); } else { trySources(DEFAULT_SOURCES); }
+
+  // UI: URL field, file picker, drag & drop
+  const urlInput=document.getElementById('spriteUrl'); urlInput.value = qp || DEFAULT_SOURCES[0];
+  document.getElementById('btnLoad').onclick=()=>{ const v=urlInput.value.trim(); if(v){ trySources([v]); } };
+
+  const fileInput=document.getElementById('fileInput');
+  document.getElementById('btnFile').onclick=()=>fileInput.click();
+  fileInput.onchange=()=>{ const f=fileInput.files&&fileInput.files[0]; if(!f) return; const url=URL.createObjectURL(f); currentObjectUrl=url; trySources([url]); };
+
+  const drop=document.getElementById('drop');
+  ['dragenter','dragover'].forEach(ev=>addEventListener(ev,e=>{e.preventDefault(); drop.classList.add('show');}));
+  ['dragleave','drop'].forEach(ev=>addEventListener(ev,e=>{e.preventDefault(); if(ev==='drop'){ const f=e.dataTransfer.files&&e.dataTransfer.files[0]; if(f){ const url=URL.createObjectURL(f); currentObjectUrl=url; trySources([url]); } } drop.classList.remove('show'); }));
+
+  // ===== Player, input, animation (3×4 locked) =====
+  const player={ x:200, y:200, speed:160, frame:1, dir:'down', tick:0 };
+  const pressed=new Set();
+  function normKey(k){ const map={Left:'ArrowLeft',Right:'ArrowRight',Up:'ArrowUp',Down:'ArrowDown'}; return map[k] || (k.length===1?k.toLowerCase():k); }
+  addEventListener('keydown',e=>{ const k=normKey(e.key); if(k.startsWith('Arrow')) e.preventDefault(); pressed.add(k); });
+  addEventListener('keyup',e=>{ const k=normKey(e.key); if(k.startsWith('Arrow')) e.preventDefault(); pressed.delete(k); });
+
+  function frameRect(dir,frame){
+    const row={down:0,left:1,right:2,up:3}[dir];
+    const col=Math.max(0,Math.min(SHEET_COLS-1, frame));
+    return { sx:col*frameW, sy:row*frameH, sw:frameW, sh:frameH };
+  }
+
+  function update(dt){
+    let dx=0,dy=0; let moving=false;
+    if(pressed.has('ArrowUp')||pressed.has('w')){ dy-=1; player.dir='up'; moving=true; }
+    if(pressed.has('ArrowDown')||pressed.has('s')){ dy+=1; player.dir='down'; moving=true; }
+    if(pressed.has('ArrowLeft')||pressed.has('a')){ dx-=1; player.dir='left'; moving=true; }
+    if(pressed.has('ArrowRight')||pressed.has('d')){ dx+=1; player.dir='right'; moving=true; }
+
+    if(moving){ const len=Math.hypot(dx,dy)||1; dx/=len; dy/=len; player.x+=dx*player.speed*dt; player.y+=dy*player.speed*dt; player.tick+=dt; if(player.tick>0.18){ player.frame=(player.frame+1)%SHEET_COLS; player.tick=0; } }
+    else { player.frame=1; player.tick=0; }
+  }
+
+  function draw(){
+    drawBackground();
+    const px=player.x, py=player.y;
+    if(spriteReady){ const {sx,sy,sw,sh}=frameRect(player.dir,player.frame); ctx.imageSmoothingEnabled=false; ctx.drawImage(sprite, sx,sy,sw,sh, Math.round(px-sw/2), Math.round(py-sh/2), sw, sh); }
+    else { ctx.fillStyle="#e5e7eb"; ctx.beginPath(); ctx.arc(px,py,16,0,Math.PI*2); ctx.fill(); }
+  }
+
+  let last=performance.now();
+  function loop(now){ const dt=Math.min(0.033,(now-last)/1000); last=now; update(dt); draw(); requestAnimationFrame(loop); }
+  requestAnimationFrame(loop);
+
+  // ===== Tests (keep existing and add a few more) =====
+  const results=[]; function assert(name,cond){ results.push({name,pass:!!cond}); if(!cond) console.error('[TEST FAIL]',name); }
+  function runTests(){
+    // Existing tests (UNCHANGED)
+    assert('frame cell width > 0', frameW>0);
+    assert('frame cell height > 0', frameH>0);
+    const r0=frameRect('down',0); assert('frameRect sx >= 0', r0.sx>=0);
+    const r1=frameRect('up',2); assert('frameRect sy for up row correct', r1.sy===frameH*3);
+    if(spriteReady){
+      assert('3 columns detected', Math.round(sprite.naturalWidth / frameW) === SHEET_COLS);
+      assert('4 rows detected', Math.round(sprite.naturalHeight / frameH) === SHEET_ROWS);
+    }
+    // Added tests
+    const rL = frameRect('left',2); assert('left row index', rL.sy===frameH*1);
+    const rR = frameRect('right',2); assert('right row index', rR.sy===frameH*2);
+    console.log(results);
+  }
+  setTimeout(runTests,2200);
+  </script>
+</body>
+</html>
