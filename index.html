@@ -45,13 +45,14 @@
   const ctx = gameC.getContext('2d');
 
   // Global graphics configuration used by the toon pipeline.
+  const DEFAULT_TONE_LEVELS=[0.0,0.55,1.0];
   const Graphics={
     pixelArtMode:false,
     renderScale:1,
     ambientDarkness:0.35,
     outlineColor:'#111',
     outlineThickness:1,
-    toneLevels:[0.0,0.5,1.0],
+    toneLevels:[...DEFAULT_TONE_LEVELS],
     lights:[],
     playerLightEnabled:true,
     playerLightRadius:220,
@@ -86,17 +87,37 @@
   function setAmbientDarkness(v){
     Graphics.ambientDarkness=Math.max(0,Math.min(1,Number(v)||0));
   }
+  function setToneLevels(levels){
+    if(!Array.isArray(levels)){
+      Graphics.toneLevels=[...DEFAULT_TONE_LEVELS];
+      return Graphics.toneLevels;
+    }
+    const sanitized=levels
+      .map(value=>Number(value))
+      .filter(value=>Number.isFinite(value))
+      .map(value=>Math.max(0,Math.min(1,value)));
+    Graphics.toneLevels=sanitized.length?sanitized:[...DEFAULT_TONE_LEVELS];
+    return Graphics.toneLevels;
+  }
 
   window.Graphics=Graphics;
   window.setLights=setLights;
   window.setPixelArtMode=setPixelArtMode;
   window.setAmbientDarkness=setAmbientDarkness;
+  window.setToneLevels=setToneLevels;
+
+  setToneLevels(Graphics.toneLevels);
 
   applyPixelArtSettings();
 
   // ===== Outline helpers =====
   const OUTLINE_OFFSETS_BASE=[[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[1,-1],[-1,1],[1,1]];
   function snapPixel(v){ return Graphics.pixelArtMode?Math.round(v):v; }
+  function getEffectiveOutlineThickness(thickness){
+    const base=Math.max(0.5,Number(thickness)||0);
+    const darknessBoost=Graphics.ambientDarkness>0.5?1:0;
+    return base+darknessBoost;
+  }
 
   function ensureOutlineBufferSize(width,height){
     const canvas=Graphics._outlineBuffer;
@@ -110,7 +131,7 @@
   function drawOutlinedSprite(targetCtx,image,sx,sy,sw,sh,dx,dy,dw=sw,dh=sh,outlineColor=Graphics.outlineColor,thickness=Graphics.outlineThickness){
     if(!image) return;
     const color=outlineColor ?? Graphics.outlineColor;
-    const t=Math.max(0.5,Number(thickness)||0);
+    const t=getEffectiveOutlineThickness(thickness);
     const offset=Graphics.pixelArtMode?Math.max(1,Math.round(t)):t;
     const pad=offset+2;
     const offW=Math.ceil(dw+pad*2);
@@ -138,7 +159,7 @@
   }
 
   function drawOutlinedRect(targetCtx,x,y,w,h,color,outlineColor=Graphics.outlineColor,thickness=Graphics.outlineThickness){
-    const t=Math.max(0.5,Number(thickness)||0);
+    const t=getEffectiveOutlineThickness(thickness);
     const offset=Graphics.pixelArtMode?Math.max(1,Math.round(t)):t;
     const pad=offset+2;
     const offW=Math.ceil(w+pad*2);
@@ -470,8 +491,40 @@
       shadow:typeof p.shadow==='boolean'?p.shadow:undefined,
       height:Number(p.height)||0,
       outlineColor:p.outlineColor||null,
-      outlineThickness:typeof p.outlineThickness==='number'?p.outlineThickness:null
+      outlineThickness:typeof p.outlineThickness==='number'?p.outlineThickness:null,
+      type:p.type||null,
+      handleColor:p.handleColor||null,
+      flameColor:p.flameColor||null,
+      flameHighlight:p.flameHighlight||null,
+      glowColor:p.glowColor||null,
+      sconceColor:p.sconceColor||null,
+      lightRadius:Number.isFinite(Number(p.lightRadius))?Number(p.lightRadius):null,
+      lightIntensity:Number.isFinite(Number(p.lightIntensity))?Number(p.lightIntensity):null,
+      lightOffsetY:Number.isFinite(Number(p.lightOffsetY))?Number(p.lightOffsetY):null
     }));
+  }
+
+  function deriveTorchLights(list){
+    if(!Array.isArray(list)) return [];
+    const lights=[];
+    for(const prop of list){
+      if(!prop || prop.type!=='torch') continue;
+      const width=Math.max(0,Number(prop.w)||0);
+      const height=Math.max(0,Number(prop.h)||0);
+      const rawRadius=Number(prop.lightRadius);
+      const rawIntensity=Number(prop.lightIntensity);
+      const rawOffset=Number(prop.lightOffsetY);
+      const radius=Number.isFinite(rawRadius)?Math.max(1,rawRadius):Math.max(160,height*3);
+      const intensity=Number.isFinite(rawIntensity)?Math.max(0,Math.min(1,rawIntensity)):0.88;
+      const offset=Math.max(0,Number.isFinite(rawOffset)?rawOffset:height*0.3);
+      lights.push({
+        x:prop.x+width/2,
+        y:prop.y+offset,
+        radius,
+        intensity
+      });
+    }
+    return lights;
   }
 
   // ----- Room definitions (edit/add rooms here) -----
@@ -485,10 +538,13 @@
       ],
       props:[
         { x:520, y:260, w:48, h:48, spriteURL:'assets/Male 18-1.png', shadow:true, height:24 },
-        { x:860, y:480, w:40, h:40, color:'#64748b', shadow:true }
+        { x:860, y:480, w:40, h:40, color:'#64748b', shadow:true },
+        // Example wall torches with automatic lighting
+        { type:'torch', x:340, y:260, w:18, h:62, shadow:false, handleColor:'#6b3f1d', sconceColor:'#3f4d63', flameColor:'#fb923c', flameHighlight:'#fef3c7', glowColor:'rgba(253,224,171,0.4)', lightRadius:240, lightIntensity:0.9, lightOffsetY:24 },
+        { type:'torch', x:820, y:260, w:18, h:62, shadow:false, handleColor:'#6b3f1d', sconceColor:'#3f4d63', flameColor:'#f97316', flameHighlight:'#fde68a', glowColor:'rgba(253,224,171,0.35)', lightRadius:240, lightIntensity:0.92, lightOffsetY:24 }
       ],
       lights:[
-        { x:420, y:340, radius:280, intensity:1 },
+        { x:420, y:340, radius:280, intensity:0.85 },
         { x:760, y:500, radius:240, intensity:0.8 }
       ]
     },
@@ -501,7 +557,10 @@
       ],
       props:[
         { x:600, y:520, w:60, h:60, color:'#475569', shadow:true },
-        { x:1040, y:360, w:96, h:96, spriteURL:'assets/Male 18-1.png', shadow:true, height:36 }
+        { x:1040, y:360, w:96, h:96, spriteURL:'assets/Male 18-1.png', shadow:true, height:36 },
+        // Torches flank the entrance in this room as well
+        { type:'torch', x:520, y:320, w:18, h:60, shadow:false, handleColor:'#6b3f1d', sconceColor:'#3f4d63', flameColor:'#fb923c', flameHighlight:'#fef3c7', glowColor:'rgba(253,224,171,0.38)', lightRadius:220, lightIntensity:0.88, lightOffsetY:22 },
+        { type:'torch', x:980, y:320, w:18, h:60, shadow:false, handleColor:'#6b3f1d', sconceColor:'#3f4d63', flameColor:'#f97316', flameHighlight:'#fde68a', glowColor:'rgba(253,224,171,0.34)', lightRadius:220, lightIntensity:0.9, lightOffsetY:22 }
       ],
       lights:[
         { x:720, y:400, radius:260, intensity:0.9 },
@@ -540,7 +599,9 @@
       ? roomData.parallaxLayers.map(layer=>({ ...layer }))
       : createDefaultParallaxLayers();
 
-    setLights(roomData.lights||[]);
+    const baseLights=Array.isArray(roomData.lights)?roomData.lights:[];
+    const torchLights=deriveTorchLights(currentProps); // auto lights for torches
+    setLights([...baseLights,...torchLights]);
 
     currentRoom={
       name:roomData.name || '',
@@ -773,11 +834,72 @@
     g.strokeRect(screenX+0.5,screenY+0.5,ob.w-1,ob.h-1);
   }
 
+  function drawTorchProp(prop,x,y,outlineColor,outlineThickness){
+    const g=Graphics.sceneCtx;
+    const width=Math.max(6,prop.w||16);
+    const height=Math.max(24,prop.h||48);
+    const flameHeight=Math.max(10,height*0.4);
+    const stemHeight=Math.max(8,height-flameHeight);
+    const stemWidth=Math.max(4,Math.min(width*0.4,width-4));
+    const baseHeight=Math.min(stemHeight,Math.max(4,stemHeight*0.25));
+    const baseWidth=Math.min(width,Math.max(stemWidth*1.4,width*0.75));
+    const baseX=x+(width-baseWidth)/2;
+    const baseY=y+flameHeight+stemHeight-baseHeight;
+    const stemX=x+(width-stemWidth)/2;
+    const stemY=y+flameHeight;
+    const handleColor=prop.handleColor||'#5b341b';
+    const sconceColor=prop.sconceColor||'#475569';
+
+    drawOutlinedRect(g,baseX,baseY,baseWidth,baseHeight,sconceColor,outlineColor,outlineThickness);
+    drawOutlinedRect(g,stemX,stemY,stemWidth,stemHeight,handleColor,outlineColor,outlineThickness);
+
+    const flameWidth=Math.min(width,Math.max(stemWidth*1.6,width*0.85));
+    const flameX=x+(width-flameWidth)/2;
+    const flameY=y+Math.max(0,flameHeight*0.05);
+    const flameTopColor=prop.flameHighlight||'#fde68a';
+    const flameBottomColor=prop.flameColor||'#f97316';
+
+    g.save();
+    const gradient=g.createLinearGradient(flameX,flameY,flameX,flameY+flameHeight);
+    gradient.addColorStop(0,flameTopColor);
+    gradient.addColorStop(1,flameBottomColor);
+    g.fillStyle=gradient;
+    g.beginPath();
+    g.moveTo(flameX+flameWidth/2,flameY);
+    g.bezierCurveTo(flameX,flameY+flameHeight*0.55,flameX+flameWidth*0.2,flameY+flameHeight,flameX+flameWidth/2,flameY+flameHeight);
+    g.bezierCurveTo(flameX+flameWidth*0.8,flameY+flameHeight,flameX+flameWidth,flameY+flameHeight*0.55,flameX+flameWidth/2,flameY);
+    g.closePath();
+    g.fill();
+    g.restore();
+
+    g.save();
+    g.fillStyle='rgba(255,255,255,0.45)';
+    g.beginPath();
+    g.ellipse(flameX+flameWidth/2,flameY+flameHeight*0.3,flameWidth*0.22,flameHeight*0.35,0,0,Math.PI*2);
+    g.fill();
+    g.restore();
+
+    g.save();
+    g.globalCompositeOperation='lighter';
+    g.fillStyle=prop.glowColor||'rgba(251,191,36,0.4)';
+    g.beginPath();
+    g.ellipse(flameX+flameWidth/2,flameY+flameHeight*0.45,flameWidth*0.9,flameHeight*1.05,0,0,Math.PI*2);
+    g.fill();
+    g.restore();
+  }
+
   function drawProp(prop){
     const g=Graphics.sceneCtx;
     const x=snapPixel(prop.x-camera.x);
     const y=snapPixel(prop.y-camera.y);
-    const spriteEntry=prop.sprite;
+    const outlineColor=prop.outlineColor ?? Graphics.outlineColor;
+    const outlineThickness=prop.outlineThickness ?? Graphics.outlineThickness;
+
+    if(prop.type==='torch'){
+      drawTorchProp(prop,x,y,outlineColor,outlineThickness);
+      return;
+    }
+
     if((prop.shadow ?? prop.height>0)){
       const baseX=x+prop.w/2;
       const baseY=y+prop.h;
@@ -790,8 +912,7 @@
       g.fill();
       g.restore();
     }
-    const outlineColor=prop.outlineColor ?? Graphics.outlineColor;
-    const outlineThickness=prop.outlineThickness ?? Graphics.outlineThickness;
+    const spriteEntry=prop.sprite;
     if(spriteEntry && spriteEntry.ready){
       drawOutlinedSprite(g,spriteEntry.img,0,0,spriteEntry.img.width,spriteEntry.img.height,x,y,prop.w,prop.h,outlineColor,outlineThickness);
     } else {
@@ -906,7 +1027,11 @@
     const ambient=Math.max(0,Math.min(1,Graphics.ambientDarkness));
     const ambientBrightness=1-ambient;
     const baseChannel=Math.round(ambientBrightness*255);
-    const toneLevels=(Graphics.toneLevels||[0,1]).slice().sort((a,b)=>a-b);
+    const toneSource=(Array.isArray(Graphics.toneLevels) && Graphics.toneLevels.length)
+      ? Graphics.toneLevels
+      : DEFAULT_TONE_LEVELS;
+    const toneLevels=toneSource.slice().sort((a,b)=>a-b);
+    const bandCount=toneLevels.length||1;
 
     lctx.save();
     lctx.globalCompositeOperation='source-over';
@@ -936,7 +1061,7 @@
       const centerY=snapPixel(cy);
       for(let i=0;i<toneLevels.length;i++){
         const level=Math.max(0,Math.min(1,toneLevels[i]));
-        const ratio=(toneLevels.length-i)/toneLevels.length;
+        const ratio=(bandCount-i)/bandCount;
         let bandRadius=radius*ratio;
         if(Graphics.pixelArtMode) bandRadius=Math.max(1,Math.round(bandRadius));
         if(bandRadius<=0) continue;
