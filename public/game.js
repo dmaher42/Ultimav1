@@ -26,6 +26,151 @@ const lightCtx = lightCanvas.getContext('2d');
 
 const HOURS_PER_DAY = 24;
 const MILLISECONDS_PER_HOUR = 60 * 60 * 1000;
+const FLOOR_TILE_SIZE = 96;
+const floorTileCache = new Map();
+const COLOR_CACHE = new Map();
+const COLOR_CANVAS = document.createElement('canvas');
+COLOR_CANVAS.width = COLOR_CANVAS.height = 1;
+const COLOR_CTX = COLOR_CANVAS.getContext('2d');
+
+function clampByte(value) {
+  return Math.max(0, Math.min(255, Math.round(value)));
+}
+
+function parseColor(color) {
+  if (!color) return null;
+  if (COLOR_CACHE.has(color)) {
+    const cached = COLOR_CACHE.get(color);
+    return { ...cached };
+  }
+  try {
+    COLOR_CTX.clearRect(0, 0, 1, 1);
+    COLOR_CTX.fillStyle = '#000';
+    COLOR_CTX.fillRect(0, 0, 1, 1);
+    COLOR_CTX.fillStyle = color;
+    COLOR_CTX.fillRect(0, 0, 1, 1);
+    const data = COLOR_CTX.getImageData(0, 0, 1, 1).data;
+    const parsed = { r: data[0], g: data[1], b: data[2], a: data[3] / 255 };
+    COLOR_CACHE.set(color, parsed);
+    return { ...parsed };
+  } catch (err) {
+    return null;
+  }
+}
+
+function adjustColor(color, amount) {
+  const parsed = parseColor(color);
+  if (!parsed) return color;
+  const adjust = (component) => {
+    if (amount >= 0) {
+      return clampByte(component + (255 - component) * amount);
+    }
+    return clampByte(component + component * amount);
+  };
+  return `rgb(${adjust(parsed.r)}, ${adjust(parsed.g)}, ${adjust(parsed.b)})`;
+}
+
+function mixColors(colorA, colorB, ratio) {
+  const a = parseColor(colorA);
+  const b = parseColor(colorB);
+  if (!a || !b) return colorA;
+  const t = Math.max(0, Math.min(1, ratio));
+  const lerp = (start, end) => clampByte(start + (end - start) * t);
+  return `rgb(${lerp(a.r, b.r)}, ${lerp(a.g, b.g)}, ${lerp(a.b, b.b)})`;
+}
+
+function colorAlpha(color, fallback = 1) {
+  const parsed = parseColor(color);
+  if (!parsed) return fallback;
+  if (typeof parsed.a === 'number') {
+    return Math.max(0, Math.min(1, parsed.a));
+  }
+  return fallback;
+}
+
+function rgbString(parsed, alpha = 1) {
+  const value = Math.max(0, Math.min(1, alpha));
+  return `rgba(${clampByte(parsed.r)}, ${clampByte(parsed.g)}, ${clampByte(parsed.b)}, ${value})`;
+}
+
+function randomInRange(min, max) {
+  return min + Math.random() * (max - min);
+}
+
+function getFloorTileTexture(room, baseColor, variant) {
+  const key = `${room?.id || 'default'}|${baseColor}|${variant}`;
+  if (floorTileCache.has(key)) {
+    return floorTileCache.get(key);
+  }
+
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = FLOOR_TILE_SIZE;
+  const buffer = canvas.getContext('2d');
+  const highlight = adjustColor(baseColor, 0.22);
+  const shadow = adjustColor(baseColor, -0.2);
+  const gradient = buffer.createLinearGradient(0, 0, FLOOR_TILE_SIZE, FLOOR_TILE_SIZE);
+  gradient.addColorStop(0, highlight);
+  gradient.addColorStop(0.45, baseColor);
+  gradient.addColorStop(1, shadow);
+  buffer.fillStyle = gradient;
+  buffer.fillRect(0, 0, FLOOR_TILE_SIZE, FLOOR_TILE_SIZE);
+
+  const vertical = buffer.createLinearGradient(0, 0, 0, FLOOR_TILE_SIZE);
+  vertical.addColorStop(0, adjustColor(baseColor, 0.18));
+  vertical.addColorStop(0.5, adjustColor(baseColor, -0.05));
+  vertical.addColorStop(1, adjustColor(baseColor, -0.28));
+  buffer.globalAlpha = 0.55;
+  buffer.fillStyle = vertical;
+  buffer.fillRect(0, 0, FLOOR_TILE_SIZE, FLOOR_TILE_SIZE);
+  buffer.globalAlpha = 1;
+
+  const accentBase = room?.theme?.tint
+    ? rgbString(parseColor(`rgba(${room.theme.tint[0]}, ${room.theme.tint[1]}, ${room.theme.tint[2]}, 1)`), 0.6)
+    : mixColors(baseColor, '#f5e0c3', 0.2);
+  buffer.globalCompositeOperation = 'overlay';
+  buffer.fillStyle = mixColors(accentBase, baseColor, 0.35);
+  buffer.fillRect(0, 0, FLOOR_TILE_SIZE, FLOOR_TILE_SIZE);
+  buffer.globalCompositeOperation = 'source-over';
+
+  const speckles = 36 + variant * 12;
+  for (let i = 0; i < speckles; i += 1) {
+    const size = randomInRange(1, 3.8);
+    const x = randomInRange(0, FLOOR_TILE_SIZE);
+    const y = randomInRange(0, FLOOR_TILE_SIZE);
+    buffer.fillStyle = `rgba(255, 255, 255, ${0.045 + variant * 0.005})`;
+    buffer.fillRect(x, y, size, size * randomInRange(0.6, 1.4));
+  }
+
+  for (let i = 0; i < speckles * 1.5; i += 1) {
+    const size = randomInRange(0.4, 2.6);
+    const x = randomInRange(0, FLOOR_TILE_SIZE);
+    const y = randomInRange(0, FLOOR_TILE_SIZE);
+    buffer.fillStyle = `rgba(20, 18, 16, ${0.05 + variant * 0.01})`;
+    buffer.fillRect(x, y, size, size);
+  }
+
+  buffer.globalAlpha = 0.25 + variant * 0.05;
+  buffer.strokeStyle = `rgba(255, 255, 255, ${0.45 - variant * 0.08})`;
+  buffer.beginPath();
+  buffer.moveTo(-4, FLOOR_TILE_SIZE * 0.35);
+  buffer.lineTo(FLOOR_TILE_SIZE + 4, FLOOR_TILE_SIZE * 0.2);
+  buffer.moveTo(-4, FLOOR_TILE_SIZE * 0.85);
+  buffer.lineTo(FLOOR_TILE_SIZE + 4, FLOOR_TILE_SIZE * 0.65);
+  buffer.stroke();
+  buffer.globalAlpha = 1;
+
+  buffer.strokeStyle = `rgba(0, 0, 0, ${0.25 + variant * 0.06})`;
+  buffer.lineWidth = 2;
+  buffer.strokeRect(1, 1, FLOOR_TILE_SIZE - 2, FLOOR_TILE_SIZE - 2);
+
+  floorTileCache.set(key, canvas);
+  return canvas;
+}
+
+function computeVariant(x, y) {
+  const seed = Math.abs(x * 73856093 + y * 19349663);
+  return seed % 4;
+}
 
 function wrapHour(value) {
   const remainder = value % HOURS_PER_DAY;
@@ -81,7 +226,10 @@ const STATE = {
   nightAmbientBoost: 1,
   activeInteraction: null,
   tempWaypoints: [],
-  worldFlags: {}
+  worldFlags: {},
+  particles: [],
+  particleTimers: { dust: 0, ember: 0 },
+  world3d: { initialized: false, api: null, lastLightSignature: '', failed: false }
 };
 
 const ITEM_CATALOG = {
@@ -213,6 +361,11 @@ function initWorld(assets) {
 
   GameClock.setTimeOfDay(8.5);
   updateTimeOfDay();
+
+  STATE.particles.length = 0;
+  STATE.particleTimers.dust = 0;
+  STATE.particleTimers.ember = 0;
+  STATE.world3d.lastLightSignature = '';
 
   const bakery = createBakeryKitchen(assets);
   const moonlitPlaza = createMoonlitPlaza(assets);
@@ -924,6 +1077,7 @@ function update(dt) {
   updateOven(dt);
   updateCamera();
   updateWaypoints(dt);
+  updateParticles(dt);
   updateHud();
 }
 
@@ -1151,14 +1305,18 @@ function describeTimeOfDay(time) {
 
 function draw() {
   if (!STATE.room) return;
+  const lights = buildLights();
   ctx.save();
   ctx.clearRect(0, 0, STATE.viewport.width, STATE.viewport.height);
   drawBackground();
   drawWorld();
+  drawParticles();
   applyRoomTint();
   drawWaypoints();
-  applyLighting();
+  applyLighting(lights);
+  applyAtmospherics(lights);
   ctx.restore();
+  renderThreeOverlay(lights);
 }
 
 function drawBackground() {
@@ -1175,6 +1333,7 @@ function drawParallaxLayers() {
   if (!layers.length) return;
   const camera = STATE.camera;
   const viewport = STATE.viewport;
+  let drewLayer = false;
 
   layers.forEach((layer, index) => {
     if (!layer) return;
@@ -1204,17 +1363,30 @@ function drawParallaxLayers() {
           ctx.drawImage(image, Math.round(x), Math.round(y), patternWidth, patternHeight);
         }
       }
+      drewLayer = true;
     } else {
       ctx.fillStyle = buildParallaxFallbackColor(index, room.theme);
       ctx.fillRect(0, 0, viewport.width, viewport.height);
     }
   });
+
+  if (drewLayer) {
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    const glow = ctx.createLinearGradient(0, 0, 0, viewport.height);
+    glow.addColorStop(0, `rgba(255, 220, 180, ${0.12 + STATE.sunlight * 0.22})`);
+    glow.addColorStop(0.55, 'rgba(255, 255, 255, 0)');
+    glow.addColorStop(1, `rgba(90, 140, 255, ${0.14 + STATE.nightFactor * 0.28})`);
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, viewport.width, viewport.height);
+    ctx.restore();
+  }
 }
 
 function drawFloorTiles() {
   const room = STATE.room;
   const camera = STATE.camera;
-  const tile = 80;
+  const tile = FLOOR_TILE_SIZE;
   const startX = Math.floor(camera.x / tile) * tile;
   const startY = Math.floor(camera.y / tile) * tile;
   const cols = Math.ceil(STATE.viewport.width / tile) + 2;
@@ -1230,9 +1402,16 @@ function drawFloorTiles() {
       const worldY = startY + y * tile;
       const screenX = worldX - camera.x;
       const screenY = worldY - camera.y;
-      const color = palette[(x + y) % palette.length];
-      ctx.fillStyle = color;
-      ctx.fillRect(screenX, screenY, tile, tile);
+      const paletteIndex = Math.abs((Math.floor(worldX / tile) + Math.floor(worldY / tile)) % palette.length);
+      const color = palette[paletteIndex];
+      const variant = computeVariant(Math.floor(worldX / tile), Math.floor(worldY / tile));
+      const tileTexture = getFloorTileTexture(room, color, variant);
+      ctx.drawImage(tileTexture, screenX, screenY);
+      ctx.save();
+      ctx.globalAlpha = 0.08 + STATE.sunlight * 0.06;
+      ctx.fillStyle = `rgba(255, 240, 210, ${0.3 + STATE.sunlight * 0.3})`;
+      ctx.fillRect(screenX, screenY, tile, tile * 0.08);
+      ctx.restore();
     }
   }
 }
@@ -1268,8 +1447,30 @@ function drawWorld() {
   renderables.forEach(({ entity }) => {
     const screenX = Math.round(entity.x - camera.x);
     const screenY = Math.round(entity.y - camera.y);
+    drawEntityShadow(entity, screenX, screenY);
     drawEntity(entity, screenX, screenY);
   });
+}
+
+function drawEntityShadow(entity, screenX, screenY) {
+  const width = entity.width;
+  const height = entity.height;
+  if (!width || !height) return;
+  const baseY = screenY + height;
+  const radiusX = Math.max(width * 0.38, 14);
+  const radiusY = Math.max(height * 0.22, 10);
+  ctx.save();
+  ctx.translate(screenX + width / 2, baseY - Math.max(2, height * 0.04));
+  ctx.scale(1, radiusY / radiusX);
+  const gradient = ctx.createRadialGradient(0, 0, radiusX * 0.2, 0, 0, radiusX);
+  const alpha = 0.22 + STATE.nightFactor * 0.2;
+  gradient.addColorStop(0, `rgba(0, 0, 0, ${alpha})`);
+  gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = gradient;
+  ctx.beginPath();
+  ctx.arc(0, 0, radiusX, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
 }
 
 function drawEntity(entity, screenX, screenY) {
@@ -1300,6 +1501,213 @@ function drawEntity(entity, screenX, screenY) {
       bufferCtx.fillRect(width * 0.35, height * 0.55, width * 0.3, height * 0.18);
     }
   }, screenX, screenY, width, height);
+  applyEntityHighlights(entity, screenX, screenY);
+}
+
+function applyEntityHighlights(entity, screenX, screenY) {
+  const width = entity.width;
+  const height = entity.height;
+  if (!width || !height) return;
+
+  ctx.save();
+  ctx.globalCompositeOperation = 'overlay';
+  const gradient = ctx.createLinearGradient(screenX, screenY, screenX, screenY + height);
+  gradient.addColorStop(0, `rgba(255, 255, 255, ${0.16 + STATE.sunlight * 0.28})`);
+  gradient.addColorStop(0.5, 'rgba(255, 255, 255, 0)');
+  gradient.addColorStop(1, `rgba(10, 8, 20, ${0.28 + STATE.nightFactor * 0.35})`);
+  ctx.fillStyle = gradient;
+  ctx.fillRect(screenX, screenY, width, height);
+  ctx.restore();
+
+  if (entity.kind === 'npc' || entity === STATE.player) {
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    const rim = ctx.createLinearGradient(screenX, screenY, screenX + width, screenY + height);
+    rim.addColorStop(0, `rgba(130, 200, 255, ${0.08 + STATE.nightFactor * 0.25})`);
+    rim.addColorStop(0.5, 'rgba(255, 255, 255, 0)');
+    rim.addColorStop(1, `rgba(255, 200, 160, ${0.06 + STATE.sunlight * 0.2})`);
+    ctx.fillStyle = rim;
+    ctx.fillRect(screenX, screenY, width, height);
+    ctx.restore();
+  }
+
+  if (entity.id === 'stone_oven' && (entity.state === 'baking' || entity.state === 'ready')) {
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    const centerX = screenX + width * 0.5;
+    const centerY = screenY + height * 0.55;
+    const glow = ctx.createRadialGradient(centerX, centerY, width * 0.15, centerX, centerY, width * 0.7);
+    glow.addColorStop(0, `rgba(255, 210, 150, ${entity.state === 'ready' ? 0.6 : 0.45})`);
+    glow.addColorStop(0.4, `rgba(255, 180, 120, ${entity.state === 'ready' ? 0.35 : 0.25})`);
+    glow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(screenX - width * 0.4, screenY - height * 0.4, width * 1.8, height * 1.8);
+    ctx.restore();
+  }
+}
+
+function spawnParticle(config = {}) {
+  const colorData = parseColor(config.color || '#ffffff') || { r: 255, g: 255, b: 255, a: 1 };
+  const particle = {
+    kind: config.kind || 'dust',
+    x: config.x ?? 0,
+    y: config.y ?? 0,
+    vx: config.vx || 0,
+    vy: config.vy || 0,
+    ax: config.ax || 0,
+    ay: config.ay || 0,
+    life: Math.max(0.1, config.life || 1.5),
+    age: 0,
+    size: config.size || 8,
+    startAlpha:
+      config.startAlpha !== undefined
+        ? config.startAlpha
+        : config.alpha !== undefined
+        ? config.alpha
+        : colorData.a ?? 1,
+    endAlpha: config.endAlpha !== undefined ? config.endAlpha : 0,
+    color: colorData,
+    additive: Boolean(config.additive),
+    flicker: config.flicker || 0,
+    noise: Math.random() * 1000
+  };
+  STATE.particles.push(particle);
+}
+
+function spawnAmbientDust(dt) {
+  if (!STATE.player || !STATE.room) return;
+  const rate = 0.9 + STATE.sunlight * 1.6 + STATE.nightFactor * 0.4;
+  STATE.particleTimers.dust += dt * rate;
+  let spawnCount = Math.floor(STATE.particleTimers.dust);
+  if (spawnCount <= 0) return;
+  STATE.particleTimers.dust -= spawnCount;
+
+  const px = STATE.player.x + STATE.player.width / 2;
+  const py = STATE.player.y + STATE.player.height / 2;
+  const themeTint = STATE.room.theme?.tint
+    ? rgbString(
+        {
+          r: STATE.room.theme.tint[0],
+          g: STATE.room.theme.tint[1],
+          b: STATE.room.theme.tint[2]
+        },
+        1
+      )
+    : '#f6e4c4';
+
+  while (spawnCount > 0) {
+    spawnCount -= 1;
+    spawnParticle({
+      kind: 'dust',
+      x: px + randomInRange(-260, 260),
+      y: py + randomInRange(-140, 180),
+      vx: randomInRange(-14, 14),
+      vy: randomInRange(-12, -4),
+      ax: randomInRange(-6, 6),
+      ay: randomInRange(-18, -8),
+      life: randomInRange(2.8, 4.6),
+      size: randomInRange(12, 22),
+      startAlpha: 0.22 + STATE.sunlight * 0.28,
+      endAlpha: 0,
+      color: mixColors(themeTint, '#7fb5ff', STATE.nightFactor * 0.6),
+      flicker: 0.2
+    });
+  }
+}
+
+function spawnOvenEmbers(dt) {
+  const oven = STATE.room?.oven;
+  if (!oven || (oven.state !== 'baking' && oven.state !== 'ready')) return;
+  const rate = oven.state === 'baking' ? 2.8 : 1.4;
+  STATE.particleTimers.ember += dt * rate;
+  let spawnCount = Math.floor(STATE.particleTimers.ember);
+  if (spawnCount <= 0) return;
+  STATE.particleTimers.ember -= spawnCount;
+
+  const originX = oven.x + oven.width * 0.55;
+  const originY = oven.y + oven.height * 0.42;
+  while (spawnCount > 0) {
+    spawnCount -= 1;
+    spawnParticle({
+      kind: 'ember',
+      x: originX + randomInRange(-18, 18),
+      y: originY + randomInRange(-10, 10),
+      vx: randomInRange(-10, 10),
+      vy: randomInRange(-22, -12),
+      ax: randomInRange(-4, 4),
+      ay: -18,
+      life: randomInRange(1.4, 2.4),
+      size: randomInRange(7, 13),
+      startAlpha: 0.85,
+      endAlpha: 0,
+      color: mixColors('#ffb472', '#ffd8a8', 0.35),
+      flicker: 0.45,
+      additive: true
+    });
+  }
+}
+
+function updateParticles(dt) {
+  if (!STATE.room) return;
+  spawnAmbientDust(dt);
+  spawnOvenEmbers(dt);
+
+  STATE.particles = STATE.particles.filter((particle) => {
+    const p = particle;
+    p.age += dt;
+    if (p.age >= p.life) {
+      return false;
+    }
+    p.vx += (p.ax || 0) * dt;
+    p.vy += (p.ay || 0) * dt;
+    if (p.kind === 'dust') {
+      p.vx += Math.sin((p.noise + p.age) * 1.7) * dt * 12;
+      p.vy += Math.cos((p.noise * 0.5 + p.age) * 1.5) * dt * -5;
+    }
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    return true;
+  });
+
+  const limit = 280;
+  if (STATE.particles.length > limit) {
+    STATE.particles.splice(0, STATE.particles.length - limit);
+  }
+}
+
+function drawParticles() {
+  if (!STATE.particles.length) return;
+  const camera = STATE.camera;
+  const viewport = STATE.viewport;
+  const now = performance.now() * 0.001;
+  ctx.save();
+  STATE.particles.forEach((particle) => {
+    const sx = particle.x - camera.x;
+    const sy = particle.y - camera.y;
+    if (sx < -120 || sy < -120 || sx > viewport.width + 120 || sy > viewport.height + 120) {
+      return;
+    }
+    const t = Math.max(0, Math.min(1, particle.age / particle.life));
+    const alpha = (1 - t) * particle.startAlpha + t * particle.endAlpha;
+    if (alpha <= 0) return;
+    const flicker = particle.flicker
+      ? 1 + Math.sin((particle.noise + now) * 6) * particle.flicker * 0.5
+      : 1;
+    const finalAlpha = Math.max(0, Math.min(1, alpha * flicker));
+    const radius = Math.max(1.5, particle.size * (1 - t * 0.35));
+    const color = particle.color;
+    const fill = `rgba(${clampByte(color.r)}, ${clampByte(color.g)}, ${clampByte(color.b)}, ${finalAlpha})`;
+    const gradient = ctx.createRadialGradient(sx, sy, radius * 0.1, sx, sy, radius);
+    gradient.addColorStop(0, fill);
+    gradient.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.globalCompositeOperation = particle.additive ? 'lighter' : 'screen';
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(sx, sy, radius, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  ctx.restore();
 }
 
 function drawWithOutline(drawBody, x, y, width, height) {
@@ -1339,6 +1747,25 @@ function drawWithOutline(drawBody, x, y, width, height) {
   drawBody(outlineCtx);
   outlineCtx.restore();
 
+  outlineCtx.save();
+  const highlight = outlineCtx.createLinearGradient(0, 0, 0, height + pad);
+  highlight.addColorStop(0, `rgba(255, 255, 255, ${0.2 + STATE.sunlight * 0.25})`);
+  highlight.addColorStop(0.55, 'rgba(255, 255, 255, 0)');
+  highlight.addColorStop(1, `rgba(10, 12, 24, ${0.26 + STATE.nightFactor * 0.35})`);
+  outlineCtx.globalCompositeOperation = 'soft-light';
+  outlineCtx.fillStyle = highlight;
+  outlineCtx.fillRect(0, 0, outlineCanvas.width, outlineCanvas.height);
+  outlineCtx.restore();
+
+  outlineCtx.save();
+  outlineCtx.globalCompositeOperation = 'lighter';
+  const rim = outlineCtx.createLinearGradient(0, 0, outlineCanvas.width, outlineCanvas.height);
+  rim.addColorStop(0, `rgba(140, 210, 255, ${0.06 + STATE.nightFactor * 0.22})`);
+  rim.addColorStop(1, `rgba(255, 210, 160, ${0.04 + STATE.sunlight * 0.18})`);
+  outlineCtx.fillStyle = rim;
+  outlineCtx.fillRect(0, 0, outlineCanvas.width, outlineCanvas.height);
+  outlineCtx.restore();
+
   ctx.drawImage(outlineCanvas, x - pad / 2, y - pad / 2);
 }
 
@@ -1346,6 +1773,8 @@ function drawWaypoints() {
   const camera = STATE.camera;
   ctx.save();
   ctx.lineWidth = 2;
+  ctx.shadowBlur = 12;
+  ctx.shadowColor = 'rgba(120, 200, 255, 0.45)';
   STATE.tempWaypoints.forEach((wp) => {
     const sx = wp.x - camera.x;
     const sy = wp.y - camera.y;
@@ -1359,17 +1788,18 @@ function drawWaypoints() {
     ctx.stroke();
     ctx.fillStyle = 'rgba(120, 200, 255, 0.3)';
     ctx.fill();
+    ctx.shadowBlur = 0;
     ctx.fillStyle = 'rgba(200, 240, 255, 0.9)';
     ctx.font = '12px sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText(wp.label, sx, sy + 26);
+    ctx.shadowBlur = 12;
   });
   ctx.restore();
 }
 
-function applyLighting() {
+function applyLighting(lights = buildLights()) {
   const camera = STATE.camera;
-  const lights = buildLights();
   const { width, height, dpr } = STATE.viewport;
   lightCanvas.width = width * dpr;
   lightCanvas.height = height * dpr;
@@ -1467,6 +1897,135 @@ function buildLights() {
   return lights;
 }
 
+function applyAtmospherics(lights = []) {
+  const { width, height } = STATE.viewport;
+  ctx.save();
+  ctx.globalCompositeOperation = 'multiply';
+  const vignette = ctx.createRadialGradient(
+    width / 2,
+    height / 2,
+    Math.min(width, height) * 0.45,
+    width / 2,
+    height / 2,
+    Math.max(width, height) * 0.78
+  );
+  vignette.addColorStop(0, 'rgba(255, 255, 255, 0)');
+  vignette.addColorStop(1, `rgba(12, 10, 24, ${0.48 + STATE.nightFactor * 0.4})`);
+  ctx.fillStyle = vignette;
+  ctx.fillRect(0, 0, width, height);
+  ctx.restore();
+
+  ctx.save();
+  ctx.globalCompositeOperation = 'screen';
+  const dawnGlow = ctx.createLinearGradient(0, 0, 0, height);
+  dawnGlow.addColorStop(0, `rgba(255, 224, 180, ${0.14 + STATE.sunlight * 0.22})`);
+  dawnGlow.addColorStop(0.5, 'rgba(255, 255, 255, 0)');
+  dawnGlow.addColorStop(1, `rgba(120, 170, 255, ${0.18 + STATE.nightFactor * 0.3})`);
+  ctx.fillStyle = dawnGlow;
+  ctx.fillRect(0, 0, width, height);
+  ctx.restore();
+
+  if (lights && lights.length) {
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    lights.forEach((light) => {
+      const sx = light.x - STATE.camera.x;
+      const sy = light.y - STATE.camera.y;
+      const halo = ctx.createRadialGradient(sx, sy, light.radius * 0.25, sx, sy, light.radius);
+      halo.addColorStop(0, `rgba(255, 255, 255, ${0.05 + colorAlpha(light.color, 0.2) * 0.3})`);
+      halo.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = halo;
+      ctx.fillRect(sx - light.radius, sy - light.radius, light.radius * 2, light.radius * 2);
+    });
+    ctx.restore();
+  }
+}
+
+function initializeThreeLayer() {
+  if (STATE.world3d.initialized || STATE.world3d.failed) return;
+  if (!window.World3D || typeof window.World3D.initThreeWorld !== 'function') return;
+  const canvas = document.getElementById('world3d');
+  if (!canvas) return;
+  try {
+    STATE.world3d.api = window.World3D.initThreeWorld(canvas, {
+      pixelArtMode: false,
+      parallax: true
+    });
+    STATE.world3d.initialized = true;
+  } catch (err) {
+    console.warn('World3D overlay failed to initialise', err);
+    STATE.world3d.failed = true;
+  }
+}
+
+function synchronizeThreeGraphics(graphics) {
+  if (!graphics) return;
+  if (!Array.isArray(graphics.toneLevels)) {
+    graphics.toneLevels = [0.2, 0.7, 1.0];
+  }
+  const sunlight = STATE.sunlight;
+  const night = STATE.nightFactor;
+  graphics.toneLevels[0] = 0.22 + sunlight * 0.45;
+  graphics.toneLevels[1] = 0.7 + sunlight * 0.24;
+  graphics.toneLevels[2] = 1.05 + sunlight * 0.4;
+  graphics.vignetteStrength = 0.55 + night * 0.35;
+  graphics.grainIntensity = 0.02 + night * 0.05;
+  graphics.chromaticOffset = 0.001 + night * 0.0015;
+  graphics.saturationBoost = 0.14 + sunlight * 0.3;
+}
+
+function renderThreeOverlay(lights = []) {
+  if (!window.World3D) return;
+  if (!STATE.world3d.initialized && !STATE.world3d.failed) {
+    initializeThreeLayer();
+  }
+  if (!STATE.world3d.initialized || STATE.world3d.failed) return;
+
+  const { renderThreeWorld, setLights, Graphics } = window.World3D;
+  if (Graphics) {
+    synchronizeThreeGraphics(Graphics);
+  }
+
+  if (typeof setLights === 'function' && Array.isArray(lights)) {
+    const prepared = lights.map((light) => {
+      const parsed = parseColor(light.color || '#ffffff') || { r: 255, g: 255, b: 255, a: 1 };
+      return {
+        x: light.x,
+        y: light.y,
+        radius: light.radius * 0.95,
+        intensity: Math.min(1, Math.max(0.08, light.intensity ?? colorAlpha(light.color, 0.55))),
+        color: `rgb(${clampByte(parsed.r)}, ${clampByte(parsed.g)}, ${clampByte(parsed.b)})`
+      };
+    });
+    const signature = JSON.stringify(
+      prepared.map((entry) => [
+        Math.round(entry.x),
+        Math.round(entry.y),
+        Math.round(entry.radius),
+        Number(entry.intensity.toFixed(3)),
+        entry.color
+      ])
+    );
+    if (signature !== STATE.world3d.lastLightSignature) {
+      setLights(prepared);
+      STATE.world3d.lastLightSignature = signature;
+    }
+  }
+
+  const centerX = STATE.camera.x + STATE.camera.width / 2;
+  const centerY = STATE.camera.y + STATE.camera.height / 2;
+  if (STATE.world3d.api && typeof STATE.world3d.api.setCamera === 'function') {
+    STATE.world3d.api.setCamera(centerX, centerY);
+  }
+
+  if (typeof renderThreeWorld === 'function') {
+    renderThreeWorld({
+      camera: { x: centerX, y: centerY },
+      pixelArtMode: false
+    });
+  }
+}
+
 function gameLoop(now) {
   const dt = Math.min((now - STATE.lastFrame) / 1000, 0.1);
   STATE.lastFrame = now;
@@ -1486,6 +2045,7 @@ async function start() {
   const assets = await loadAssets();
   setupInput();
   initWorld(assets);
+  initializeThreeLayer();
   STATE.lastFrame = performance.now();
   requestAnimationFrame(gameLoop);
 }

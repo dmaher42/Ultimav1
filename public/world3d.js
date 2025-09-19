@@ -9,7 +9,11 @@ import { ShaderPass } from 'https://esm.sh/three@0.160/examples/jsm/postprocessi
 // cracking open this module.
 export const Graphics = {
   toneLevels: [0.0, 0.55, 1.0],
-  outlineThickness: 1.5
+  outlineThickness: 1.5,
+  grainIntensity: 0.035,
+  vignetteStrength: 0.65,
+  chromaticOffset: 0.001,
+  saturationBoost: 0.18
 };
 
 const PARALLAX_FACTORS = {
@@ -66,6 +70,7 @@ loader.setCrossOrigin('anonymous');
 
 const LIGHT_GEOMETRY = new THREE.PlaneGeometry(1, 1, 1, 1);
 const TEMP_OBJECT = new THREE.Object3D();
+const TEMP_VEC2 = new THREE.Vector2();
 let gaussianTexture = null;
 
 function getTexture(url) {
@@ -347,7 +352,13 @@ function createPostProcessing() {
         Graphics.toneLevels[1],
         Graphics.toneLevels[2]
       )
-    }
+    },
+    resolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) },
+    time: { value: 0 },
+    grainIntensity: { value: Graphics.grainIntensity ?? 0.03 },
+    vignetteStrength: { value: Graphics.vignetteStrength ?? 0.6 },
+    chromaticOffset: { value: Graphics.chromaticOffset ?? 0.001 },
+    saturationBoost: { value: Graphics.saturationBoost ?? 0.18 }
   };
 
   world.tonePass = new ShaderPass({
@@ -362,24 +373,60 @@ function createPostProcessing() {
     fragmentShader: /* glsl */ `
       uniform sampler2D tDiffuse;
       uniform vec3 toneLevels;
+      uniform vec2 resolution;
+      uniform float time;
+      uniform float grainIntensity;
+      uniform float vignetteStrength;
+      uniform float chromaticOffset;
+      uniform float saturationBoost;
       varying vec2 vUv;
 
       float luminance(vec3 color) {
         return dot(color, vec3(0.299, 0.587, 0.114));
       }
 
+      float hash(vec2 p) {
+        return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
+      }
+
+      vec3 applyTone(vec3 color, float targetLuma) {
+        float luma = luminance(color);
+        float scale = luma > 0.0001 ? targetLuma / luma : 0.0;
+        return color * scale;
+      }
+
       void main() {
-        vec4 color = texture2D(tDiffuse, vUv);
-        float luma = luminance(color.rgb);
+        vec2 center = vec2(0.5);
+        vec2 toCenter = vUv - center;
+        float dist = length(toCenter);
+        vec2 offsetDir = dist > 0.0001 ? toCenter / dist : vec2(0.0);
+        vec2 offset = offsetDir * chromaticOffset * dist;
+
+        vec3 sampled;
+        sampled.r = texture2D(tDiffuse, vUv + offset).r;
+        sampled.g = texture2D(tDiffuse, vUv).g;
+        sampled.b = texture2D(tDiffuse, vUv - offset).b;
+
+        float luma = luminance(sampled);
         float target = toneLevels.x;
         if (luma >= toneLevels.y && luma < toneLevels.z) {
           target = toneLevels.y;
         } else if (luma >= toneLevels.z) {
           target = toneLevels.z;
         }
-        float scale = luma > 0.0 ? target / luma : 0.0;
-        color.rgb *= scale;
-        gl_FragColor = color;
+        vec3 toneMapped = applyTone(sampled, target);
+
+        float saturation = clamp(1.0 + saturationBoost, 0.0, 3.0);
+        vec3 balanced = mix(vec3(luminance(toneMapped)), toneMapped, saturation);
+
+        float vignette = smoothstep(vignetteStrength, vignetteStrength - 0.35, dist);
+        balanced *= mix(1.0, vignette, clamp(vignetteStrength, 0.0, 1.0));
+
+        float grain = hash(vUv * resolution + time * 60.0);
+        grain = grain * 2.0 - 1.0;
+        balanced += grain * grainIntensity;
+
+        gl_FragColor = vec4(clamp(balanced, 0.0, 1.5), 1.0);
       }
     `
   });
@@ -420,6 +467,10 @@ function handleResize() {
   world.camera.updateProjectionMatrix();
 
   updateComposerSize(width, height, dpr);
+
+  if (world.tonePass && world.tonePass.material?.uniforms?.resolution) {
+    world.tonePass.material.uniforms.resolution.value.set(width, height);
+  }
 }
 
 function addBackgroundPlanes() {
@@ -464,9 +515,22 @@ function addDemoBarrels() {
 function refreshPostEffectsConfig() {
   if (!world.outlinePass || !world.tonePass) return;
   world.outlinePass.edgeThickness = Graphics.outlineThickness;
-  const tone = world.tonePass.material.uniforms.toneLevels.value;
+  const uniforms = world.tonePass.material.uniforms;
+  const tone = uniforms.toneLevels.value;
   if (Array.isArray(Graphics.toneLevels) && Graphics.toneLevels.length >= 3) {
     tone.set(Graphics.toneLevels[0], Graphics.toneLevels[1], Graphics.toneLevels[2]);
+  }
+  if (uniforms.grainIntensity) {
+    uniforms.grainIntensity.value = Graphics.grainIntensity ?? uniforms.grainIntensity.value;
+  }
+  if (uniforms.vignetteStrength) {
+    uniforms.vignetteStrength.value = Graphics.vignetteStrength ?? uniforms.vignetteStrength.value;
+  }
+  if (uniforms.chromaticOffset) {
+    uniforms.chromaticOffset.value = Graphics.chromaticOffset ?? uniforms.chromaticOffset.value;
+  }
+  if (uniforms.saturationBoost) {
+    uniforms.saturationBoost.value = Graphics.saturationBoost ?? uniforms.saturationBoost.value;
   }
 }
 
@@ -568,6 +632,17 @@ export function renderThreeWorld(state = {}) {
   const dt = Math.min(elapsed, 1 / 24);
   world.lastFrameTime = now;
 
+  if (world.tonePass && world.tonePass.material?.uniforms) {
+    const uniforms = world.tonePass.material.uniforms;
+    if (uniforms.time) {
+      uniforms.time.value = now * 0.001;
+    }
+    if (uniforms.resolution) {
+      world.renderer.getSize(TEMP_VEC2);
+      uniforms.resolution.value.set(TEMP_VEC2.x, TEMP_VEC2.y);
+    }
+  }
+
   if (typeof state.pixelArtMode === 'boolean' && state.pixelArtMode !== world.pixelArtMode) {
     setPixelArtMode(state.pixelArtMode);
   }
@@ -616,6 +691,16 @@ export function setLights(lights = []) {
       blending: THREE.AdditiveBlending,
       opacity: intensity
     });
+    material.toneMapped = false;
+    if (light.color) {
+      try {
+        material.color.set(light.color);
+      } catch (err) {
+        if (material.color && material.color.setStyle) {
+          material.color.setStyle(light.color);
+        }
+      }
+    }
 
     const sprite = new THREE.Mesh(LIGHT_GEOMETRY, material);
     sprite.name = light.name || `light-${index}`;
