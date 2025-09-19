@@ -247,6 +247,17 @@
 
   // Put sprite PNG files inside public/assets/ so the loader can find them by name.
   const SPRITE_BASE_PATH='assets/';
+  const LEGACY_SPRITE_ALIASES=new Map([
+    ['sprite-0002.png','Male 02-2.png'],
+    ['sprite-0002','Male 02-2.png'],
+    ['sprite_0002.png','Male 02-2.png'],
+    ['sprite_0002','Male 02-2.png'],
+    ['sprite0002.png','Male 02-2.png'],
+    ['sprite0002','Male 02-2.png'],
+    ['sprite 0002.png','Male 02-2.png'],
+    ['male 02-2.png','Male 02-2.png'],
+    ['male 02-2','Male 02-2.png']
+  ]);
   const SPRITES=Object.create(null);
   window.SPRITES=SPRITES;
 
@@ -254,6 +265,8 @@
   let spriteReady=false;    // ready flag for the active sprite
   let frameW=32, frameH=32; // computed on load
   let currentObjectUrl=null;// revoke blob URLs when replaced
+  let urlInput=null;
+  let spriteSelect=null;
 
   const spriteReadyResolvers=[];
   function resolveSpriteWaiters(){
@@ -309,6 +322,16 @@
       g.stroke();
     }
     return { image:canvas, color, cellSize };
+  }
+
+  function canonicalizeSpriteName(raw){
+    if(!raw) return { canonical:raw, alias:null };
+    const trimmed=raw.trim();
+    const normalized=trimmed.toLowerCase();
+    if(LEGACY_SPRITE_ALIASES.has(normalized)){
+      return { canonical:LEGACY_SPRITE_ALIASES.get(normalized), alias:trimmed };
+    }
+    return { canonical:trimmed, alias:null };
   }
 
   function getSpriteSource(name,url){
@@ -375,9 +398,38 @@
   function setActiveSprite(name,url){
     if(currentObjectUrl && currentObjectUrl!==url){ URL.revokeObjectURL(currentObjectUrl); currentObjectUrl=null; }
     if(url && url.startsWith('blob:')){ currentObjectUrl=url; }
-    activeSpriteName=name;
+    const isExplicitProtocol=url && /^(https?:|data:|blob:)/i.test(url);
+    const normalizedUrl=url ? url.replace(/^[./\\]+/,'').replace(/\\/g,'/') : '';
+    const isRelativeAsset=url && !isExplicitProtocol && (normalizedUrl.toLowerCase().startsWith('assets/') || normalizedUrl.toLowerCase().startsWith('public/assets/'));
+    let resolvedUrl=url;
+    let finalName=name;
+    if(!url || isRelativeAsset){
+      const { canonical, alias }=canonicalizeSpriteName(name);
+      finalName=canonical;
+      if(alias && alias!==canonical && resolvedUrl && isRelativeAsset){
+        const parts=resolvedUrl.split(/[/\\]/);
+        parts[parts.length-1]=canonical;
+        resolvedUrl=parts.join('/');
+      }
+      if(alias && alias!==canonical && (!url || isRelativeAsset)){
+        const displayValue=!url ? canonical : resolvedUrl;
+        showNotice(`${alias} is deprecated. Using ${canonical} instead.`);
+        if(urlInput){
+          urlInput.value=displayValue;
+        }
+        if(!url && spriteSelect){
+          for(const opt of spriteSelect.options){
+            if(opt.value===canonical){
+              spriteSelect.value=opt.value;
+              break;
+            }
+          }
+        }
+      }
+    }
+    activeSpriteName=finalName;
     spriteReady=false;
-    return loadSprite(name,url);
+    return loadSprite(finalName,resolvedUrl);
   }
 
   function parseSpriteInput(value){
@@ -388,44 +440,75 @@
     const looksLikePath=trimmed.startsWith('/') || trimmed.startsWith('./') || trimmed.startsWith('../') || trimmed.includes('/');
     if(isProtocol || looksLikePath){
       const namePart=trimmed.split(/[\\/]/).pop() || trimmed;
-      const cleanName=namePart.split('?')[0] || namePart;
-      return { name:cleanName, url:trimmed };
+      const cleanName=(namePart.split('?')[0] || namePart).trim();
+      if(!isProtocol){
+        const { canonical, alias }=canonicalizeSpriteName(cleanName);
+        if(alias && alias!==canonical){
+          const parts=trimmed.split('?');
+          const pathPart=parts.shift() || '';
+          const querySuffix=parts.length?`?${parts.join('?')}`:'';
+          const segments=pathPart.split(/[/\\]/);
+          segments[segments.length-1]=canonical;
+          const canonicalUrl=segments.join('/')+querySuffix;
+          return { name:canonical, url:canonicalUrl, aliasOf:alias };
+        }
+      }
+      return { name:cleanName, url:trimmed, aliasOf:null };
     }
-    return { name:trimmed, url:null };
+    const { canonical, alias }=canonicalizeSpriteName(trimmed);
+    return { name:canonical, url:null, aliasOf:alias };
   }
 
   function setActiveSpriteFromValue(raw,{ save=false }={}){
     const parsed=parseSpriteInput(raw);
     if(!parsed) return;
-    if(save && !(parsed.url && parsed.url.startsWith('blob:'))){
-      localStorage.setItem('spriteURL', raw);
-    } else if(save && parsed.url && parsed.url.startsWith('blob:')){
-      localStorage.removeItem('spriteURL');
+    const { name, url, aliasOf }=parsed;
+    const isBlob=url && url.startsWith('blob:');
+    if(save){
+      if(isBlob){
+        localStorage.removeItem('spriteURL');
+      } else {
+        const valueToPersist=aliasOf ? (url ? url : name) : raw;
+        localStorage.setItem('spriteURL', valueToPersist);
+      }
     }
-    return setActiveSprite(parsed.name, parsed.url);
+    if(aliasOf && aliasOf!==name){
+      const displayValue=!url || isBlob ? name : url;
+      showNotice(`${aliasOf} is deprecated. Using ${name} instead.`);
+      if(urlInput){
+        urlInput.value=displayValue;
+      }
+      if(spriteSelect){
+        for(const opt of spriteSelect.options){
+          if(opt.value===name){
+            spriteSelect.value=opt.value;
+            break;
+          }
+        }
+      }
+    }
+    return setActiveSprite(name, url);
   }
 
   const qp=getParam('sprite');
   const saved=localStorage.getItem('spriteURL');
   const DEFAULT_SPRITE_NAME='Male 02-2.png';
   const initialValue=qp || saved || DEFAULT_SPRITE_NAME;
+  const initialParsed=parseSpriteInput(initialValue);
+  const initialDisplayValue=initialParsed && initialParsed.aliasOf ? (initialParsed.url || initialParsed.name) : initialValue;
+  if(saved && initialValue===saved && initialParsed && initialParsed.aliasOf){
+    const canonicalStored=initialParsed.url || initialParsed.name;
+    localStorage.setItem('spriteURL', canonicalStored);
+  }
 
-  const initialSpritePromise=waitForSpriteReady();
-  setActiveSpriteFromValue(initialValue);
+  urlInput=document.getElementById('spriteUrl');
+  if(urlInput){
+    urlInput.value=initialDisplayValue;
+  }
 
-  const urlInput=document.getElementById('spriteUrl');
-  urlInput.value=initialValue;
-
-  document.getElementById('btnLoad').onclick=()=>{
-    const raw=urlInput.value.trim();
-    if(!raw) return;
-    setActiveSpriteFromValue(raw,{ save:true });
-  };
-
-  const spriteSelect=document.getElementById('spriteSelect');
+  spriteSelect=document.getElementById('spriteSelect');
   if(spriteSelect){
-    const parsedInitial=parseSpriteInput(initialValue);
-    const initialName=parsedInitial?.name;
+    const initialName=initialParsed?.name;
     if(initialName){
       for(const opt of spriteSelect.options){
         if(opt.value===initialName){
@@ -436,21 +519,40 @@
     }
     spriteSelect.addEventListener('change',()=>{
       const choice=spriteSelect.value;
-      urlInput.value=choice;
+      if(urlInput){
+        urlInput.value=choice;
+      }
       setActiveSpriteFromValue(choice,{ save:true });
     });
   }
 
+  const initialSpritePromise=waitForSpriteReady();
+  setActiveSpriteFromValue(initialValue);
+
+  const btnLoad=document.getElementById('btnLoad');
+  if(btnLoad){
+    btnLoad.onclick=()=>{
+      const raw=urlInput ? urlInput.value.trim() : '';
+      if(!raw) return;
+      setActiveSpriteFromValue(raw,{ save:true });
+    };
+  }
+
   const fileInput=document.getElementById('fileInput');
-  document.getElementById('btnFile').onclick=()=>fileInput.click();
-  fileInput.onchange=()=>{
-    const f=fileInput.files && fileInput.files[0];
-    if(!f) return;
-    const objectUrl=URL.createObjectURL(f);
-    urlInput.value=f.name;
-    // Reminder: copy sprites into public/assets/ for persistent loads instead of blob URLs.
-    setActiveSprite(f.name, objectUrl);
-  };
+  const btnFile=document.getElementById('btnFile');
+  if(btnFile && fileInput){
+    btnFile.onclick=()=>fileInput.click();
+    fileInput.onchange=()=>{
+      const f=fileInput.files && fileInput.files[0];
+      if(!f) return;
+      const objectUrl=URL.createObjectURL(f);
+      if(urlInput){
+        urlInput.value=f.name;
+      }
+      // Reminder: copy sprites into public/assets/ for persistent loads instead of blob URLs.
+      setActiveSprite(f.name, objectUrl);
+    };
+  }
 
   const drop=document.getElementById('drop');
   ['dragenter','dragover'].forEach(ev=>addEventListener(ev,e=>{e.preventDefault(); drop.classList.add('show');}));
@@ -460,7 +562,9 @@
       const f=e.dataTransfer.files && e.dataTransfer.files[0];
       if(f){
         const objectUrl=URL.createObjectURL(f);
-        urlInput.value=f.name;
+        if(urlInput){
+          urlInput.value=f.name;
+        }
         // Reminder: copy sprites into public/assets/ for persistent loads instead of blob URLs.
         setActiveSprite(f.name, objectUrl);
       }
