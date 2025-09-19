@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Village Bakery Slice</title>
+    <title>Britannia Reborn</title>
     <style>
       :root {
         color-scheme: dark;
@@ -14,7 +14,8 @@
       }
       body {
         margin: 0;
-        background: radial-gradient(circle at 30% 20%, #1e2335, #07090f 70%);
+        background: radial-gradient(circle at 30% 20%, #101628, #04070f 70%);
+        color: #f3efe3;
         overflow: hidden;
       }
       canvas {
@@ -23,122 +24,267 @@
         height: 100vh;
         image-rendering: pixelated;
         image-rendering: crisp-edges;
-      }
-      #world3d {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
-        pointer-events: none;
-        z-index: 0;
+        background: #050607;
       }
       #hud {
         position: fixed;
         top: 12px;
         left: 12px;
-        padding: 8px 12px;
-        background: rgba(10, 13, 22, 0.6);
-        border: 1px solid rgba(128, 170, 255, 0.2);
-        border-radius: 6px;
-        color: #d7e0ff;
-        min-width: 180px;
-        font-size: 12px;
-        backdrop-filter: blur(3px);
+        padding: 10px 14px;
+        background: rgba(14, 18, 34, 0.82);
+        border: 1px solid rgba(120, 160, 255, 0.3);
+        border-radius: 8px;
+        min-width: 220px;
+        font-size: 13px;
+        line-height: 1.6;
+        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.35);
+        backdrop-filter: blur(6px);
+        z-index: 10;
       }
       #hud strong {
-        color: #f0f6ff;
+        color: #fff6d1;
       }
-      #interaction-panel {
+      #hud .keys {
+        display: block;
+        font-size: 11px;
+        color: #b8c4f2;
+        margin-top: 6px;
+      }
+      #message-log {
         position: fixed;
-        right: 16px;
-        bottom: 16px;
-        width: 280px;
-        max-height: 60vh;
+        bottom: 12px;
+        left: 12px;
+        width: 320px;
+        max-height: 40vh;
+        padding: 12px;
+        background: rgba(6, 10, 20, 0.8);
+        border: 1px solid rgba(160, 140, 90, 0.35);
+        border-radius: 8px;
+        overflow-y: auto;
+        font-size: 12px;
+        line-height: 1.5;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+        backdrop-filter: blur(4px);
+        z-index: 10;
+      }
+      .panel {
+        position: fixed;
+        top: 50%;
+        right: 24px;
+        transform: translateY(-50%);
+        width: 320px;
+        max-height: 70vh;
+        padding: 16px;
         display: flex;
         flex-direction: column;
-        gap: 6px;
-        padding: 12px;
-        background: rgba(14, 18, 28, 0.85);
-        border: 1px solid rgba(150, 110, 66, 0.4);
-        border-radius: 8px;
-        color: #f6e4c4;
-        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
-        backdrop-filter: blur(6px);
+        gap: 12px;
+        background: rgba(12, 16, 28, 0.92);
+        border: 1px solid rgba(180, 150, 90, 0.45);
+        border-radius: 10px;
+        box-shadow: 0 16px 32px rgba(0, 0, 0, 0.45);
+        backdrop-filter: blur(8px);
+        z-index: 15;
       }
-      #interaction-panel[hidden] {
-        display: none;
-      }
-      #panel-title {
+      .panel h2 {
         margin: 0;
-        font-size: 16px;
-        color: #ffdd9c;
-        text-shadow: 0 0 6px rgba(255, 200, 120, 0.3);
+        font-size: 18px;
+        color: #ffe6aa;
       }
-      #panel-body {
-        font-size: 13px;
-        line-height: 1.3;
-        color: #f2d8b0;
+      .panel button.close {
+        align-self: flex-end;
+        padding: 6px 10px;
       }
-      #panel-dialogue {
-        font-size: 12px;
-        padding: 8px;
-        border-radius: 6px;
-        background: rgba(30, 25, 20, 0.6);
-        border: 1px solid rgba(255, 214, 153, 0.18);
-        min-height: 60px;
-        white-space: pre-wrap;
-      }
-      #panel-actions {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
+      .hidden {
+        display: none !important;
       }
       button {
         appearance: none;
-        border: 1px solid rgba(240, 208, 150, 0.35);
-        border-radius: 4px;
-        padding: 6px 10px;
+        border: 1px solid rgba(255, 214, 153, 0.4);
+        border-radius: 6px;
+        padding: 6px 12px;
         font-size: 12px;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-        background: linear-gradient(135deg, rgba(255, 206, 128, 0.2), rgba(140, 90, 40, 0.2));
-        color: #ffe7c7;
+        letter-spacing: 0.05em;
+        background: linear-gradient(135deg, rgba(255, 214, 153, 0.2), rgba(140, 90, 40, 0.2));
+        color: #ffe9c6;
         cursor: pointer;
       }
       button:hover {
-        background: linear-gradient(135deg, rgba(255, 206, 128, 0.3), rgba(180, 120, 60, 0.35));
+        background: linear-gradient(135deg, rgba(255, 214, 153, 0.32), rgba(180, 120, 60, 0.35));
       }
       button:disabled {
         opacity: 0.5;
         cursor: not-allowed;
       }
+      .inventory-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        overflow-y: auto;
+      }
+      .inventory-item {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        padding: 8px;
+        border: 1px solid rgba(120, 140, 210, 0.3);
+        border-radius: 6px;
+        background: rgba(16, 22, 40, 0.65);
+      }
+      .inventory-item-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+      }
+      .inventory-item-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      table.stats {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+      }
+      table.stats td {
+        padding: 4px 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      table.stats td:first-child {
+        color: #ffdb92;
+        width: 120px;
+      }
+      .modal {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: min(460px, 90vw);
+        padding: 18px;
+        background: rgba(12, 16, 30, 0.95);
+        border: 1px solid rgba(180, 140, 90, 0.45);
+        border-radius: 12px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(10px);
+        z-index: 30;
+      }
+      .modal h2 {
+        margin-top: 0;
+        color: #ffe1a6;
+        text-align: center;
+      }
+      .creator-stats {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+      .creator-stat {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        padding: 8px;
+        border-radius: 6px;
+        background: rgba(18, 24, 42, 0.75);
+        border: 1px solid rgba(130, 160, 230, 0.3);
+      }
+      .creator-stat label {
+        font-size: 12px;
+        color: #cdd9ff;
+      }
+      .creator-actions {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 14px;
+      }
+      input[type='text'],
+      input[type='number'] {
+        appearance: none;
+        padding: 6px 8px;
+        border-radius: 4px;
+        border: 1px solid rgba(255, 214, 153, 0.35);
+        background: rgba(8, 12, 24, 0.8);
+        color: #f4e9d8;
+        font-size: 13px;
+      }
+      .combat-log {
+        height: 160px;
+        overflow-y: auto;
+        background: rgba(6, 10, 18, 0.6);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        padding: 8px;
+        border-radius: 8px;
+        font-size: 12px;
+        line-height: 1.5;
+      }
+      .combat-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        justify-content: center;
+      }
+      #tooltip {
+        position: fixed;
+        pointer-events: none;
+        padding: 6px 8px;
+        border-radius: 6px;
+        background: rgba(18, 22, 38, 0.95);
+        border: 1px solid rgba(140, 180, 255, 0.4);
+        color: #f0f6ff;
+        font-size: 12px;
+        z-index: 25;
+        max-width: 240px;
+        white-space: pre-wrap;
+      }
     </style>
   </head>
   <body>
-    <canvas id="game" width="640" height="360"></canvas>
+    <canvas id="game" width="640" height="640"></canvas>
     <section id="hud">
-      <div><strong>FPS:</strong> <span id="hud-fps">--</span></div>
-      <div><strong>Time:</strong> <span id="hud-time">Dawn</span></div>
-      <div><strong>Room:</strong> <span id="hud-room">--</span></div>
-      <div><strong>Inventory:</strong> <span id="hud-inventory">--</span></div>
+      <div><strong>Name:</strong> <span id="hud-name">--</span></div>
+      <div><strong>Level:</strong> <span id="hud-level">1</span></div>
+      <div><strong>HP:</strong> <span id="hud-hp">0 / 0</span></div>
+      <div><strong>MP:</strong> <span id="hud-mp">0 / 0</span></div>
+      <div><strong>XP:</strong> <span id="hud-xp">0</span></div>
+      <div><strong>Area:</strong> <span id="hud-area">Unknown</span></div>
+      <span class="keys">WASD/Arrows: Move · Shift+Arrows: Look · I: Inventory · C: Character · M: Menu</span>
     </section>
-    <aside id="interaction-panel" hidden>
-      <h2 id="panel-title"></h2>
-      <div id="panel-body"></div>
-      <div id="panel-actions"></div>
-      <div id="panel-dialogue"></div>
-      <div style="display: flex; gap: 6px; justify-content: flex-end;">
-        <button id="panel-talk">Talk</button>
-        <button id="panel-close">Close</button>
-      </div>
+    <section id="message-log"></section>
+    <aside id="inventory-panel" class="panel hidden">
+      <h2>Inventory</h2>
+      <div id="inventory-capacity"></div>
+      <div class="inventory-list" id="inventory-list"></div>
+      <button class="close" data-close="inventory">Close (I)</button>
     </aside>
-    <canvas id="world3d"></canvas>
-    <script type="module">
-      import * as World3D from './world3d.js';
-      window.World3D = World3D;
-    </script>
+    <aside id="character-panel" class="panel hidden">
+      <h2>Character Sheet</h2>
+      <div id="character-summary"></div>
+      <table class="stats" id="character-stats"></table>
+      <div id="stat-points"></div>
+      <div class="inventory-item-actions" id="stat-allocation"></div>
+      <button class="close" data-close="character">Close (C)</button>
+    </aside>
+    <aside id="menu-panel" class="panel hidden">
+      <h2>Adventurer's Journal</h2>
+      <button id="menu-save">Manual Save</button>
+      <button id="menu-load">Load</button>
+      <button id="menu-clear">Clear Save</button>
+      <div id="menu-last-save"></div>
+      <button class="close" data-close="menu">Close (M)</button>
+    </aside>
+    <section id="combat-ui" class="modal hidden">
+      <h2>Battle!</h2>
+      <div id="combat-status"></div>
+      <div class="combat-log" id="combat-log"></div>
+      <div class="combat-actions">
+        <button data-action="attack">Attack</button>
+        <button data-action="defend">Defend</button>
+        <button data-action="item">Use Item</button>
+        <button data-action="flee">Flee</button>
+      </div>
+      <div id="combat-item-list" class="inventory-list hidden"></div>
+    </section>
+    <section id="character-creator" class="modal hidden"></section>
+    <div id="tooltip" class="hidden"></div>
     <script type="module" src="game.js"></script>
   </body>
 </html>
