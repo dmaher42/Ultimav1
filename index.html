@@ -63,6 +63,19 @@
   let frameW=32, frameH=32; // computed on load
   let currentObjectUrl=null;// revoke blob URLs when replaced
 
+  const spriteReadyResolvers=[];
+  function resolveSpriteWaiters(){
+    while(spriteReadyResolvers.length){
+      const resolve=spriteReadyResolvers.shift();
+      try{ resolve(sprite); }
+      catch(err){ console.error('Sprite ready callback failed', err); }
+    }
+  }
+  function waitForSpriteReady(){
+    if(spriteReady) return Promise.resolve(sprite);
+    return new Promise(resolve=>spriteReadyResolvers.push(resolve));
+  }
+
   const DEFAULT_SOURCES = [
     ...(localStorage.getItem("spriteURL") ? [localStorage.getItem("spriteURL")] : []),
     "assets/Male 02-2.png",
@@ -94,7 +107,7 @@
 
   function useFallback(){
     spriteReady=false; const url=generateFallbackSprite(32); const img=new Image();
-    img.onload=()=>{ sprite=img; spriteReady=true; frameW=Math.floor(img.naturalWidth/SHEET_COLS); frameH=Math.floor(img.naturalHeight/SHEET_ROWS); showNotice('Using fallback sprite. Place \"Male 02-2.png\" next to this file, paste a URL, or drop a file.'); };
+    img.onload=()=>{ sprite=img; spriteReady=true; frameW=Math.floor(img.naturalWidth/SHEET_COLS); frameH=Math.floor(img.naturalHeight/SHEET_ROWS); showNotice('Using fallback sprite. Place \"Male 02-2.png\" next to this file, paste a URL, or drop a file.'); resolveSpriteWaiters(); };
     img.onerror=()=>{ spriteReady=false; showNotice('Fallback sprite failed to load (unexpected).'); };
     img.src=url;
   }
@@ -108,6 +121,7 @@
         frameW=Math.floor(img.naturalWidth/SHEET_COLS);
         frameH=Math.floor(img.naturalHeight/SHEET_ROWS);
         showNotice('Loaded sprite: '+url);
+        resolveSpriteWaiters();
       } else { showNotice('Sprite loaded but has no size — using fallback.'); useFallback(); }
     };
     img.onerror=()=>{ showNotice('Failed to load sprite at: '+url); tryNextSource(); };
@@ -121,6 +135,8 @@
 
   const qp = getParam("sprite");
   const saved = localStorage.getItem("spriteURL");
+
+  const initialSpritePromise=waitForSpriteReady();
 
   if(qp){
     trySources([qp]);
@@ -216,9 +232,15 @@
     else { ctx.fillStyle="#e5e7eb"; ctx.beginPath(); ctx.arc(px,py,16,0,Math.PI*2); ctx.fill(); }
   }
 
-  let last=performance.now();
+  let last=0;
   function loop(now){ const dt=Math.min(0.033,(now-last)/1000); last=now; update(dt); draw(); requestAnimationFrame(loop); }
-  requestAnimationFrame(loop);
+
+  async function startGameLoop(){
+    await initialSpritePromise;
+    last=performance.now();
+    requestAnimationFrame(loop);
+  }
+  startGameLoop();
 
   // ===== Tests (keep existing and add a few more) =====
   const results=[]; function assert(name,cond){ results.push({name,pass:!!cond}); if(!cond) console.error('[TEST FAIL]',name); }
