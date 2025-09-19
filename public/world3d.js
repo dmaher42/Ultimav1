@@ -113,33 +113,157 @@ function applyTextureFiltering(texture) {
   texture.needsUpdate = true;
 }
 
+function getImageDimensions(image) {
+  if (!image) {
+    return { width: 0, height: 0 };
+  }
+
+  const width = Math.max(
+    image.naturalWidth || 0,
+    image.videoWidth || 0,
+    image.width || 0
+  );
+  const height = Math.max(
+    image.naturalHeight || 0,
+    image.videoHeight || 0,
+    image.height || 0
+  );
+
+  return { width, height };
+}
+
+function getTextureDimensions(texture) {
+  if (!texture) {
+    return { width: 0, height: 0 };
+  }
+
+  return getImageDimensions(texture.image);
+}
+
 function whenTextureReady(texture, onLoad, onError) {
   if (!texture) return;
-  if (texture.userData.failed) {
+
+  texture.userData = texture.userData || {};
+
+  const callOnError = () => {
     if (onError) onError();
-    return;
-  }
-  const image = texture.image;
-  if (image && image.width && image.height) {
-    onLoad(texture);
-    return;
-  }
-  const handler = () => {
-    if (!texture.image || !texture.image.width) {
-      if (texture.userData.failed) {
-        texture.removeEventListener('update', handler);
-        if (onError) onError();
-      }
-      return;
-    }
-    texture.removeEventListener('update', handler);
-    if (texture.userData.failed) {
-      if (onError) onError();
-      return;
-    }
-    onLoad(texture);
   };
-  texture.addEventListener('update', handler);
+
+  const hasDimensions = () => {
+    const { width, height } = getTextureDimensions(texture);
+    return width > 0 && height > 0;
+  };
+
+  if (texture.userData?.failed) {
+    callOnError();
+    return;
+  }
+
+  if (hasDimensions()) {
+    if (onLoad) onLoad(texture);
+    return;
+  }
+
+  let currentImage = texture.image;
+  let settled = false;
+  let listeningToImage = false;
+
+  const cleanup = () => {
+    if (settled) return;
+    settled = true;
+    texture.removeEventListener('update', handleUpdate);
+    if (currentImage && listeningToImage) {
+      currentImage.removeEventListener('load', handleLoad);
+      currentImage.removeEventListener('error', handleError);
+    }
+    listeningToImage = false;
+  };
+
+  const handleError = () => {
+    if (settled) return;
+    cleanup();
+    texture.userData.failed = true;
+    callOnError();
+  };
+
+  const handleLoad = () => {
+    if (settled) return;
+    if (texture.userData?.failed) {
+      cleanup();
+      callOnError();
+      return;
+    }
+
+    if (!hasDimensions()) {
+      cleanup();
+      texture.userData.failed = true;
+      callOnError();
+      return;
+    }
+
+    cleanup();
+    if (onLoad) onLoad(texture);
+  };
+
+  const monitorImage = (image) => {
+    if (!image) return false;
+
+    if (currentImage && currentImage !== image && listeningToImage) {
+      currentImage.removeEventListener('load', handleLoad);
+      currentImage.removeEventListener('error', handleError);
+    }
+
+    currentImage = image;
+    listeningToImage = false;
+
+    if (hasDimensions()) {
+      handleLoad();
+      return true;
+    }
+
+    if (typeof image.addEventListener === 'function') {
+      image.addEventListener('load', handleLoad);
+      image.addEventListener('error', handleError);
+      listeningToImage = true;
+
+      if (image.complete) {
+        Promise.resolve().then(() => {
+          handleLoad();
+        });
+      }
+    }
+
+    return true;
+  };
+
+  const handleUpdate = () => {
+    if (settled) return;
+
+    if (texture.userData?.failed) {
+      cleanup();
+      callOnError();
+      return;
+    }
+
+    if (!texture.image) {
+      return;
+    }
+
+    if (texture.image !== currentImage) {
+      monitorImage(texture.image);
+      return;
+    }
+
+    if (hasDimensions()) {
+      handleLoad();
+    }
+  };
+
+  monitorImage(currentImage);
+
+  if (!settled && !hasDimensions()) {
+    texture.addEventListener('update', handleUpdate);
+  }
 }
 
 function loadSpritePlane(url, opts = {}) {
@@ -159,13 +283,16 @@ function loadSpritePlane(url, opts = {}) {
   mesh.renderOrder = opts.renderOrder ?? 0;
 
   const applyDimensions = () => {
-    const width = opts.width || texture.image.width || 1;
-    const height = opts.height || texture.image.height || 1;
+    const { width: texWidth, height: texHeight } = getTextureDimensions(texture);
+    const width = opts.width || texWidth || 1;
+    const height = opts.height || texHeight || 1;
     mesh.scale.set(width, height, 1);
     mesh.userData.size = { width, height };
   };
 
-  if (texture && texture.image && texture.image.width) {
+  const { width: initialWidth, height: initialHeight } = getTextureDimensions(texture);
+
+  if (initialWidth && initialHeight) {
     applyDimensions();
   } else {
     whenTextureReady(
@@ -204,8 +331,9 @@ function createInstancedSpritePlane(url, count, opts = {}) {
       instanced.visible = false;
       return;
     }
-    const width = opts.width || texture.image.width || 1;
-    const height = opts.height || texture.image.height || 1;
+    const { width: texWidth, height: texHeight } = getTextureDimensions(texture);
+    const width = opts.width || texWidth || 1;
+    const height = opts.height || texHeight || 1;
     const spacing = opts.spacing || width + 16;
     const originX = opts.startX || 0;
     const originY = opts.startY || 0;
@@ -221,7 +349,9 @@ function createInstancedSpritePlane(url, count, opts = {}) {
     instanced.instanceMatrix.needsUpdate = true;
   };
 
-  if (texture.image && texture.image.width) {
+  const { width: initialWidth, height: initialHeight } = getTextureDimensions(texture);
+
+  if (initialWidth && initialHeight) {
     layout();
   } else {
     whenTextureReady(
@@ -436,8 +566,9 @@ function addBackgroundPlanes() {
         mesh.material.map,
         (texture) => {
           // Place the plane so its center stays anchored even as we resize.
-          const width = texture.image.width || 1;
-          const height = texture.image.height || 1;
+          const { width: texWidth, height: texHeight } = getTextureDimensions(texture);
+          const width = texWidth || 1;
+          const height = texHeight || 1;
           mesh.position.set(offsetX, 0, layerDef.z || 0);
           mesh.userData.size = { width, height };
         },
