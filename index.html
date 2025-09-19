@@ -43,9 +43,23 @@
   const gameC = document.getElementById('game');
   const bg = bgC.getContext('2d');
   const ctx = gameC.getContext('2d');
+  let activeRoom=null;
+  let camera=null;
   ctx.imageSmoothingEnabled=false;
   bg.imageSmoothingEnabled=false;
-  function resize(){ bgC.width=innerWidth*dpr; bgC.height=innerHeight*dpr; bg.setTransform(dpr,0,0,dpr,0,0); gameC.width=innerWidth*dpr; gameC.height=innerHeight*dpr; ctx.setTransform(dpr,0,0,dpr,0,0);} resize(); addEventListener('resize',resize);
+  function resize(){
+    bgC.width=innerWidth*dpr;
+    bgC.height=innerHeight*dpr;
+    bg.setTransform(dpr,0,0,dpr,0,0);
+    gameC.width=innerWidth*dpr;
+    gameC.height=innerHeight*dpr;
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    if(camera){
+      resizeCamera();
+      clampCameraToWorld();
+    }
+  }
+  addEventListener('resize',resize);
   function drawBackground(){ const g=bg.createLinearGradient(0,0,0,innerHeight); g.addColorStop(0,'#1a2b45'); g.addColorStop(1,'#0b1326'); bg.fillStyle=g; bg.fillRect(0,0,innerWidth,innerHeight); }
 
   // ===== UI notice helper =====
@@ -201,7 +215,15 @@
   }));
 
   // ===== Player, input, animation (3×4 locked) =====
-  const player={ x:200, y:200, speed:160, frame:1, dir:'down', tick:0 };
+  const player={
+    x:200,
+    y:200,
+    speed:200,
+    frame:1,
+    dir:'down',
+    tick:0,
+    collider:{ w:24, h:28 }
+  };
   const pressed=new Set();
   function normKey(k){ const map={Left:'ArrowLeft',Right:'ArrowRight',Up:'ArrowUp',Down:'ArrowDown'}; return map[k] || (k.length===1?k.toLowerCase():k); }
   addEventListener('keydown',e=>{ const k=normKey(e.key); if(k.startsWith('Arrow')) e.preventDefault(); pressed.add(k); });
@@ -213,30 +235,389 @@
     return { sx:col*frameW, sy:row*frameH, sw:frameW, sh:frameH };
   }
 
-  function update(dt){
-    let dx=0,dy=0; let moving=false;
-    if(pressed.has('ArrowUp')||pressed.has('w')){ dy-=1; player.dir='up'; moving=true; }
-    if(pressed.has('ArrowDown')||pressed.has('s')){ dy+=1; player.dir='down'; moving=true; }
-    if(pressed.has('ArrowLeft')||pressed.has('a')){ dx-=1; player.dir='left'; moving=true; }
-    if(pressed.has('ArrowRight')||pressed.has('d')){ dx+=1; player.dir='right'; moving=true; }
+  function updatePlayerCollider(){
+    // Shrink the collision box so the player feels responsive.
+    player.collider.w=Math.max(18,Math.min(frameW*0.6, frameW));
+    player.collider.h=Math.max(20,Math.min(frameH*0.7, frameH));
+  }
+  waitForSpriteReady().then(updatePlayerCollider);
 
-    if(moving){ const len=Math.hypot(dx,dy)||1; dx/=len; dy/=len; player.x+=dx*player.speed*dt; player.y+=dy*player.speed*dt; player.tick+=dt; if(player.tick>0.18){ player.frame=(player.frame+1)%SHEET_COLS; player.tick=0; } }
-    else { player.frame=1; player.tick=0; }
+  // ===== Camera setup =====
+  camera={
+    x:0,
+    y:0,
+    width:innerWidth,
+    height:innerHeight,
+    deadzone:{ width:360, height:220 }
+  };
+
+  function resizeCamera(){
+    if(!camera) return;
+    camera.width=innerWidth;
+    camera.height=innerHeight;
+  }
+  resize();
+
+  // ===== World data & loading =====
+  const propSpriteCache=new Map();
+  function requestPropSprite(url){
+    if(!propSpriteCache.has(url)){
+      const img=new Image();
+      const entry={ img, ready:false, error:false };
+      img.onload=()=>{ entry.ready=true; };
+      img.onerror=()=>{ entry.error=true; };
+      img.src=url;
+      propSpriteCache.set(url,entry);
+    }
+    return propSpriteCache.get(url);
+  }
+
+  function createDefaultParallaxLayers(){
+    return [
+      { factor:0.1, type:'gradient', colors:['#0b1326','#0f172a'] },
+      { factor:0.3, type:'hills', color:'#10203a', base:260, amplitude:90, spacing:420 },
+      { factor:0.55, type:'hills', color:'#1a2f4f', base:320, amplitude:60, spacing:260 },
+      { factor:0.85, type:'foreground', color:'#1f3b5f', height:160 }
+    ];
+  }
+
+  function cloneObstacles(list){
+    return (list||[]).map(o=>({
+      x:Number(o.x)||0,
+      y:Number(o.y)||0,
+      w:Number(o.w)||0,
+      h:Number(o.h)||0,
+      type:o.type||'rock'
+    }));
+  }
+
+  function cloneProps(list){
+    return (list||[]).map(p=>({
+      x:Number(p.x)||0,
+      y:Number(p.y)||0,
+      w:Number(p.w)||32,
+      h:Number(p.h)||32,
+      color:p.color||'#94a3b8',
+      spriteURL:p.spriteURL||null
+    }));
+  }
+
+  function applyRoom(roomData){
+    const world={
+      width:roomData?.world?.width ?? 3000,
+      height:roomData?.world?.height ?? 2000
+    };
+    const spawn={
+      x:roomData?.spawn?.x ?? 200,
+      y:roomData?.spawn?.y ?? 200
+    };
+    const obstacles=cloneObstacles(roomData?.obstacles);
+    const props=cloneProps(roomData?.props).map(prop=>{
+      if(prop.spriteURL){ prop.sprite=requestPropSprite(prop.spriteURL); }
+      return prop;
+    });
+    const parallaxLayers=(roomData?.parallaxLayers && roomData.parallaxLayers.length)
+      ? roomData.parallaxLayers.map(layer=>({ ...layer }))
+      : createDefaultParallaxLayers();
+
+    activeRoom={ world, spawn, obstacles, props, parallaxLayers };
+  }
+
+  const ROOM_LIBRARY={
+    meadow:{
+      world:{ width:3000, height:2000 },
+      spawn:{ x:380, y:380 },
+      obstacles:[
+        { x:520, y:540, w:220, h:160, type:'rock' },
+        { x:880, y:460, w:180, h:260, type:'tree' },
+        { x:1360, y:720, w:520, h:90, type:'wall' },
+        { x:1120, y:1040, w:240, h:120, type:'rock' },
+        { x:1680, y:620, w:420, h:180, type:'tree' }
+      ],
+      props:[
+        { x:640, y:720, w:48, h:48, color:'#facc15' },
+        { x:980, y:860, w:60, h:36, color:'#fb7185' },
+        { x:1500, y:980, w:64, h:64, spriteURL:'assets/crate.png', color:'#9a3412' }
+      ]
+    }
+  };
+
+  function loadRoom(roomData){
+    applyRoom(roomData);
+    placePlayerAtSpawn();
+    resetCameraToPlayer();
+  }
+
+  function getActiveWorld(){ return activeRoom?.world ?? { width:3000, height:2000 }; }
+  function getObstacles(){ return activeRoom?.obstacles ?? []; }
+  function getProps(){ return activeRoom?.props ?? []; }
+  function getParallaxLayers(){ return activeRoom?.parallaxLayers ?? createDefaultParallaxLayers(); }
+  function getSpawnPoint(){ return activeRoom?.spawn ?? { x:200, y:200 }; }
+
+  function placePlayerAtSpawn(){
+    const spawn=getSpawnPoint();
+    player.x=spawn.x;
+    player.y=spawn.y;
+    player.frame=1;
+    player.tick=0;
+    clampPlayerToWorld();
+  }
+
+  function clampPlayerToWorld(){
+    const world=getActiveWorld();
+    const halfW=player.collider.w/2;
+    const halfH=player.collider.h/2;
+    player.x=Math.min(Math.max(player.x, halfW), world.width-halfW);
+    player.y=Math.min(Math.max(player.y, halfH), world.height-halfH);
+  }
+
+  function resetCameraToPlayer(){
+    const world=getActiveWorld();
+    camera.x=player.x-camera.width/2;
+    camera.y=player.y-camera.height/2;
+    clampCameraToWorld();
+  }
+
+  // Load the initial room before starting the game loop
+  loadRoom(ROOM_LIBRARY.meadow);
+
+  // ===== Collision helpers =====
+  function rectsOverlap(a,b){
+    return a.left < b.x + b.w && a.right > b.x && a.top < b.y + b.h && a.bottom > b.y;
+  }
+
+  function isRectVisible(rect){
+    return rect.x + rect.w > camera.x && rect.x < camera.x + camera.width && rect.y + rect.h > camera.y && rect.y < camera.y + camera.height;
+  }
+
+  function clampCameraToWorld(){
+    const world=getActiveWorld();
+    const maxX=Math.max(0, world.width-camera.width);
+    const maxY=Math.max(0, world.height-camera.height);
+    camera.x=Math.min(Math.max(camera.x,0), maxX);
+    camera.y=Math.min(Math.max(camera.y,0), maxY);
+  }
+
+  function updateCamera(){
+    // Camera follows the player only when they leave a centered deadzone.
+    // We measure the player's distance from the deadzone edges and shift the
+    // camera just enough to bring them back inside, which prevents jitter.
+    const halfDeadW=camera.deadzone.width/2;
+    const halfDeadH=camera.deadzone.height/2;
+    const deadLeft=camera.x + camera.width/2 - halfDeadW;
+    const deadRight=camera.x + camera.width/2 + halfDeadW;
+    const deadTop=camera.y + camera.height/2 - halfDeadH;
+    const deadBottom=camera.y + camera.height/2 + halfDeadH;
+
+    if(player.x < deadLeft){ camera.x += player.x - deadLeft; }
+    else if(player.x > deadRight){ camera.x += player.x - deadRight; }
+
+    if(player.y < deadTop){ camera.y += player.y - deadTop; }
+    else if(player.y > deadBottom){ camera.y += player.y - deadBottom; }
+
+    clampCameraToWorld();
+  }
+
+  function tryMove(axis, amount, obstacles){
+    // Axis-aligned collision resolution: move along one axis, clamp against
+    // colliders, then move along the other axis. This produces natural
+    // "sliding" when hitting corners because the non-blocked axis still moves.
+    if(amount===0) return;
+    const halfW=player.collider.w/2;
+    const halfH=player.collider.h/2;
+    if(axis==='x'){
+      let newX=player.x+amount;
+      const rect={ left:newX-halfW, right:newX+halfW, top:player.y-halfH, bottom:player.y+halfH };
+      for(const ob of obstacles){
+        if(!rectsOverlap(rect,{ x:ob.x, y:ob.y, w:ob.w, h:ob.h })) continue;
+        if(amount>0){ newX=ob.x-halfW; rect.left=newX-halfW; rect.right=newX+halfW; }
+        else { newX=ob.x+ob.w+halfW; rect.left=newX-halfW; rect.right=newX+halfW; }
+      }
+      player.x=newX;
+    } else if(axis==='y'){
+      let newY=player.y+amount;
+      const rect={ left:player.x-halfW, right:player.x+halfW, top:newY-halfH, bottom:newY+halfH };
+      for(const ob of obstacles){
+        if(!rectsOverlap(rect,{ x:ob.x, y:ob.y, w:ob.w, h:ob.h })) continue;
+        if(amount>0){ newY=ob.y-halfH; rect.top=newY-halfH; rect.bottom=newY+halfH; }
+        else { newY=ob.y+ob.h+halfH; rect.top=newY-halfH; rect.bottom=newY+halfH; }
+      }
+      player.y=newY;
+    }
+  }
+
+  function update(dt){
+    const obstacles=getObstacles();
+    let dx=0,dy=0;
+    if(pressed.has('ArrowUp')||pressed.has('w')){ dy-=1; player.dir='up'; }
+    if(pressed.has('ArrowDown')||pressed.has('s')){ dy+=1; player.dir='down'; }
+    if(pressed.has('ArrowLeft')||pressed.has('a')){ dx-=1; player.dir='left'; }
+    if(pressed.has('ArrowRight')||pressed.has('d')){ dx+=1; player.dir='right'; }
+
+    const len=Math.hypot(dx,dy);
+    if(len>0){ dx/=len; dy/=len; }
+
+    const moveX=dx*player.speed*dt;
+    const moveY=dy*player.speed*dt;
+
+    tryMove('x',moveX,obstacles);
+    clampPlayerToWorld();
+    tryMove('y',moveY,obstacles);
+    clampPlayerToWorld();
+
+    if(len>0){
+      player.tick+=dt;
+      if(player.tick>0.18){ player.frame=(player.frame+1)%SHEET_COLS; player.tick=0; }
+    } else {
+      player.frame=1;
+      player.tick=0;
+    }
+
+    updateCamera();
+  }
+
+  function drawParallaxLayers(){
+    const layers=getParallaxLayers();
+    // Always start with a clear so the frame is fresh.
+    ctx.clearRect(0,0,camera.width,camera.height);
+
+    // Base fill to avoid gaps when the world is smaller than the view.
+    const sky=ctx.createLinearGradient(0,0,0,camera.height);
+    sky.addColorStop(0,'#0b1326');
+    sky.addColorStop(1,'#0b1020');
+    ctx.fillStyle=sky;
+    ctx.fillRect(0,0,camera.width,camera.height);
+
+    for(const layer of layers){
+      const factor=layer.factor ?? 0.5;
+      // Parallax uses the camera offset scaled by a factor. Distant layers move
+      // less (small factor), while near layers move more (large factor).
+      const offsetX=(camera.x*factor)% (layer.spacing||camera.width);
+      const offsetY=(camera.y*factor)% (layer.spacing||camera.height);
+      if(layer.type==='gradient'){
+        const grad=ctx.createLinearGradient(0,0,0,camera.height);
+        grad.addColorStop(0,layer.colors?.[0]||'#0b1326');
+        grad.addColorStop(1,layer.colors?.[1]||'#111827');
+        ctx.fillStyle=grad;
+        ctx.fillRect(0,0,camera.width,camera.height);
+        continue;
+      }
+      if(layer.type==='hills'){
+        const spacing=layer.spacing||320;
+        const amplitude=layer.amplitude||60;
+        const base=layer.base||300;
+        const startX=-spacing*2 - offsetX;
+        const endX=camera.width+spacing*2;
+        ctx.fillStyle=layer.color||'#1e293b';
+        for(let x=startX; x<endX; x+=spacing){
+          const peakX=x+spacing/2;
+          ctx.beginPath();
+          ctx.moveTo(x, camera.height - base + offsetY);
+          ctx.quadraticCurveTo(peakX, camera.height - (base+amplitude) + offsetY, x+spacing, camera.height - base + offsetY);
+          ctx.lineTo(x+spacing, camera.height+20);
+          ctx.lineTo(x, camera.height+20);
+          ctx.closePath();
+          ctx.fill();
+        }
+        continue;
+      }
+      if(layer.type==='foreground'){
+        ctx.fillStyle=layer.color||'#1f3b5f';
+        ctx.fillRect(-offsetX, camera.height-(layer.height||140)+offsetY, camera.width+(layer.spacing||camera.width)*2, (layer.height||140)+40);
+        continue;
+      }
+    }
+  }
+
+  const OBSTACLE_COLORS={
+    rock:'#475569',
+    tree:'#334155',
+    wall:'#64748b',
+    default:'#4b5563'
+  };
+
+  function drawObstacle(ob){
+    const screenX=Math.round(ob.x-camera.x);
+    const screenY=Math.round(ob.y-camera.y);
+    ctx.fillStyle=OBSTACLE_COLORS[ob.type] || OBSTACLE_COLORS.default;
+    ctx.fillRect(screenX,screenY,ob.w,ob.h);
+    ctx.strokeStyle='#0f172a';
+    ctx.lineWidth=1;
+    ctx.strokeRect(screenX+0.5,screenY+0.5,ob.w-1,ob.h-1);
+  }
+
+  function drawProp(prop){
+    const x=Math.round(prop.x-camera.x);
+    const y=Math.round(prop.y-camera.y);
+    const spriteEntry=prop.sprite;
+    if(spriteEntry && spriteEntry.ready){
+      ctx.drawImage(spriteEntry.img, x, y, prop.w, prop.h);
+    } else {
+      ctx.fillStyle=prop.color || '#94a3b8';
+      ctx.fillRect(x,y,prop.w,prop.h);
+      ctx.strokeStyle='#1f2937';
+      ctx.strokeRect(x+0.5,y+0.5,prop.w-1,prop.h-1);
+      if(spriteEntry && spriteEntry.error){
+        ctx.strokeStyle='#ef4444';
+        ctx.beginPath();
+        ctx.moveTo(x+4,y+4);
+        ctx.lineTo(x+prop.w-4,y+prop.h-4);
+        ctx.moveTo(x+prop.w-4,y+4);
+        ctx.lineTo(x+4,y+prop.h-4);
+        ctx.stroke();
+      }
+    }
+  }
+
+  function drawPlayer(){
+    const px=player.x-camera.x;
+    const py=player.y-camera.y;
+    if(spriteReady){
+      const {sx,sy,sw,sh}=frameRect(player.dir,player.frame);
+      ctx.drawImage(sprite, sx,sy,sw,sh, Math.round(px-sw/2), Math.round(py-sh/2), sw, sh);
+    } else {
+      ctx.fillStyle="#e5e7eb";
+      ctx.beginPath();
+      ctx.arc(Math.round(px),Math.round(py),16,0,Math.PI*2);
+      ctx.fill();
+    }
+  }
+
+  function drawWorld(){
+    const drawList=[];
+    for(const ob of getObstacles()){
+      if(!isRectVisible(ob)) continue;
+      drawList.push({ type:'obstacle', y:ob.y+ob.h, data:ob });
+    }
+    for(const prop of getProps()){
+      if(!isRectVisible(prop)) continue;
+      drawList.push({ type:'prop', y:prop.y+prop.h, data:prop });
+    }
+    drawList.sort((a,b)=>a.y-b.y);
+    for(const item of drawList){
+      if(item.type==='obstacle') drawObstacle(item.data);
+      else drawProp(item.data);
+    }
+    drawPlayer();
   }
 
   function draw(){
-    ctx.clearRect(0, 0, innerWidth, innerHeight);
-    drawBackground();
-    const px=player.x, py=player.y;
-    if(spriteReady){ const {sx,sy,sw,sh}=frameRect(player.dir,player.frame); ctx.imageSmoothingEnabled=false; ctx.drawImage(sprite, sx,sy,sw,sh, Math.round(px-sw/2), Math.round(py-sh/2), sw, sh); }
-    else { ctx.fillStyle="#e5e7eb"; ctx.beginPath(); ctx.arc(px,py,16,0,Math.PI*2); ctx.fill(); }
+    drawParallaxLayers();
+    drawWorld();
   }
 
   let last=0;
-  function loop(now){ const dt=Math.min(0.033,(now-last)/1000); last=now; update(dt); draw(); requestAnimationFrame(loop); }
+  function loop(now){
+    const dt=Math.min(0.033,(now-last)/1000);
+    last=now;
+    update(dt);
+    draw();
+    requestAnimationFrame(loop);
+  }
 
   async function startGameLoop(){
     await initialSpritePromise;
+    updatePlayerCollider();
     last=performance.now();
     requestAnimationFrame(loop);
   }
@@ -245,7 +626,6 @@
   // ===== Tests (keep existing and add a few more) =====
   const results=[]; function assert(name,cond){ results.push({name,pass:!!cond}); if(!cond) console.error('[TEST FAIL]',name); }
   function runTests(){
-    // Existing tests (UNCHANGED)
     assert('frame cell width > 0', frameW>0);
     assert('frame cell height > 0', frameH>0);
     const r0=frameRect('down',0); assert('frameRect sx >= 0', r0.sx>=0);
@@ -254,9 +634,11 @@
       assert('3 columns detected', Math.round(sprite.naturalWidth / frameW) === SHEET_COLS);
       assert('4 rows detected', Math.round(sprite.naturalHeight / frameH) === SHEET_ROWS);
     }
-    // Added tests
     const rL = frameRect('left',2); assert('left row index', rL.sy===frameH*1);
     const rR = frameRect('right',2); assert('right row index', rR.sy===frameH*2);
+    const roomAfterLoad=activeRoom;
+    assert('room loaded', !!roomAfterLoad);
+    assert('spawn applied to player', Math.round(player.x)===Math.round(roomAfterLoad.spawn.x));
     console.log(results);
   }
   setTimeout(runTests,2200);
