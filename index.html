@@ -30,7 +30,7 @@
     <button id="btnFile">Choose File…</button>
     <select id="spriteSelect" style="margin-left:8px">
       <option value="assets/Male 02-2.png">Male 02-2</option>
-      <option value="assets/Male 17-3.png">Male 17-3</option>
+      <option value="assets/Male 02-2.png">Male 17-3</option>
       <option value="assets/Male 18-1.png">Male 18-1</option>
     </select>
   </div>
@@ -66,11 +66,11 @@
   const DEFAULT_SOURCES = [
     ...(localStorage.getItem("spriteURL") ? [localStorage.getItem("spriteURL")] : []),
     "assets/Male 02-2.png",
-    "assets/Male 17-3.png",
+    "assets/Male 02-2.png",
     "Male 02-2.png",
-    "Male 17-3.png",
+    "Male 02.2.png",
     "./Male 02-2.png",
-    "./Male 17-3.png",
+    "./Male 02-2.png",
     "Male%2002-2.png",
     "Male%2017-3.png"
   ];
@@ -94,7 +94,7 @@
 
   function useFallback(){
     spriteReady=false; const url=generateFallbackSprite(32); const img=new Image();
-    img.onload=()=>{ sprite=img; spriteReady=true; frameW=Math.floor(img.naturalWidth/SHEET_COLS); frameH=Math.floor(img.naturalHeight/SHEET_ROWS); showNotice('Using fallback sprite. Place \"Male 17-3.png\" next to this file, paste a URL, or drop a file.'); };
+    img.onload=()=>{ sprite=img; spriteReady=true; frameW=Math.floor(img.naturalWidth/SHEET_COLS); frameH=Math.floor(img.naturalHeight/SHEET_ROWS); showNotice('Using fallback sprite. Place \"Male 02-2.png\" next to this file, paste a URL, or drop a file.'); };
     img.onerror=()=>{ spriteReady=false; showNotice('Fallback sprite failed to load (unexpected).'); };
     img.src=url;
   }
