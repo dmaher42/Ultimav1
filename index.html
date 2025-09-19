@@ -37,6 +37,10 @@
   <div id="drop" class="drop">Drop a PNG/JPG sprite sheet here (3 frames × 4 rows)</div>
 
   <script>
+  const DEFAULT_WORLD={ width:1600, height:1200 };
+  let currentWorld=null;
+  function getActiveWorld(){ return currentWorld ?? DEFAULT_WORLD; }
+
   // ===== Canvas setup =====
   const dpr = Math.min(devicePixelRatio||1,2);
   const bgC = document.getElementById('bg');
@@ -225,7 +229,7 @@
 
     if(camera){
       resizeCamera();
-      clampCameraToWorld();
+      clampCameraToWorld(camera, camera.width, camera.height, getActiveWorld());
     }
   }
   addEventListener('resize',resize);
@@ -467,8 +471,6 @@
     ];
   }
 
-  const DEFAULT_WORLD={ width:1600, height:1200 };
-
   function cloneObstacles(list){
     return (list||[]).map(o=>({
       x:Number(o.x)||0,
@@ -603,15 +605,17 @@
     const torchLights=deriveTorchLights(currentProps); // auto lights for torches
     setLights([...baseLights,...torchLights]);
 
+    currentWorld={
+      width:roomData.world?.width ?? DEFAULT_WORLD.width,
+      height:roomData.world?.height ?? DEFAULT_WORLD.height
+    };
+
     currentRoom={
       name:roomData.name || '',
       spawn,
       obstacles:currentObstacles,
       props:currentProps,
-      world:{
-        width:roomData.world?.width ?? DEFAULT_WORLD.width,
-        height:roomData.world?.height ?? DEFAULT_WORLD.height
-      },
+      world:currentWorld,
       parallaxLayers:currentParallaxLayers,
       lights:Graphics.lights
     };
@@ -637,8 +641,6 @@
     // Keyboard shortcut uses this to advance to the next room in the list.
     goToRoom(currentRoomIndex+1);
   }
-
-  function getActiveWorld(){ return currentRoom?.world ?? DEFAULT_WORLD; }
   function getObstacles(){ return currentObstacles; }
   function getProps(){ return currentProps; }
   function getParallaxLayers(){ return currentParallaxLayers.length ? currentParallaxLayers : createDefaultParallaxLayers(); }
@@ -655,7 +657,7 @@
     const world=getActiveWorld();
     camera.x=player.x-camera.width/2;
     camera.y=player.y-camera.height/2;
-    clampCameraToWorld();
+    clampCameraToWorld(camera, camera.width, camera.height, world);
   }
 
   // Load the initial room before starting the game loop
@@ -670,12 +672,15 @@
     return rect.x + rect.w > camera.x && rect.x < camera.x + camera.width && rect.y + rect.h > camera.y && rect.y < camera.y + camera.height;
   }
 
-  function clampCameraToWorld(){
-    const world=getActiveWorld();
-    const maxX=Math.max(0, world.width-camera.width);
-    const maxY=Math.max(0, world.height-camera.height);
-    camera.x=Math.min(Math.max(camera.x,0), maxX);
-    camera.y=Math.min(Math.max(camera.y,0), maxY);
+  function clampCameraToWorld(cam, viewW, viewH, world){
+    if(!cam) return;
+    const activeWorld=world ?? getActiveWorld();
+    const camWidth=Number.isFinite(viewW)?viewW:(cam.width ?? 0);
+    const camHeight=Number.isFinite(viewH)?viewH:(cam.height ?? 0);
+    const maxX=Math.max(0, activeWorld.width-camWidth);
+    const maxY=Math.max(0, activeWorld.height-camHeight);
+    cam.x=Math.min(Math.max(cam.x,0), maxX);
+    cam.y=Math.min(Math.max(cam.y,0), maxY);
   }
 
   function updateCamera(){
@@ -695,7 +700,7 @@
     if(player.y < deadTop){ camera.y += player.y - deadTop; }
     else if(player.y > deadBottom){ camera.y += player.y - deadBottom; }
 
-    clampCameraToWorld();
+    clampCameraToWorld(camera, camera.width, camera.height, getActiveWorld());
   }
 
   function tryMove(axis, amount, obstacles){
