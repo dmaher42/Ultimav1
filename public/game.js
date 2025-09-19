@@ -24,6 +24,45 @@ const outlineCtx = outlineCanvas.getContext('2d');
 const lightCanvas = document.createElement('canvas');
 const lightCtx = lightCanvas.getContext('2d');
 
+const HOURS_PER_DAY = 24;
+const MILLISECONDS_PER_HOUR = 60 * 60 * 1000;
+
+function wrapHour(value) {
+  const remainder = value % HOURS_PER_DAY;
+  return remainder < 0 ? remainder + HOURS_PER_DAY : remainder;
+}
+
+function createGameClock(initialHour = 8.5) {
+  let referenceTime = performance.now();
+  let referenceHour = wrapHour(initialHour);
+  let rate = 1;
+
+  return {
+    get timeOfDay() {
+      const elapsedHours = ((performance.now() - referenceTime) / MILLISECONDS_PER_HOUR) * rate;
+      return wrapHour(referenceHour + elapsedHours);
+    },
+    setTimeOfDay(hour) {
+      referenceHour = wrapHour(hour);
+      referenceTime = performance.now();
+    },
+    setRate(newRate) {
+      if (typeof newRate !== 'number' || !Number.isFinite(newRate) || newRate <= 0) {
+        return;
+      }
+      const currentHour = this.timeOfDay;
+      rate = newRate;
+      referenceHour = currentHour;
+      referenceTime = performance.now();
+    }
+  };
+}
+
+const GameClock = createGameClock(8.5);
+if (typeof window !== 'undefined') {
+  window.GameClock = GameClock;
+}
+
 const STATE = {
   viewport: { width: window.innerWidth, height: window.innerHeight, dpr: window.devicePixelRatio || 1 },
   assets: {},
@@ -34,9 +73,12 @@ const STATE = {
   keys: new Set(),
   lastFrame: performance.now(),
   fps: 0,
-  timeOfDay: 8.5,
-  timeRate: 0.25,
+  timeOfDay: GameClock.timeOfDay,
   ambient: 0.4,
+  sunlight: 1,
+  nightFactor: 0,
+  nightOverlayAlpha: 0,
+  nightAmbientBoost: 1,
   activeInteraction: null,
   tempWaypoints: [],
   worldFlags: {}
@@ -169,11 +211,15 @@ function setupInput() {
 function initWorld(assets) {
   STATE.assets = assets;
 
+  GameClock.setTimeOfDay(8.5);
+  updateTimeOfDay();
+
   const bakery = createBakeryKitchen(assets);
   const moonlitPlaza = createMoonlitPlaza(assets);
 
   STATE.rooms = [bakery, moonlitPlaza];
   STATE.room = bakery;
+  STATE.rooms.forEach((room) => alignRoomNpcSchedules(room));
   const spawn = bakery.spawn || { x: 820, y: 760 };
 
   STATE.player = {
@@ -195,6 +241,32 @@ function initWorld(assets) {
 
   updateHud();
   refreshPanel();
+}
+
+function alignRoomNpcSchedules(room) {
+  if (!room || !Array.isArray(room.npcs)) return;
+  room.npcs.forEach((npc) => alignNpcToSchedule(npc));
+}
+
+function alignNpcToSchedule(npc) {
+  if (!npc) return;
+  if (!Array.isArray(npc.schedule) || npc.schedule.length === 0) {
+    npc.currentAction = npc.currentAction || 'idle';
+    return;
+  }
+
+  const block = getActiveScheduleBlock(npc.schedule, STATE.timeOfDay);
+  npc.currentSchedule = block;
+  npc.currentAction = block?.action || 'idle';
+
+  if (block?.waypoint && typeof block.waypoint.x === 'number' && typeof block.waypoint.y === 'number') {
+    npc.currentWaypoint = { x: block.waypoint.x, y: block.waypoint.y };
+    npc.x = block.waypoint.x - npc.width / 2;
+    npc.y = block.waypoint.y - npc.height / 2;
+  } else {
+    npc.currentWaypoint = null;
+  }
+  npc.isMoving = false;
 }
 
 function createBakeryKitchen(assets) {
@@ -298,19 +370,47 @@ function createBakeryKitchen(assets) {
 
   room.props.push(oven, table, flourSacks, waterBarrel, shelf);
 
+  const bakerWork = {
+    x: oven.x + oven.width * 0.45,
+    y: oven.y + oven.height * 0.75
+  };
+  const bakerHome = {
+    x: table.x - 80,
+    y: table.y + 190
+  };
+  const bakerTavern = {
+    x: 860,
+    y: 560
+  };
+
   const baker = {
     id: 'npc_mera',
     name: 'Mera the Baker',
     kind: 'npc',
-    x: 900,
-    y: 680,
+    x: bakerWork.x - 28,
+    y: bakerWork.y - 42,
     width: 56,
     height: 84,
     sprite: assets.baker,
     solid: true,
+    speed: 90,
+    arrivalThreshold: 6,
     profile: 'Village baker. Warm, practical, expects honest effort.',
     memory: 'Met the new helper this morning.',
-    log: []
+    log: [],
+    schedule: [
+      { start: 0, end: 5, action: 'sleep', waypoint: bakerHome },
+      { start: 5, end: 12, action: 'work', waypoint: bakerWork },
+      { start: 12, end: 14, action: 'tavern', waypoint: bakerTavern },
+      { start: 14, end: 19, action: 'work', waypoint: bakerWork },
+      { start: 19, end: 21, action: 'tavern', waypoint: bakerTavern },
+      { start: 21, end: 24, action: 'sleep', waypoint: bakerHome }
+    ],
+    scheduleDescriptions: {
+      work: 'Mera focuses on kneading dough at her workstation.',
+      tavern: 'Mera slips out to the tavern for a hearty meal.',
+      sleep: 'Mera looks ready to close the shutters and head home to rest.'
+    }
   };
 
   room.npcs.push(baker);
@@ -403,19 +503,44 @@ function createMoonlitPlaza(assets) {
 
   room.props.push(marketStall, stackedCrates, waterCart);
 
+  const vendorStall = {
+    x: marketStall.x + marketStall.width / 2,
+    y: marketStall.y + marketStall.height / 2
+  };
+  const vendorPrep = {
+    x: vendorStall.x - 200,
+    y: vendorStall.y + 140
+  };
+  const vendorCamp = {
+    x: vendorStall.x + 220,
+    y: vendorStall.y + 160
+  };
+
   const vendor = {
     id: 'npc_elio',
     name: 'Elio the Night Vendor',
     kind: 'npc',
-    x: 1020,
-    y: 920,
+    x: vendorStall.x - 28,
+    y: vendorStall.y - 42,
     width: 56,
     height: 84,
     sprite: assets.baker,
     solid: true,
+    speed: 70,
+    arrivalThreshold: 8,
     profile: 'Travelling merchant selling midnight pastries.',
     memory: 'Waiting for new stories from distant towns.',
-    log: []
+    log: [],
+    schedule: [
+      { start: 0, end: 10, action: 'camp', waypoint: vendorCamp },
+      { start: 10, end: 18, action: 'prep', waypoint: vendorPrep },
+      { start: 18, end: 24, action: 'work', waypoint: vendorStall }
+    ],
+    scheduleDescriptions: {
+      camp: 'Elio naps beside his wagon, dreaming of new recipes.',
+      prep: 'Elio samples pastries while setting up for the evening crowd.',
+      work: 'Elio mans the night stall with a bright grin.'
+    }
   };
 
   room.npcs.push(vendor);
@@ -520,7 +645,16 @@ function refreshPanel() {
 
 function describeTarget(target) {
   if (target.kind === 'npc') {
-    return 'A cheerful baker with flour on her sleeves. Maybe she has advice.';
+    if (target.scheduleDescriptions && target.currentAction) {
+      const desc = target.scheduleDescriptions[target.currentAction];
+      if (desc) {
+        return desc;
+      }
+    }
+    if (target.profile) {
+      return target.profile;
+    }
+    return 'A villager going about their day.';
   }
   if (target.id === 'prep_table') {
     return `Prep table — current state: ${target.state === 'empty' ? 'clean' : target.state === 'flourPile' ? 'flour ready' : 'soft dough'}.`;
@@ -777,25 +911,121 @@ function buildSnapshot(npc) {
       player: { x: Math.round(STATE.player.x), y: Math.round(STATE.player.y) },
       oven_status: oven ? oven.state : 'none'
     },
-    time_of_day: Number(STATE.timeOfDay.toFixed(2)),
+    timeOfDay: Number(STATE.timeOfDay.toFixed(2)),
     active_quests: STATE.player.quests.map((q) => ({ id: q.id, stage: q.stage }))
   };
 }
 
 function update(dt) {
   if (!STATE.room) return;
-  updateTimeOfDay(dt);
+  updateTimeOfDay();
   updatePlayer(dt);
+  updateNPCs(dt);
   updateOven(dt);
   updateCamera();
   updateWaypoints(dt);
   updateHud();
 }
 
-function updateTimeOfDay(dt) {
-  STATE.timeOfDay = (STATE.timeOfDay + dt * STATE.timeRate) % 24;
-  const daylight = (Math.sin(((STATE.timeOfDay - 6) / 24) * Math.PI * 2) + 1) / 2;
-  STATE.ambient = 0.25 + (1 - daylight) * 0.55;
+function updateTimeOfDay() {
+  STATE.timeOfDay = GameClock.timeOfDay;
+  const daylight = clamp((Math.sin(((STATE.timeOfDay - 6) / HOURS_PER_DAY) * Math.PI * 2) + 1) / 2, 0, 1);
+  STATE.sunlight = daylight;
+  STATE.nightFactor = 1 - daylight;
+  STATE.ambient = clamp(0.22 + STATE.nightFactor * 0.7, 0, 1);
+  STATE.nightOverlayAlpha = Math.pow(STATE.nightFactor, 1.4) * 0.55;
+  STATE.nightAmbientBoost = 1 + STATE.nightFactor * 0.35;
+}
+
+function updateNPCs(dt) {
+  if (!STATE.rooms || !STATE.rooms.length) return;
+  STATE.rooms.forEach((room) => {
+    if (!room || !Array.isArray(room.npcs)) return;
+    room.npcs.forEach((npc) => updateNpcForRoom(npc, room, dt));
+  });
+}
+
+function updateNpcForRoom(npc, room, dt) {
+  if (!npc || !room || !Array.isArray(npc.schedule) || npc.schedule.length === 0) {
+    return;
+  }
+
+  const block = getActiveScheduleBlock(npc.schedule, STATE.timeOfDay);
+  if (block !== npc.currentSchedule) {
+    npc.currentSchedule = block;
+    npc.currentAction = block?.action || 'idle';
+    if (block?.waypoint && typeof block.waypoint.x === 'number' && typeof block.waypoint.y === 'number') {
+      npc.currentWaypoint = { x: block.waypoint.x, y: block.waypoint.y };
+    } else {
+      npc.currentWaypoint = null;
+    }
+  }
+
+  const waypoint = npc.currentWaypoint;
+  if (!waypoint) {
+    npc.isMoving = false;
+    return;
+  }
+
+  const destX = waypoint.x - npc.width / 2;
+  const destY = waypoint.y - npc.height / 2;
+  const dx = destX - npc.x;
+  const dy = destY - npc.y;
+  const distance = Math.hypot(dx, dy);
+  const tolerance = Math.max(npc.arrivalThreshold || 4, 1);
+
+  if (distance <= tolerance) {
+    npc.x = destX;
+    npc.y = destY;
+    npc.isMoving = false;
+    return;
+  }
+
+  const speed = (npc.speed || 100) * dt;
+  if (speed <= 0) {
+    return;
+  }
+
+  const step = Math.min(distance, speed);
+  const stepX = (dx / distance) * step;
+  const stepY = (dy / distance) * step;
+
+  moveWithCollision(npc, stepX, stepY, room);
+  npc.isMoving = true;
+
+  if (Math.abs(stepX) > Math.abs(stepY)) {
+    npc.facing = stepX > 0 ? 'east' : 'west';
+  } else if (Math.abs(stepY) > 0.001) {
+    npc.facing = stepY > 0 ? 'south' : 'north';
+  }
+}
+
+function getActiveScheduleBlock(schedule, time) {
+  if (!Array.isArray(schedule) || schedule.length === 0) return null;
+  const normalizedTime = wrapHour(time);
+  let fallback = null;
+  for (const block of schedule) {
+    if (!block || typeof block.start !== 'number' || typeof block.end !== 'number') {
+      continue;
+    }
+    fallback = fallback || block;
+    if (isTimeWithinRange(normalizedTime, block.start, block.end)) {
+      return block;
+    }
+  }
+  return fallback;
+}
+
+function isTimeWithinRange(time, start, end) {
+  const normalizedStart = wrapHour(start);
+  const normalizedEnd = wrapHour(end);
+  if (normalizedStart === normalizedEnd) {
+    return true;
+  }
+  if (normalizedStart < normalizedEnd) {
+    return time >= normalizedStart && time < normalizedEnd;
+  }
+  return time >= normalizedStart || time < normalizedEnd;
 }
 
 function updatePlayer(dt) {
@@ -835,17 +1065,24 @@ function updateOven(dt) {
   STATE.worldFlags.oven_status = oven.state;
 }
 
-function moveWithCollision(entity, dx, dy) {
-  const room = STATE.room;
-  const colliders = [...room.obstacles, ...room.props.filter((p) => p.solid), ...room.npcs.filter((n) => n.solid)];
+function moveWithCollision(entity, dx, dy, room = STATE.room) {
+  if (!room) return;
+  const colliders = [
+    ...room.obstacles,
+    ...room.props.filter((p) => p.solid),
+    ...room.npcs.filter((n) => n.solid && n !== entity)
+  ];
+  if (entity !== STATE.player && room === STATE.room && STATE.player) {
+    colliders.push(STATE.player);
+  }
 
   entity.x += dx;
-  if (colliders.some((col) => col !== entity && rectsOverlap(entity, col))) {
+  if (colliders.some((col) => rectsOverlap(entity, col))) {
     entity.x -= dx;
   }
 
   entity.y += dy;
-  if (colliders.some((col) => col !== entity && rectsOverlap(entity, col))) {
+  if (colliders.some((col) => rectsOverlap(entity, col))) {
     entity.y -= dy;
   }
 
@@ -1140,11 +1377,17 @@ function applyLighting() {
   lightCtx.clearRect(0, 0, width, height);
   lightCtx.globalCompositeOperation = 'source-over';
   const theme = STATE.room?.theme;
-  const multiplier =
+  const baseMultiplier =
     theme && typeof theme.ambientDarkness === 'number' ? theme.ambientDarkness : 1;
-  const ambient = clamp(STATE.ambient * multiplier, 0, 1);
+  const ambientMultiplier = baseMultiplier * (STATE.nightAmbientBoost || 1);
+  const ambient = clamp(STATE.ambient * ambientMultiplier, 0, 1);
   lightCtx.fillStyle = `rgba(6, 8, 16, ${ambient})`;
   lightCtx.fillRect(0, 0, width, height);
+  const overlayAlpha = STATE.nightOverlayAlpha || 0;
+  if (overlayAlpha > 0.001) {
+    lightCtx.fillStyle = `rgba(18, 24, 48, ${overlayAlpha})`;
+    lightCtx.fillRect(0, 0, width, height);
+  }
   lightCtx.globalCompositeOperation = 'destination-out';
 
   lights.forEach((light) => {
