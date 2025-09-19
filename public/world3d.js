@@ -665,7 +665,7 @@ function refreshPostEffectsConfig() {
   }
 }
 
-function applyParallax(cameraPos = world.cameraTarget) {
+function setParallax(cameraPos = world.cameraTarget) {
   if (!world.parallaxEnabled) {
     Object.values(world.layers).forEach((group) => {
       if (!group || !group.userData.basePosition) return;
@@ -679,8 +679,9 @@ function applyParallax(cameraPos = world.cameraTarget) {
     const group = world.layers[key];
     if (!group || !group.userData.basePosition) return;
     const base = group.userData.basePosition;
-    group.position.x = base.x - cameraPos.x * (1 - factor);
-    group.position.y = base.y - cameraPos.y * (1 - factor);
+    const parallaxFactor = 1 - factor;
+    group.position.x = base.x + cameraPos.x * parallaxFactor;
+    group.position.y = base.y + cameraPos.y * parallaxFactor;
   });
 }
 
@@ -689,7 +690,7 @@ function setCameraPosition(x = 0, y = 0) {
   world.camera.position.set(x, y, world.camera.position.z);
   world.camera.lookAt(x, y, 0);
   world.cameraTarget.set(x, y);
-  applyParallax(world.cameraTarget);
+  setParallax(world.cameraTarget);
 }
 
 export function initThreeWorld(canvas, config = {}) {
@@ -747,7 +748,7 @@ export function initThreeWorld(canvas, config = {}) {
     },
     setParallaxEnabled(enabled) {
       world.parallaxEnabled = Boolean(enabled);
-      applyParallax(world.cameraTarget);
+      setParallax(world.cameraTarget);
     }
   };
 
@@ -783,7 +784,7 @@ export function renderThreeWorld(state = {}) {
     const y = Number.isFinite(state.camera.y) ? state.camera.y : world.cameraTarget.y;
     setCameraPosition(x, y);
   } else {
-    applyParallax(world.cameraTarget);
+    setParallax(world.cameraTarget);
   }
 
   refreshPostEffectsConfig();
