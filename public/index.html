@@ -24,6 +24,15 @@
         image-rendering: pixelated;
         image-rendering: crisp-edges;
       }
+      #world3d {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        pointer-events: none;
+        z-index: 0;
+      }
       #hud {
         position: fixed;
         top: 12px;
@@ -125,6 +134,11 @@
         <button id="panel-close">Close</button>
       </div>
     </aside>
+    <canvas id="world3d"></canvas>
+    <script type="module">
+      import * as World3D from './world3d.js';
+      window.World3D = World3D;
+    </script>
     <script type="module" src="game.js"></script>
   </body>
 </html>
