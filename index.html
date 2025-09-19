@@ -244,9 +244,258 @@
   // Layout is permanently locked: 4 rows (down,left,right,up) × 3 columns (frames)
   const SHEET_COLS = 3, SHEET_ROWS = 4;
   const DIR_ROW={ down:0, left:1, right:2, up:3 };
+  const DEFAULT_SPRITE_NAME='Male 02-2.png';
+  // Sprite sheets are typically placed in public/assets/; the resolver also
+  // supports servers that expose the directory as /assets/ directly.
 
-  // Put sprite PNG files inside public/assets/ so the loader can find them by name.
-  const SPRITE_BASE_PATH='assets/';
+  function ensureTrailingSlash(path){
+    if(!path) return '';
+    return path.endsWith('/')?path:`${path}/`;
+  }
+
+  function normalizeBasePathCandidate(value){
+    if(!value && value!==0) return null;
+    let text=String(value).trim();
+    if(!text) return null;
+    text=text.replace(/\\/g,'/');
+    if(/^(https?:|file:|data:|blob:|\/\/)/i.test(text)){
+      return ensureTrailingSlash(text);
+    }
+    text=text.replace(/^\.\/+/,'');
+    while(text.startsWith('../')) text=text.slice(3);
+    if(text.startsWith('/')){
+      text='/' + text.replace(/^\/+/, '');
+      return ensureTrailingSlash(text);
+    }
+    return ensureTrailingSlash(text);
+  }
+
+  function relativePrefixFor(candidate){
+    if(!candidate) return null;
+    if(/^(https?:|file:|data:|blob:|\/\/)/i.test(candidate)){
+      try{
+        const baseUrl=new URL(candidate, document.baseURI);
+        let path=baseUrl.pathname||'';
+        if(!path) return null;
+        path=path.replace(/^\/+/, '');
+        if(!path.endsWith('/')) path+='/';
+        return path;
+      }
+      catch(err){
+        return null;
+      }
+    }
+    if(candidate.startsWith('/')){
+      let trimmed=candidate.replace(/^\/+/, '');
+      if(!trimmed.endsWith('/')) trimmed+='/';
+      return trimmed;
+    }
+    return candidate;
+  }
+
+  function buildSpritePrefixMatchers(candidates){
+    const seen=new Set();
+    const list=[];
+    for(const raw of candidates){
+      const prefix=relativePrefixFor(raw);
+      if(!prefix) continue;
+      const actual=ensureTrailingSlash(prefix);
+      const lower=actual.toLowerCase();
+      if(seen.has(lower)) continue;
+      seen.add(lower);
+      list.push({ actual, lower });
+    }
+    list.sort((a,b)=>b.actual.length-a.actual.length);
+    return list;
+  }
+
+  function splitUrlAndSuffix(raw){
+    const text=String(raw ?? '');
+    let end=text.length;
+    const q=text.indexOf('?');
+    if(q!==-1) end=Math.min(end,q);
+    const h=text.indexOf('#');
+    if(h!==-1) end=Math.min(end,h);
+    return { path:text.slice(0,end), suffix:text.slice(end) };
+  }
+
+  function parseSuffix(suffix){
+    if(!suffix) return { search:'', hash:'' };
+    let rest=suffix;
+    let hash='';
+    const hashIndex=rest.indexOf('#');
+    if(hashIndex!==-1){
+      hash=rest.slice(hashIndex+1);
+      rest=rest.slice(0,hashIndex);
+    }
+    let search='';
+    if(rest.startsWith('?')){
+      search=rest.slice(1);
+    }
+    return { search, hash };
+  }
+
+  function normalizeRelativeSpritePath(path){
+    if(!path) return '';
+    let text=String(path).trim();
+    text=text.replace(/\\/g,'/');
+    while(text.startsWith('./')) text=text.slice(2);
+    while(text.startsWith('../')) text=text.slice(3);
+    while(text.startsWith('/')) text=text.slice(1);
+    return text;
+  }
+
+  function analyzeSpriteUrl(raw){
+    const { path, suffix }=splitUrlAndSuffix(raw ?? '');
+    const normalized=normalizeRelativeSpritePath(path);
+    const lower=normalized.toLowerCase();
+    for(const prefix of SPRITE_PATH_STATE.prefixMatchers){
+      if(lower.startsWith(prefix.lower)){
+        return {
+          matched:true,
+          remainder:normalized.slice(prefix.actual.length),
+          suffix,
+          prefix:prefix.actual
+        };
+      }
+    }
+    return { matched:false, remainder:normalized, suffix, prefix:null };
+  }
+
+  function joinSpritePath(base, relativePath, suffix=''){
+    const cleanRelative=normalizeRelativeSpritePath(relativePath);
+    const normalizedBase=normalizeBasePathCandidate(base);
+    if(!normalizedBase){
+      return cleanRelative + suffix;
+    }
+    if(/^(https?:|file:|data:|blob:|\/\/)/i.test(normalizedBase)){
+      try{
+        const baseUrl=new URL(normalizedBase, document.baseURI);
+        const finalUrl=new URL(cleanRelative || '', baseUrl);
+        const { search, hash }=parseSuffix(suffix);
+        finalUrl.search=search;
+        finalUrl.hash=hash;
+        return finalUrl.href;
+      }
+      catch(err){
+        // fall through to string join
+      }
+    }
+    const prefix=normalizedBase;
+    if(!cleanRelative){
+      return `${prefix}${suffix}`;
+    }
+    return `${prefix}${cleanRelative}${suffix}`;
+  }
+
+  const SPRITE_PATH_STATE=(()=>{
+    const manualHints=[];
+    if(typeof window!=='undefined' && window.__SPRITE_BASE_PATH__){
+      manualHints.push(window.__SPRITE_BASE_PATH__);
+    }
+    const htmlHint=document?.documentElement?.getAttribute?.('data-sprite-base');
+    if(htmlHint) manualHints.push(htmlHint);
+    const metaHint=document?.querySelector?.('meta[name="sprite-base"]');
+    if(metaHint?.content) manualHints.push(metaHint.content);
+
+    const manualNormalized=manualHints.map(normalizeBasePathCandidate).filter(Boolean);
+    const seen=new Set();
+    const candidates=[];
+    const addCandidate=(value,{ front=false }={})=>{
+      const normalized=normalizeBasePathCandidate(value);
+      if(!normalized || seen.has(normalized)) return;
+      if(front){
+        candidates.unshift(normalized);
+      } else {
+        candidates.push(normalized);
+      }
+      seen.add(normalized);
+    };
+
+    for(const hint of manualNormalized){
+      addCandidate(hint,{ front:true });
+    }
+
+    const preferPublicFirst=(typeof location!=='undefined' && location.protocol==='file:');
+    const defaults=preferPublicFirst?['public/assets/','assets/']:['assets/','public/assets/'];
+    for(const def of defaults){
+      addCandidate(def);
+    }
+
+    if(!candidates.length){
+      candidates.push('assets/');
+    }
+
+    const prefixMatchers=buildSpritePrefixMatchers(candidates);
+    const manualOverride=manualNormalized.length?manualNormalized[0]:null;
+
+    return {
+      basePath:manualOverride,
+      manualOverride,
+      detectionPromise:null,
+      candidates,
+      prefixMatchers
+    };
+  })();
+
+  async function detectSpriteBasePath(preferredName=DEFAULT_SPRITE_NAME){
+    if(SPRITE_PATH_STATE.basePath) return SPRITE_PATH_STATE.basePath;
+    if(SPRITE_PATH_STATE.detectionPromise) return SPRITE_PATH_STATE.detectionPromise;
+    const fallback=SPRITE_PATH_STATE.candidates[0] || 'assets/';
+    if(SPRITE_PATH_STATE.manualOverride){
+      SPRITE_PATH_STATE.basePath=SPRITE_PATH_STATE.manualOverride;
+      return SPRITE_PATH_STATE.basePath;
+    }
+    const protocol=(typeof location!=='undefined' && location.protocol)||'';
+    if(!/^https?:$/i.test(protocol)){
+      SPRITE_PATH_STATE.basePath=fallback;
+      return SPRITE_PATH_STATE.basePath;
+    }
+    const probes=[];
+    const addProbe=name=>{
+      if(!name || typeof name!=='string') return;
+      if(!probes.includes(name)) probes.push(name);
+    };
+    addProbe(preferredName);
+    addProbe(DEFAULT_SPRITE_NAME);
+    if(!probes.length){
+      probes.push(DEFAULT_SPRITE_NAME);
+    }
+    const candidates=[...SPRITE_PATH_STATE.candidates];
+    SPRITE_PATH_STATE.detectionPromise=(async()=>{
+      for(const candidate of candidates){
+        try{
+          const baseUrl=new URL(candidate, document.baseURI);
+          for(const probe of probes){
+            try{
+              const testUrl=new URL(probe, baseUrl);
+              const response=await fetch(testUrl.href,{ method:'HEAD', cache:'no-store' });
+              if(response.ok){
+                SPRITE_PATH_STATE.basePath=candidate;
+                return candidate;
+              }
+              if(response.status===405){
+                const retry=await fetch(testUrl.href,{ method:'GET', cache:'no-store' });
+                if(retry.ok){
+                  SPRITE_PATH_STATE.basePath=candidate;
+                  return candidate;
+                }
+              }
+            }
+            catch(err){
+              // Ignore individual probe errors and continue to the next option.
+            }
+          }
+        }
+        catch(err){
+          // Ignore network errors; try next candidate.
+        }
+      }
+      SPRITE_PATH_STATE.basePath=fallback;
+      return fallback;
+    })();
+    return SPRITE_PATH_STATE.detectionPromise;
+  }
   const LEGACY_SPRITE_ALIASES=new Map([
     ['sprite-0002.png','Male 02-2.png'],
     ['sprite-0002','Male 02-2.png'],
@@ -334,10 +583,20 @@
     return { canonical:trimmed, alias:null };
   }
 
-  function getSpriteSource(name,url){
-    if(url) return url;
-    const base=SPRITE_BASE_PATH.endsWith('/')?SPRITE_BASE_PATH:(SPRITE_BASE_PATH+'/');
-    return base+name;
+  async function getSpriteSource(name,url){
+    if(url){
+      if(/^(https?:|data:|blob:|file:|\/\/)/i.test(url)){
+        return url;
+      }
+      const info=analyzeSpriteUrl(url);
+      if(!info.matched){
+        return url.replace(/\\/g,'/');
+      }
+      const base=await detectSpriteBasePath(name);
+      return joinSpritePath(base, info.remainder, info.suffix);
+    }
+    const base=await detectSpriteBasePath(name);
+    return joinSpritePath(base, name);
   }
 
   function finalizeSpriteLoad(name,image,options={}){
@@ -374,8 +633,8 @@
     return entry;
   }
 
-  function loadSprite(name,url){
-    const source=getSpriteSource(name,url);
+  async function loadSprite(name,url){
+    const source=await getSpriteSource(name,url);
     return new Promise(resolve=>{
       const img=new Image();
       img.decoding='async';
@@ -395,24 +654,45 @@
   }
   window.loadSprite=loadSprite;
 
-  function setActiveSprite(name,url){
+  async function setActiveSprite(name,url){
     if(currentObjectUrl && currentObjectUrl!==url){ URL.revokeObjectURL(currentObjectUrl); currentObjectUrl=null; }
     if(url && url.startsWith('blob:')){ currentObjectUrl=url; }
-    const isExplicitProtocol=url && /^(https?:|data:|blob:)/i.test(url);
-    const normalizedUrl=url ? url.replace(/^[./\\]+/,'').replace(/\\/g,'/') : '';
-    const isRelativeAsset=url && !isExplicitProtocol && (normalizedUrl.toLowerCase().startsWith('assets/') || normalizedUrl.toLowerCase().startsWith('public/assets/'));
+    const isExplicitProtocol=url && /^(https?:|data:|blob:|file:|\/\/)/i.test(url);
+    const relativeInfo=url ? analyzeSpriteUrl(url) : null;
+    const isRelativeAsset=!!(relativeInfo && relativeInfo.matched);
     let resolvedUrl=url;
     let finalName=name;
+
     if(!url || isRelativeAsset){
       const { canonical, alias }=canonicalizeSpriteName(name);
       finalName=canonical;
-      if(alias && alias!==canonical && resolvedUrl && isRelativeAsset){
-        const parts=resolvedUrl.split(/[/\\]/);
-        parts[parts.length-1]=canonical;
-        resolvedUrl=parts.join('/');
+      let basePath=null;
+      const ensureBase=async()=>{
+        if(basePath) return basePath;
+        basePath=await detectSpriteBasePath(canonical);
+        return basePath;
+      };
+
+      if(isRelativeAsset && relativeInfo){
+        const base=await ensureBase();
+        let remainder=relativeInfo.remainder;
+        if(alias && alias!==canonical){
+          const segments=remainder?remainder.split('/'):[];
+          if(segments.length){
+            segments[segments.length-1]=canonical;
+          } else {
+            segments.push(canonical);
+          }
+          remainder=segments.join('/');
+        }
+        resolvedUrl=joinSpritePath(base, remainder || canonical, relativeInfo.suffix);
+      } else if(!url){
+        await ensureBase();
+        resolvedUrl=null;
       }
+
       if(alias && alias!==canonical && (!url || isRelativeAsset)){
-        const displayValue=!url ? canonical : resolvedUrl;
+        const displayValue=!url ? canonical : (resolvedUrl ?? canonical);
         showNotice(`${alias} is deprecated. Using ${canonical} instead.`);
         if(urlInput){
           urlInput.value=displayValue;
@@ -426,7 +706,10 @@
           }
         }
       }
+    } else if(resolvedUrl && !isExplicitProtocol){
+      resolvedUrl=resolvedUrl.replace(/\\/g,'/');
     }
+
     activeSpriteName=finalName;
     spriteReady=false;
     return loadSprite(finalName,resolvedUrl);
@@ -492,7 +775,6 @@
 
   const qp=getParam('sprite');
   const saved=localStorage.getItem('spriteURL');
-  const DEFAULT_SPRITE_NAME='Male 02-2.png';
   const initialValue=qp || saved || DEFAULT_SPRITE_NAME;
   const initialParsed=parseSpriteInput(initialValue);
   const initialDisplayValue=initialParsed && initialParsed.aliasOf ? (initialParsed.url || initialParsed.name) : initialValue;
