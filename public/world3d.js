@@ -571,9 +571,9 @@ function createPostProcessing() {
 function updateComposerSize(width, height, dpr) {
   if (!world.composer) return;
   world.composer.setPixelRatio(dpr);
-  world.composer.setSize(width * dpr, height * dpr);
-  world.outlinePass.setSize(width * dpr, height * dpr);
-  world.bloomPass.setSize(width * dpr, height * dpr);
+  world.composer.setSize(width, height);
+  world.outlinePass.setSize(width, height);
+  world.bloomPass.setSize(width, height);
 }
 
 function handleResize() {
