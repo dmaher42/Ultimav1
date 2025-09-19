@@ -43,7 +43,10 @@
   const gameC = document.getElementById('game');
   const bg = bgC.getContext('2d');
   const ctx = gameC.getContext('2d');
-  let activeRoom=null;
+  let currentRoom=null;          // currently active room definition
+  const currentObstacles=[];     // obstacles for collision/rendering
+  const currentProps=[];         // decorative props for the current room
+  let currentParallaxLayers=[];  // parallax layers per room (defaults later)
   let camera=null;
   ctx.imageSmoothingEnabled=false;
   bg.imageSmoothingEnabled=false;
@@ -226,7 +229,19 @@
   };
   const pressed=new Set();
   function normKey(k){ const map={Left:'ArrowLeft',Right:'ArrowRight',Up:'ArrowUp',Down:'ArrowDown'}; return map[k] || (k.length===1?k.toLowerCase():k); }
-  addEventListener('keydown',e=>{ const k=normKey(e.key); if(k.startsWith('Arrow')) e.preventDefault(); pressed.add(k); });
+  // Global keybinds: WASD/arrow for movement, 'N' jumps to the next room.
+  addEventListener('keydown',e=>{
+    const k=normKey(e.key);
+    if(k==='n'){
+      if(!e.repeat){
+        e.preventDefault();
+        goToNextRoom();
+      }
+      return;
+    }
+    if(k.startsWith('Arrow')) e.preventDefault();
+    pressed.add(k);
+  });
   addEventListener('keyup',e=>{ const k=normKey(e.key); if(k.startsWith('Arrow')) e.preventDefault(); pressed.delete(k); });
 
   function frameRect(dir,frame){
@@ -281,13 +296,15 @@
     ];
   }
 
+  const DEFAULT_WORLD={ width:1600, height:1200 };
+
   function cloneObstacles(list){
     return (list||[]).map(o=>({
       x:Number(o.x)||0,
       y:Number(o.y)||0,
       w:Number(o.w)||0,
       h:Number(o.h)||0,
-      type:o.type||'rock'
+      type:o.type||'wall'
     }));
   }
 
@@ -298,70 +315,107 @@
       w:Number(p.w)||32,
       h:Number(p.h)||32,
       color:p.color||'#94a3b8',
-      spriteURL:p.spriteURL||null
+      spriteURL:p.spriteURL||null,
+      sprite:null
     }));
   }
 
-  function applyRoom(roomData){
-    const world={
-      width:roomData?.world?.width ?? 3000,
-      height:roomData?.world?.height ?? 2000
-    };
-    const spawn={
-      x:roomData?.spawn?.x ?? 200,
-      y:roomData?.spawn?.y ?? 200
-    };
-    const obstacles=cloneObstacles(roomData?.obstacles);
-    const props=cloneProps(roomData?.props).map(prop=>{
-      if(prop.spriteURL){ prop.sprite=requestPropSprite(prop.spriteURL); }
-      return prop;
-    });
-    const parallaxLayers=(roomData?.parallaxLayers && roomData.parallaxLayers.length)
-      ? roomData.parallaxLayers.map(layer=>({ ...layer }))
-      : createDefaultParallaxLayers();
-
-    activeRoom={ world, spawn, obstacles, props, parallaxLayers };
-  }
-
-  const ROOM_LIBRARY={
-    meadow:{
-      world:{ width:3000, height:2000 },
-      spawn:{ x:380, y:380 },
+  // ----- Room definitions (edit/add rooms here) -----
+  const rooms={
+    room1:{
+      spawn:{ x:320, y:360 },
       obstacles:[
-        { x:520, y:540, w:220, h:160, type:'rock' },
-        { x:880, y:460, w:180, h:260, type:'tree' },
-        { x:1360, y:720, w:520, h:90, type:'wall' },
-        { x:1120, y:1040, w:240, h:120, type:'rock' },
-        { x:1680, y:620, w:420, h:180, type:'tree' }
+        { x:180, y:200, w:420, h:48, type:'wall' },
+        { x:680, y:420, w:96, h:180, type:'tree' },
+        { x:520, y:620, w:260, h:56, type:'rock' }
       ],
       props:[
-        { x:640, y:720, w:48, h:48, color:'#facc15' },
-        { x:980, y:860, w:60, h:36, color:'#fb7185' },
-        { x:1500, y:980, w:64, h:64, spriteURL:'assets/crate.png', color:'#9a3412' }
+        { x:520, y:260, w:48, h:48, spriteURL:'assets/Male 18-1.png' },
+        { x:860, y:480, w:40, h:40 }
+      ]
+    },
+    room2:{
+      spawn:{ x:720, y:420 },
+      obstacles:[
+        { x:260, y:340, w:520, h:60, type:'wall' },
+        { x:940, y:360, w:140, h:220, type:'tree' },
+        { x:540, y:740, w:360, h:70, type:'rock' }
+      ],
+      props:[
+        { x:600, y:520, w:60, h:60 },
+        { x:1040, y:360, w:96, h:96, spriteURL:'assets/Male 18-1.png' }
       ]
     }
   };
 
+  const roomNames=Object.keys(rooms);
+  let currentRoomIndex=0;
+
+  // Loader entry point: pass in a plain JS room object (e.g., parsed JSON).
   function loadRoom(roomData){
-    applyRoom(roomData);
-    placePlayerAtSpawn();
-    resetCameraToPlayer();
-  }
+    if(!roomData) return;
 
-  function getActiveWorld(){ return activeRoom?.world ?? { width:3000, height:2000 }; }
-  function getObstacles(){ return activeRoom?.obstacles ?? []; }
-  function getProps(){ return activeRoom?.props ?? []; }
-  function getParallaxLayers(){ return activeRoom?.parallaxLayers ?? createDefaultParallaxLayers(); }
-  function getSpawnPoint(){ return activeRoom?.spawn ?? { x:200, y:200 }; }
+    // Cache spawn so we can position the player before starting the loop.
+    const spawn={
+      x:Number(roomData.spawn?.x) || 0,
+      y:Number(roomData.spawn?.y) || 0
+    };
 
-  function placePlayerAtSpawn(){
-    const spawn=getSpawnPoint();
+    // Clear old state and copy in the new room geometry.
+    currentObstacles.length=0;
+    currentProps.length=0;
+    currentObstacles.push(...cloneObstacles(roomData.obstacles));
+
+    const props=cloneProps(roomData.props);
+    for(const prop of props){
+      if(prop.spriteURL){
+        prop.sprite=requestPropSprite(prop.spriteURL);
+      }
+      currentProps.push(prop);
+    }
+
+    currentParallaxLayers = roomData.parallaxLayers?.length
+      ? roomData.parallaxLayers.map(layer=>({ ...layer }))
+      : createDefaultParallaxLayers();
+
+    currentRoom={
+      name:roomData.name || '',
+      spawn,
+      obstacles:currentObstacles,
+      props:currentProps,
+      world:{
+        width:roomData.world?.width ?? DEFAULT_WORLD.width,
+        height:roomData.world?.height ?? DEFAULT_WORLD.height
+      },
+      parallaxLayers:currentParallaxLayers
+    };
+
+    // Move the player to the new spawn and recentre the camera.
     player.x=spawn.x;
     player.y=spawn.y;
     player.frame=1;
     player.tick=0;
     clampPlayerToWorld();
+    resetCameraToPlayer();
   }
+
+  function goToRoom(index){
+    if(!roomNames.length) return;
+    currentRoomIndex=((index%roomNames.length)+roomNames.length)%roomNames.length;
+    const roomName=roomNames[currentRoomIndex];
+    loadRoom(rooms[roomName]);
+    showNotice(`Entered ${roomName}`);
+  }
+
+  function goToNextRoom(){
+    // Keyboard shortcut uses this to advance to the next room in the list.
+    goToRoom(currentRoomIndex+1);
+  }
+
+  function getActiveWorld(){ return currentRoom?.world ?? DEFAULT_WORLD; }
+  function getObstacles(){ return currentObstacles; }
+  function getProps(){ return currentProps; }
+  function getParallaxLayers(){ return currentParallaxLayers.length ? currentParallaxLayers : createDefaultParallaxLayers(); }
 
   function clampPlayerToWorld(){
     const world=getActiveWorld();
@@ -379,7 +433,7 @@
   }
 
   // Load the initial room before starting the game loop
-  loadRoom(ROOM_LIBRARY.meadow);
+  goToRoom(0);
 
   // ===== Collision helpers =====
   function rectsOverlap(a,b){
@@ -636,7 +690,7 @@
     }
     const rL = frameRect('left',2); assert('left row index', rL.sy===frameH*1);
     const rR = frameRect('right',2); assert('right row index', rR.sy===frameH*2);
-    const roomAfterLoad=activeRoom;
+    const roomAfterLoad=currentRoom;
     assert('room loaded', !!roomAfterLoad);
     assert('spawn applied to player', Math.round(player.x)===Math.round(roomAfterLoad.spawn.x));
     console.log(results);
