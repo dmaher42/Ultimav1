@@ -247,8 +247,163 @@
 
   // Put sprite PNG files inside public/assets/ so the loader can find them by name.
   const SPRITE_BASE_PATH='public/assets/';
+  const SPRITE_NAME_ALIASES={
+    'sprite-0002.png':'Male 02-2.png',
+    'sprite-0002':'Male 02-2.png',
+    'male 02-2.png':'Male 02-2.png',
+    'male 02-2':'Male 02-2.png',
+    'male 02.2.png':'Male 02-2.png',
+    'male 02.2':'Male 02-2.png',
+    'male 18-1.png':'Male 18-1.png',
+    'male 18-1':'Male 18-1.png',
+    'soldier 01-1.png':'Soldier 01-1.png',
+    'soldier 01-1':'Soldier 01-1.png'
+  };
+  function embedPngBase64(chunks){
+    if(!Array.isArray(chunks)) return null;
+    return 'data:image/png;base64,' + chunks.join('');
+  }
+  const EMBEDDED_SPRITES=Object.freeze({
+    'Male 02-2.png': embedPngBase64([
+      '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'
+    ]),
+    'Male 18-1.png': embedPngBase64([
+      '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',
+      'js7U7G9JTvkPdWLxVHHt7m0AAAAASUVORK5CYII='
+    ]),
+    'Soldier 01-1.png': embedPngBase64([
+      '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',
+      'P2jIfkIszWpTAAAAAElFTkSuQmCC'
+    ])
+  });
   const SPRITES=Object.create(null);
+
   window.SPRITES=SPRITES;
+  window.EMBEDDED_SPRITES=EMBEDDED_SPRITES;
 
   let activeSpriteName='';
   let spriteReady=false;    // ready flag for the active sprite
@@ -311,10 +466,27 @@
     return { image:canvas, color, cellSize };
   }
 
+  function resolveSpriteAlias(name,url){
+    if(url) return { name, changed:false };
+    const baseName=typeof name==='string'?name:'';
+    const normalized=baseName.toLowerCase();
+    const alias=SPRITE_NAME_ALIASES[normalized];
+    if(alias){
+      return { name:alias, changed:true };
+    }
+    return { name:baseName, changed:false };
+  }
+
   function getSpriteSource(name,url){
     if(url) return url;
+    const resolved=resolveSpriteAlias(name,url);
+    const canonicalName=resolved?.name ?? name;
+    const embedded=EMBEDDED_SPRITES[canonicalName];
+    if(embedded){
+      return embedded;
+    }
     const base=SPRITE_BASE_PATH.endsWith('/')?SPRITE_BASE_PATH:(SPRITE_BASE_PATH+'/');
-    return base+name;
+    return base+canonicalName;
   }
 
   function finalizeSpriteLoad(name,image,options={}){
@@ -373,11 +545,13 @@
   window.loadSprite=loadSprite;
 
   function setActiveSprite(name,url){
+    const resolved=resolveSpriteAlias(name,url);
+    const effectiveName=resolved?.name ?? name;
     if(currentObjectUrl && currentObjectUrl!==url){ URL.revokeObjectURL(currentObjectUrl); currentObjectUrl=null; }
     if(url && url.startsWith('blob:')){ currentObjectUrl=url; }
-    activeSpriteName=name;
+    activeSpriteName=effectiveName;
     spriteReady=false;
-    return loadSprite(name,url);
+    return loadSprite(effectiveName,url);
   }
 
   function parseSpriteInput(value){
@@ -397,12 +571,24 @@
   function setActiveSpriteFromValue(raw,{ save=false }={}){
     const parsed=parseSpriteInput(raw);
     if(!parsed) return;
-    if(save && !(parsed.url && parsed.url.startsWith('blob:'))){
-      localStorage.setItem('spriteURL', raw);
-    } else if(save && parsed.url && parsed.url.startsWith('blob:')){
-      localStorage.removeItem('spriteURL');
+    const resolved=resolveSpriteAlias(parsed.name, parsed.url);
+    const effectiveName=resolved?.name ?? parsed.name;
+    const effectiveUrl=parsed.url;
+    const effectiveValue=effectiveUrl || effectiveName;
+    if(save){
+      if(effectiveUrl && effectiveUrl.startsWith('blob:')){
+        localStorage.removeItem('spriteURL');
+      } else {
+        localStorage.setItem('spriteURL', effectiveValue);
+      }
     }
-    return setActiveSprite(parsed.name, parsed.url);
+    const promise=setActiveSprite(effectiveName, effectiveUrl);
+    if(promise && typeof promise==='object'){
+      promise.effectiveValue=effectiveValue;
+      promise.resolvedName=effectiveName;
+      promise.resolvedUrl=effectiveUrl;
+    }
+    return promise;
   }
 
   const qp=getParam('sprite');
@@ -411,21 +597,33 @@
   const initialValue=qp || saved || DEFAULT_SPRITE_NAME;
 
   const initialSpritePromise=waitForSpriteReady();
-  setActiveSpriteFromValue(initialValue);
+  const initialSelection=setActiveSpriteFromValue(initialValue);
 
   const urlInput=document.getElementById('spriteUrl');
-  urlInput.value=initialValue;
+  urlInput.value=initialSelection?.effectiveValue ?? initialValue;
 
   document.getElementById('btnLoad').onclick=()=>{
     const raw=urlInput.value.trim();
     if(!raw) return;
-    setActiveSpriteFromValue(raw,{ save:true });
+    const selection=setActiveSpriteFromValue(raw,{ save:true });
+    if(selection?.effectiveValue){
+      urlInput.value=selection.effectiveValue;
+    }
+    if(spriteSelect && selection?.resolvedName){
+      for(const opt of spriteSelect.options){
+        if(opt.value===selection.resolvedName){
+          spriteSelect.value=selection.resolvedName;
+          break;
+        }
+      }
+    }
   };
 
   const spriteSelect=document.getElementById('spriteSelect');
   if(spriteSelect){
-    const parsedInitial=parseSpriteInput(initialValue);
-    const initialName=parsedInitial?.name;
+    const parsedInitial=parseSpriteInput(initialSelection?.resolvedName || initialValue);
+    const initialAlias=parsedInitial?resolveSpriteAlias(parsedInitial.name, parsedInitial.url):null;
+    const initialName=initialAlias?.name;
     if(initialName){
       for(const opt of spriteSelect.options){
         if(opt.value===initialName){
@@ -437,7 +635,18 @@
     spriteSelect.addEventListener('change',()=>{
       const choice=spriteSelect.value;
       urlInput.value=choice;
-      setActiveSpriteFromValue(choice,{ save:true });
+      const selection=setActiveSpriteFromValue(choice,{ save:true });
+      if(selection?.effectiveValue){
+        urlInput.value=selection.effectiveValue;
+      }
+      if(selection?.resolvedName){
+        for(const opt of spriteSelect.options){
+          if(opt.value===selection.resolvedName){
+            spriteSelect.value=selection.resolvedName;
+            break;
+          }
+        }
+      }
     });
   }
 
@@ -532,15 +741,34 @@
   // ===== World data & loading =====
   const propSpriteCache=new Map();
   function requestPropSprite(url){
-    if(!propSpriteCache.has(url)){
+    const key=url||'';
+    if(!propSpriteCache.has(key)){
       const img=new Image();
+      img.decoding='async';
+      img.crossOrigin='anonymous';
       const entry={ img, ready:false, error:false };
+      const parsed=parseSpriteInput(url);
+      let source=url;
+      if(parsed){
+        const resolved=resolveSpriteAlias(parsed.name, parsed.url);
+        const canonical=resolved?.name ?? parsed.name;
+        const embedded=EMBEDDED_SPRITES[canonical];
+        const legacyPath=typeof parsed.url==='string' && /^\.?\/?assets\//i.test(parsed.url);
+        if(embedded){
+          source=embedded;
+        } else if(!parsed.url || legacyPath){
+          const base=SPRITE_BASE_PATH.endsWith('/')?SPRITE_BASE_PATH:(SPRITE_BASE_PATH+'/');
+          source=base+canonical;
+        } else {
+          source=parsed.url;
+        }
+      }
       img.onload=()=>{ entry.ready=true; };
       img.onerror=()=>{ entry.error=true; };
-      img.src=url;
-      propSpriteCache.set(url,entry);
+      img.src=source || url;
+      propSpriteCache.set(key,entry);
     }
-    return propSpriteCache.get(url);
+    return propSpriteCache.get(key);
   }
 
   function createDefaultParallaxLayers(){
