@@ -168,6 +168,36 @@ function setupInput() {
 
 function initWorld(assets) {
   STATE.assets = assets;
+
+  const bakery = createBakeryKitchen(assets);
+  const moonlitPlaza = createMoonlitPlaza(assets);
+
+  STATE.rooms = [bakery, moonlitPlaza];
+  STATE.room = bakery;
+  const spawn = bakery.spawn || { x: 820, y: 760 };
+
+  STATE.player = {
+    name: 'Avatar',
+    x: spawn.x,
+    y: spawn.y,
+    width: 56,
+    height: 84,
+    speed: 220,
+    inventory: ['flour', 'water'],
+    quests: [],
+    facing: 'south'
+  };
+
+  STATE.camera.x = STATE.player.x - STATE.viewport.width / 2;
+  STATE.camera.y = STATE.player.y - STATE.viewport.height / 2;
+  STATE.camera.width = STATE.viewport.width;
+  STATE.camera.height = STATE.viewport.height;
+
+  updateHud();
+  refreshPanel();
+}
+
+function createBakeryKitchen(assets) {
   const room = {
     id: 'bakery',
     name: 'Bakery Kitchen',
@@ -175,7 +205,30 @@ function initWorld(assets) {
     height: 1200,
     props: [],
     npcs: [],
-    obstacles: []
+    obstacles: [],
+    spawn: { x: 820, y: 760 },
+    floorPalette: ['#3b2d2a', '#342621'],
+    backgroundLayers: [
+      {
+        imageURL: 'assets/backgrounds/bakery/sky.png',
+        // TODO: Drop a distant skyline or rafters image into public/assets/backgrounds/bakery/sky.png
+        parallax: 0.08
+      },
+      {
+        imageURL: 'assets/backgrounds/bakery/walls.png',
+        // TODO: Paint a wall texture for the bakery interior at public/assets/backgrounds/bakery/walls.png
+        parallax: 0.32
+      },
+      {
+        imageURL: 'assets/backgrounds/bakery/details.png',
+        // TODO: Add foreground shelving silhouettes to public/assets/backgrounds/bakery/details.png
+        parallax: 0.6
+      }
+    ],
+    theme: {
+      ambientDarkness: 1.15,
+      tint: [255, 180, 120, 0.08]
+    }
   };
 
   const oven = {
@@ -271,29 +324,127 @@ function initWorld(assets) {
     { x: 520, y: 440, width: 540, height: 40 }
   );
 
-  STATE.rooms = [room];
-  STATE.room = room;
-  STATE.player = {
-    name: 'Avatar',
-    x: 820,
-    y: 760,
-    width: 56,
-    height: 84,
-    speed: 220,
-    inventory: ['flour', 'water'],
-    quests: [],
-    facing: 'south'
-  };
-
-  STATE.camera.x = STATE.player.x - STATE.viewport.width / 2;
-  STATE.camera.y = STATE.player.y - STATE.viewport.height / 2;
-  STATE.camera.width = STATE.viewport.width;
-  STATE.camera.height = STATE.viewport.height;
   room.oven = oven;
   room.table = table;
 
-  updateHud();
-  refreshPanel();
+  prepareBackgroundLayers(room);
+  return room;
+}
+
+function createMoonlitPlaza(assets) {
+  const room = {
+    id: 'moonlit_plaza',
+    name: 'Moonlit Plaza',
+    width: 2000,
+    height: 1400,
+    props: [],
+    npcs: [],
+    obstacles: [],
+    spawn: { x: 1080, y: 900 },
+    floorPalette: ['#1b2734', '#16202b'],
+    backgroundLayers: [
+      {
+        imageURL: 'assets/backgrounds/plaza/stars.png',
+        // TODO: Paint a night sky full of stars at public/assets/backgrounds/plaza/stars.png
+        parallax: 0.02
+      },
+      {
+        imageURL: 'assets/backgrounds/plaza/treeline.png',
+        // TODO: Add silhouetted treetops at public/assets/backgrounds/plaza/treeline.png
+        parallax: 0.18
+      },
+      {
+        imageURL: 'assets/backgrounds/plaza/market.png',
+        // TODO: Illustrate lanterns or distant stalls at public/assets/backgrounds/plaza/market.png
+        parallax: 0.5
+      }
+    ],
+    theme: {
+      ambientDarkness: 0.85,
+      tint: [120, 180, 255, 0.16]
+    }
+  };
+
+  const marketStall = {
+    id: 'market_stall',
+    name: 'Pop-up Stall',
+    kind: 'prop',
+    x: 980,
+    y: 880,
+    width: 140,
+    height: 86,
+    sprite: assets.table,
+    solid: true
+  };
+
+  const stackedCrates = {
+    id: 'stacked_crates',
+    name: 'Stacked Crates',
+    kind: 'prop',
+    x: 860,
+    y: 820,
+    width: 110,
+    height: 120,
+    sprite: assets.flour,
+    solid: true
+  };
+
+  const waterCart = {
+    id: 'water_cart',
+    name: 'Water Cart',
+    kind: 'prop',
+    x: 1160,
+    y: 940,
+    width: 110,
+    height: 120,
+    sprite: assets.barrel,
+    solid: false
+  };
+
+  room.props.push(marketStall, stackedCrates, waterCart);
+
+  const vendor = {
+    id: 'npc_elio',
+    name: 'Elio the Night Vendor',
+    kind: 'npc',
+    x: 1020,
+    y: 920,
+    width: 56,
+    height: 84,
+    sprite: assets.baker,
+    solid: true,
+    profile: 'Travelling merchant selling midnight pastries.',
+    memory: 'Waiting for new stories from distant towns.',
+    log: []
+  };
+
+  room.npcs.push(vendor);
+
+  room.obstacles.push(
+    { x: 780, y: 840, width: 520, height: 36 },
+    { x: 780, y: 960, width: 520, height: 36 },
+    { x: 780, y: 840, width: 36, height: 156 },
+    { x: 1264, y: 840, width: 36, height: 156 }
+  );
+
+  prepareBackgroundLayers(room);
+  return room;
+}
+
+function prepareBackgroundLayers(room) {
+  if (!room.backgroundLayers) return;
+  room.backgroundLayers.forEach((layer) => {
+    if (!layer || layer.image || !layer.imageURL) return;
+    const img = new Image();
+    img.onload = () => {
+      layer.ready = true;
+    };
+    img.onerror = () => {
+      layer.failed = true;
+    };
+    img.src = layer.imageURL;
+    layer.image = img;
+  });
 }
 function attemptInteract() {
   const target = findInteractable();
@@ -624,7 +775,7 @@ function buildSnapshot(npc) {
     location: {
       room: room.name,
       player: { x: Math.round(STATE.player.x), y: Math.round(STATE.player.y) },
-      oven_status: oven.state
+      oven_status: oven ? oven.state : 'none'
     },
     time_of_day: Number(STATE.timeOfDay.toFixed(2)),
     active_quests: STATE.player.quests.map((q) => ({ id: q.id, stage: q.stage }))
@@ -670,6 +821,9 @@ function updatePlayer(dt) {
 
 function updateOven(dt) {
   const oven = STATE.room.oven;
+  if (!oven) {
+    return;
+  }
   if (oven.state === 'baking') {
     oven.timer -= dt;
     if (oven.timer <= 0) {
@@ -764,18 +918,74 @@ function draw() {
   ctx.clearRect(0, 0, STATE.viewport.width, STATE.viewport.height);
   drawBackground();
   drawWorld();
+  applyRoomTint();
   drawWaypoints();
   applyLighting();
   ctx.restore();
 }
 
 function drawBackground() {
+  if (!STATE.room) return;
+  ctx.save();
+  drawParallaxLayers();
+  drawFloorTiles();
+  ctx.restore();
+}
+
+function drawParallaxLayers() {
+  const room = STATE.room;
+  const layers = room.backgroundLayers || [];
+  if (!layers.length) return;
+  const camera = STATE.camera;
+  const viewport = STATE.viewport;
+
+  layers.forEach((layer, index) => {
+    if (!layer) return;
+    const parallax = typeof layer.parallax === 'number' ? layer.parallax : 0;
+    const offsetX = camera.x * parallax;
+    const offsetY = camera.y * parallax;
+    const image = layer.image;
+    const ready =
+      image &&
+      !layer.failed &&
+      image.complete &&
+      image.naturalWidth > 0 &&
+      image.naturalHeight > 0;
+
+    if (ready) {
+      const patternWidth = image.width;
+      const patternHeight = image.height;
+      if (!patternWidth || !patternHeight) {
+        return;
+      }
+      const remainderX = ((offsetX % patternWidth) + patternWidth) % patternWidth;
+      const remainderY = ((offsetY % patternHeight) + patternHeight) % patternHeight;
+      const startX = -remainderX;
+      const startY = -remainderY;
+      for (let y = startY; y < viewport.height; y += patternHeight) {
+        for (let x = startX; x < viewport.width; x += patternWidth) {
+          ctx.drawImage(image, Math.round(x), Math.round(y), patternWidth, patternHeight);
+        }
+      }
+    } else {
+      ctx.fillStyle = buildParallaxFallbackColor(index, room.theme);
+      ctx.fillRect(0, 0, viewport.width, viewport.height);
+    }
+  });
+}
+
+function drawFloorTiles() {
+  const room = STATE.room;
   const camera = STATE.camera;
   const tile = 80;
   const startX = Math.floor(camera.x / tile) * tile;
   const startY = Math.floor(camera.y / tile) * tile;
   const cols = Math.ceil(STATE.viewport.width / tile) + 2;
   const rows = Math.ceil(STATE.viewport.height / tile) + 2;
+  const palette =
+    room.floorPalette && room.floorPalette.length
+      ? room.floorPalette
+      : ['#3b2d2a', '#342621'];
 
   for (let y = 0; y < rows; y++) {
     for (let x = 0; x < cols; x++) {
@@ -783,11 +993,30 @@ function drawBackground() {
       const worldY = startY + y * tile;
       const screenX = worldX - camera.x;
       const screenY = worldY - camera.y;
-      const shade = (x + y) % 2 === 0 ? '#3b2d2a' : '#342621';
-      ctx.fillStyle = shade;
+      const color = palette[(x + y) % palette.length];
+      ctx.fillStyle = color;
       ctx.fillRect(screenX, screenY, tile, tile);
     }
   }
+}
+
+function buildParallaxFallbackColor(index, theme) {
+  const [tr = 48, tg = 42, tb = 36] = theme?.tint || [];
+  const delta = index * 18 - 12;
+  const adjust = (value) => clamp(Math.round(value + delta), 0, 255);
+  const alpha = clamp(0.35 + index * 0.25, 0.25, 0.85);
+  return `rgba(${adjust(tr)}, ${adjust(tg)}, ${adjust(tb)}, ${alpha})`;
+}
+
+function applyRoomTint() {
+  const theme = STATE.room?.theme;
+  if (!theme || !Array.isArray(theme.tint) || theme.tint.length < 4) return;
+  const [r, g, b, a] = theme.tint;
+  if (!a) return;
+  ctx.save();
+  ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${a})`;
+  ctx.fillRect(0, 0, STATE.viewport.width, STATE.viewport.height);
+  ctx.restore();
 }
 
 function drawWorld() {
@@ -910,7 +1139,11 @@ function applyLighting() {
   lightCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
   lightCtx.clearRect(0, 0, width, height);
   lightCtx.globalCompositeOperation = 'source-over';
-  lightCtx.fillStyle = `rgba(6, 8, 16, ${STATE.ambient})`;
+  const theme = STATE.room?.theme;
+  const multiplier =
+    theme && typeof theme.ambientDarkness === 'number' ? theme.ambientDarkness : 1;
+  const ambient = clamp(STATE.ambient * multiplier, 0, 1);
+  lightCtx.fillStyle = `rgba(6, 8, 16, ${ambient})`;
   lightCtx.fillRect(0, 0, width, height);
   lightCtx.globalCompositeOperation = 'destination-out';
 
@@ -961,22 +1194,26 @@ function applyLighting() {
 }
 
 function buildLights() {
-  const oven = STATE.room.oven;
-  const lights = [
-    {
+  const room = STATE.room;
+  const lights = [];
+  const oven = room.oven;
+  if (oven) {
+    lights.push({
       x: oven.x + oven.width / 2,
       y: oven.y + oven.height * 0.6,
       radius: oven.state === 'baking' ? 260 : 200,
       color: 'rgba(255, 180, 110, 0.55)'
-    },
-    {
-      x: STATE.player.x + STATE.player.width / 2,
-      y: STATE.player.y + STATE.player.height / 2,
-      radius: 180,
-      color: 'rgba(150, 200, 255, 0.2)'
-    }
-  ];
-  STATE.room.npcs.forEach((npc) => {
+    });
+  }
+
+  lights.push({
+    x: STATE.player.x + STATE.player.width / 2,
+    y: STATE.player.y + STATE.player.height / 2,
+    radius: 180,
+    color: 'rgba(150, 200, 255, 0.2)'
+  });
+
+  room.npcs.forEach((npc) => {
     lights.push({
       x: npc.x + npc.width / 2,
       y: npc.y + npc.height / 2,
