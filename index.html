@@ -29,9 +29,9 @@
     <input id="fileInput" type="file" accept="image/png,image/jpeg" style="display:none" />
     <button id="btnFile">Choose File…</button>
     <select id="spriteSelect" style="margin-left:8px">
-      <option value="assets/Male 02-2.png">Male 02-2</option>
-      <option value="assets/Male 02-2.png">Male 17-3</option>
-      <option value="assets/Male 18-1.png">Male 18-1</option>
+      <option value="Male 02-2.png">Male 02-2</option>
+      <option value="Male 17-3.png">Male 17-3</option>
+      <option value="Male 18-1.png">Male 18-1</option>
     </select>
   </div>
   <div id="drop" class="drop">Drop a PNG/JPG sprite sheet here (3 frames × 4 rows)</div>
@@ -245,8 +245,13 @@
   const SHEET_COLS = 3, SHEET_ROWS = 4;
   const DIR_ROW={ down:0, left:1, right:2, up:3 };
 
-  let sprite=null;          // HTMLImageElement
-  let spriteReady=false;    // ready flag
+  // Put sprite PNG files inside public/assets/ so the loader can find them by name.
+  const SPRITE_BASE_PATH='public/assets/';
+  const SPRITES=Object.create(null);
+  window.SPRITES=SPRITES;
+
+  let activeSpriteName='';
+  let spriteReady=false;    // ready flag for the active sprite
   let frameW=32, frameH=32; // computed on load
   let currentObjectUrl=null;// revoke blob URLs when replaced
 
@@ -254,134 +259,210 @@
   function resolveSpriteWaiters(){
     while(spriteReadyResolvers.length){
       const resolve=spriteReadyResolvers.shift();
-      try{ resolve(sprite); }
+      try{ resolve(SPRITES[activeSpriteName] ?? null); }
       catch(err){ console.error('Sprite ready callback failed', err); }
     }
   }
   function waitForSpriteReady(){
-    if(spriteReady) return Promise.resolve(sprite);
+    if(spriteReady) return Promise.resolve(SPRITES[activeSpriteName] ?? null);
     return new Promise(resolve=>spriteReadyResolvers.push(resolve));
   }
 
-  const DEFAULT_SOURCES = [
-    ...(localStorage.getItem("spriteURL") ? [localStorage.getItem("spriteURL")] : []),
-    "assets/Male 02-2.png",
-    "assets/Male 02-2.png",
-    "Male 02-2.png",
-    "Male 02.2.png",
-    "./Male 02-2.png",
-    "./Male 02-2.png",
-    "Male%2002-2.png",
-    "Male%2017-3.png"
-  ];
+  function placeholderColorFor(name){
+    const palette=['#38bdf8','#f97316','#f472b6','#facc15','#34d399','#a855f7'];
+    let hash=0;
+    for(let i=0;i<name.length;i++){
+      hash=(hash*31 + name.charCodeAt(i))|0;
+    }
+    const index=Math.abs(hash)%palette.length;
+    return palette[index];
+  }
 
-  function generateFallbackSprite(size=32){
-    // 3×4 sheet with simple placeholder character
-    const cols=3, rows=4, w=size*cols, h=size*rows;
-    const c=document.createElement('canvas'); c.width=w; c.height=h; const g=c.getContext('2d');
-    const cloaks=['#60a5fa','#34d399','#f59e0b','#ef4444'];
-    for(let r=0;r<rows;r++){
-      for(let f=0; f<cols; f++){
-        const x=f*size, y=r*size;
-        g.fillStyle = r%2? '#0f172a' : '#111827'; g.fillRect(x,y,size,size);
-        g.fillStyle = cloaks[r]; g.fillRect(x+8,y+10,size-16,size-14);
-        g.fillStyle = '#e5e7eb'; g.beginPath(); g.arc(x+size/2, y+8, 6, 0, Math.PI*2); g.fill();
-        g.fillStyle = '#0b0f19'; g.fillRect(x+8+(f%2?4:0), y+size-8, 6, 4); g.fillRect(x+size-14-(f%2?4:0), y+size-8, 6, 4);
+  function createPlaceholderSheet(name){
+    const cellSize=48;
+    const width=SHEET_COLS*cellSize;
+    const height=SHEET_ROWS*cellSize;
+    const canvas=document.createElement('canvas');
+    canvas.width=width;
+    canvas.height=height;
+    const g=canvas.getContext('2d');
+    const color=placeholderColorFor(name);
+    g.fillStyle=color;
+    g.fillRect(0,0,width,height);
+    g.strokeStyle='#0f172a';
+    g.lineWidth=4;
+    g.strokeRect(2,2,width-4,height-4);
+    g.strokeStyle='#1e293b';
+    g.lineWidth=1;
+    for(let c=1;c<SHEET_COLS;c++){
+      const x=c*cellSize;
+      g.beginPath();
+      g.moveTo(x,2);
+      g.lineTo(x,height-2);
+      g.stroke();
+    }
+    for(let r=1;r<SHEET_ROWS;r++){
+      const y=r*cellSize;
+      g.beginPath();
+      g.moveTo(2,y);
+      g.lineTo(width-2,y);
+      g.stroke();
+    }
+    return { image:canvas, color, cellSize };
+  }
+
+  function getSpriteSource(name,url){
+    if(url) return url;
+    const base=SPRITE_BASE_PATH.endsWith('/')?SPRITE_BASE_PATH:(SPRITE_BASE_PATH+'/');
+    return base+name;
+  }
+
+  function finalizeSpriteLoad(name,image,options={}){
+    const width=image.naturalWidth || image.width || (SHEET_COLS*32);
+    const height=image.naturalHeight || image.height || (SHEET_ROWS*32);
+    const frameWidth=Math.max(1,Math.floor(width/SHEET_COLS));
+    const frameHeight=Math.max(1,Math.floor(height/SHEET_ROWS));
+    const entry={
+      name,
+      image,
+      width,
+      height,
+      frameWidth,
+      frameHeight,
+      placeholder:!!options.placeholder,
+      placeholderColor:options.color ?? null
+    };
+    SPRITES[name]=entry;
+    if(name===activeSpriteName){
+      frameW=frameWidth;
+      frameH=frameHeight;
+      spriteReady=true;
+      resolveSpriteWaiters();
+      if(typeof updatePlayerCollider==='function'){
+        try{ updatePlayerCollider(); }
+        catch(err){ console.error('updatePlayerCollider failed', err); }
+      }
+      if(entry.placeholder){
+        showNotice(`Placeholder active for ${name}. Check console for details.`);
+      } else {
+        showNotice(`Loaded sprite: ${name}`);
       }
     }
-    return c.toDataURL('image/png');
+    return entry;
   }
 
-  function useFallback(){
-    spriteReady=false; const url=generateFallbackSprite(32); const img=new Image();
-    img.onload=()=>{ sprite=img; spriteReady=true; frameW=Math.floor(img.naturalWidth/SHEET_COLS); frameH=Math.floor(img.naturalHeight/SHEET_ROWS); showNotice('Using fallback sprite. Place \"Male 02-2.png\" next to this file, paste a URL, or drop a file.'); resolveSpriteWaiters(); };
-    img.onerror=()=>{ spriteReady=false; showNotice('Fallback sprite failed to load (unexpected).'); };
-    img.src=url;
+  function loadSprite(name,url){
+    const source=getSpriteSource(name,url);
+    return new Promise(resolve=>{
+      const img=new Image();
+      img.decoding='async';
+      img.crossOrigin='anonymous';
+      img.onload=()=>{
+        const entry=finalizeSpriteLoad(name,img,{ placeholder:false });
+        resolve(entry);
+      };
+      img.onerror=(err)=>{
+        console.error(`Sprite "${name}" failed to load from ${source}. Using placeholder rectangle instead.`, err);
+        const placeholder=createPlaceholderSheet(name);
+        const entry=finalizeSpriteLoad(name,placeholder.image,{ placeholder:true, color:placeholder.color });
+        resolve(entry);
+      };
+      img.src=source;
+    });
+  }
+  window.loadSprite=loadSprite;
+
+  function setActiveSprite(name,url){
+    if(currentObjectUrl && currentObjectUrl!==url){ URL.revokeObjectURL(currentObjectUrl); currentObjectUrl=null; }
+    if(url && url.startsWith('blob:')){ currentObjectUrl=url; }
+    activeSpriteName=name;
+    spriteReady=false;
+    return loadSprite(name,url);
   }
 
-  function loadSprite(url){
-    if(currentObjectUrl && url!==currentObjectUrl){ URL.revokeObjectURL(currentObjectUrl); currentObjectUrl=null; }
-    spriteReady=false; const img=new Image(); img.decoding='async'; img.loading='eager'; img.crossOrigin='anonymous';
-    img.onload=()=>{
-      if(img.naturalWidth>0 && img.naturalHeight>0){
-        sprite=img; spriteReady=true;
-        frameW=Math.floor(img.naturalWidth/SHEET_COLS);
-        frameH=Math.floor(img.naturalHeight/SHEET_ROWS);
-        showNotice('Loaded sprite: '+url);
-        resolveSpriteWaiters();
-      } else { showNotice('Sprite loaded but has no size — using fallback.'); useFallback(); }
-    };
-    img.onerror=()=>{ showNotice('Failed to load sprite at: '+url); tryNextSource(); };
-    img.src=url;
+  function parseSpriteInput(value){
+    if(!value) return null;
+    const trimmed=value.trim();
+    if(!trimmed) return null;
+    const isProtocol=/^(https?:|data:|blob:)/i.test(trimmed);
+    const looksLikePath=trimmed.startsWith('/') || trimmed.startsWith('./') || trimmed.startsWith('../') || trimmed.includes('/');
+    if(isProtocol || looksLikePath){
+      const namePart=trimmed.split(/[\\/]/).pop() || trimmed;
+      const cleanName=namePart.split('?')[0] || namePart;
+      return { name:cleanName, url:trimmed };
+    }
+    return { name:trimmed, url:null };
   }
 
-  // Try a list of sources in order, then fallback
-  let _tryList=[]; let _tryIndex=0;
-  function trySources(list){ _tryList=list.slice(); _tryIndex=0; tryNextSource(); }
-  function tryNextSource(){ if(_tryIndex<_tryList.length){ const nxt=_tryList[_tryIndex++]; loadSprite(nxt); } else { useFallback(); } }
+  function setActiveSpriteFromValue(raw,{ save=false }={}){
+    const parsed=parseSpriteInput(raw);
+    if(!parsed) return;
+    if(save && !(parsed.url && parsed.url.startsWith('blob:'))){
+      localStorage.setItem('spriteURL', raw);
+    } else if(save && parsed.url && parsed.url.startsWith('blob:')){
+      localStorage.removeItem('spriteURL');
+    }
+    return setActiveSprite(parsed.name, parsed.url);
+  }
 
-  const qp = getParam("sprite");
-  const saved = localStorage.getItem("spriteURL");
+  const qp=getParam('sprite');
+  const saved=localStorage.getItem('spriteURL');
+  const DEFAULT_SPRITE_NAME='Male 02-2.png';
+  const initialValue=qp || saved || DEFAULT_SPRITE_NAME;
 
   const initialSpritePromise=waitForSpriteReady();
-
-  if(qp){
-    trySources([qp]);
-  } else if(saved){
-    trySources([saved]);
-  } else {
-    trySources(DEFAULT_SOURCES);
-  }
+  setActiveSpriteFromValue(initialValue);
 
   const urlInput=document.getElementById('spriteUrl');
-  urlInput.value = qp || saved || DEFAULT_SOURCES[0] || "";
+  urlInput.value=initialValue;
 
-  document.getElementById("btnLoad").onclick = () => {
-    const v = document.getElementById("spriteUrl").value.trim();
-    if (v) {
-      localStorage.setItem("spriteURL", v);
-      trySources([v]);
-    }
+  document.getElementById('btnLoad').onclick=()=>{
+    const raw=urlInput.value.trim();
+    if(!raw) return;
+    setActiveSpriteFromValue(raw,{ save:true });
   };
 
-  const spriteSelect = document.getElementById("spriteSelect");
-  if (spriteSelect) {
-    const current = localStorage.getItem("spriteURL") || urlInput.value;
-    if (current) {
-      for (const opt of spriteSelect.options) {
-        if (opt.value === current) spriteSelect.value = current;
+  const spriteSelect=document.getElementById('spriteSelect');
+  if(spriteSelect){
+    const parsedInitial=parseSpriteInput(initialValue);
+    const initialName=parsedInitial?.name;
+    if(initialName){
+      for(const opt of spriteSelect.options){
+        if(opt.value===initialName){
+          spriteSelect.value=opt.value;
+          break;
+        }
       }
     }
-    spriteSelect.addEventListener("change", () => {
-      const url = spriteSelect.value;
-      localStorage.setItem("spriteURL", url);
-      urlInput.value = url;
-      trySources([url]);
+    spriteSelect.addEventListener('change',()=>{
+      const choice=spriteSelect.value;
+      urlInput.value=choice;
+      setActiveSpriteFromValue(choice,{ save:true });
     });
   }
 
   const fileInput=document.getElementById('fileInput');
   document.getElementById('btnFile').onclick=()=>fileInput.click();
-  fileInput.onchange = () => {
-    const f = fileInput.files && fileInput.files[0];
-    if (!f) return;
-    const url = URL.createObjectURL(f);
-    currentObjectUrl = url;
-    localStorage.setItem("spriteURL", url);
-    trySources([url]);
+  fileInput.onchange=()=>{
+    const f=fileInput.files && fileInput.files[0];
+    if(!f) return;
+    const objectUrl=URL.createObjectURL(f);
+    urlInput.value=f.name;
+    // Reminder: copy sprites into public/assets/ for persistent loads instead of blob URLs.
+    setActiveSprite(f.name, objectUrl);
   };
 
   const drop=document.getElementById('drop');
   ['dragenter','dragover'].forEach(ev=>addEventListener(ev,e=>{e.preventDefault(); drop.classList.add('show');}));
-  ['dragleave','drop'].forEach(ev => addEventListener(ev, e => {
+  ['dragleave','drop'].forEach(ev=>addEventListener(ev,e=>{
     e.preventDefault();
-    if (ev === 'drop') {
-      const f = e.dataTransfer.files && e.dataTransfer.files[0];
-      if (f) {
-        const url = URL.createObjectURL(f);
-        currentObjectUrl = url;
-        localStorage.setItem("spriteURL", url);
-        trySources([url]);
+    if(ev==='drop'){
+      const f=e.dataTransfer.files && e.dataTransfer.files[0];
+      if(f){
+        const objectUrl=URL.createObjectURL(f);
+        urlInput.value=f.name;
+        // Reminder: copy sprites into public/assets/ for persistent loads instead of blob URLs.
+        setActiveSprite(f.name, objectUrl);
       }
     }
     drop.classList.remove('show');
@@ -938,13 +1019,26 @@
     const g=Graphics.sceneCtx;
     const px=player.x-camera.x;
     const py=player.y-camera.y;
-    if(spriteReady){
+    const entry=SPRITES[activeSpriteName];
+    if(spriteReady && entry && entry.image){
       const {sx,sy,sw,sh}=frameRect(player.dir,player.frame);
       const destX=px-sw/2;
       const destY=py-sh/2;
-      drawOutlinedSprite(g,sprite,sx,sy,sw,sh,destX,destY,sw,sh,player.outlineColor||Graphics.outlineColor,player.outlineThickness||Graphics.outlineThickness);
+      drawOutlinedSprite(g,entry.image,sx,sy,sw,sh,destX,destY,sw,sh,player.outlineColor||Graphics.outlineColor,player.outlineThickness||Graphics.outlineThickness);
     } else {
-      drawOutlinedRect(g,px-16,py-16,32,32,'#e5e7eb');
+      const fallbackW=Math.max(20,frameW||32);
+      const fallbackH=Math.max(20,frameH||32);
+      const color=entry?.placeholderColor || '#e5e7eb';
+      drawOutlinedRect(
+        g,
+        px-fallbackW/2,
+        py-fallbackH/2,
+        fallbackW,
+        fallbackH,
+        color,
+        player.outlineColor||Graphics.outlineColor,
+        player.outlineThickness||Graphics.outlineThickness
+      );
     }
   }
 
@@ -1126,9 +1220,16 @@
     assert('frame cell height > 0', frameH>0);
     const r0=frameRect('down',0); assert('frameRect sx >= 0', r0.sx>=0);
     const r1=frameRect('up',2); assert('frameRect sy for up row correct', r1.sy===frameH*3);
-    if(spriteReady){
-      assert('3 columns detected', Math.round(sprite.naturalWidth / frameW) === SHEET_COLS);
-      assert('4 rows detected', Math.round(sprite.naturalHeight / frameH) === SHEET_ROWS);
+    const activeEntry=SPRITES[activeSpriteName];
+    if(spriteReady && activeEntry && activeEntry.image){
+      const width=activeEntry.image.naturalWidth || activeEntry.image.width || 0;
+      const height=activeEntry.image.naturalHeight || activeEntry.image.height || 0;
+      assert('sprite width > 0', width>0);
+      assert('sprite height > 0', height>0);
+      if(!activeEntry.placeholder){
+        assert('3 columns detected', Math.round(width / frameW) === SHEET_COLS);
+        assert('4 rows detected', Math.round(height / frameH) === SHEET_ROWS);
+      }
     }
     const rL = frameRect('left',2); assert('left row index', rL.sy===frameH*1);
     const rR = frameRect('right',2); assert('right row index', rR.sy===frameH*2);
