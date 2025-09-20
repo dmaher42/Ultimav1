@@ -86,6 +86,30 @@ const DIRECTION_OFFSETS = {
 
 const activeMovementDirections = new Set();
 
+function buildResourcePanel() {
+  if (!state.character) {
+    return {};
+  }
+  const character = state.character;
+  const maxHP = Math.round(character.maxHP ?? character.currentHP ?? 0);
+  const maxMP = Math.round(character.maxMP ?? character.currentMP ?? 0);
+  const currentHP = Math.round(character.currentHP ?? 0);
+  const currentMP = Math.round(character.currentMP ?? 0);
+  const xpThreshold = character.xpThreshold ?? 0;
+  const backpackWeight = Number.isFinite(character.backpackWeight) ? character.backpackWeight : 0;
+  const carryCapacity = Number.isFinite(character.stats?.STR)
+    ? character.stats.STR * 2
+    : backpackWeight;
+  const statPoints = Number.isFinite(character.unspentStatPoints) ? character.unspentStatPoints : 0;
+  return {
+    HP: `${currentHP}/${maxHP}`,
+    MP: `${currentMP}/${maxMP}`,
+    XP: `${character.xp}/${xpThreshold}`,
+    Load: `${backpackWeight.toFixed(1)}/${carryCapacity.toFixed(1)}`,
+    "Stat Pts": statPoints
+  };
+}
+
 function log(message) {
   const stamp = new Date().toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
   state.messageLog.push(`${stamp} — ${message}`);
@@ -152,31 +176,30 @@ function renderGame() {
     : null;
   const npcs = Array.isArray(state.map.npcs) ? state.map.npcs : [];
   const objects = Array.isArray(state.map.objects) ? state.map.objects : [];
-  renderer.render(state.map, state.player, { highlight, npcs, objects });
+  const hud = {
+    resources: buildResourcePanel(),
+    castleLevel: state.character?.level || 1
+  };
+  renderer.render(state.map, state.player, { highlight, npcs, objects, hud });
 }
 
-function celebrateCastle() {
+function celebrateCastle(force = false) {
   if (!state.map || state.map.id !== 'castle' || !state.player) return;
   const now = performance.now();
-  if (state.fx.lastCastleBurst && now - state.fx.lastCastleBurst < 1200) {
+  if (!force && state.fx.lastCastleBurst && now - state.fx.lastCastleBurst < 1200) {
     return;
   }
   state.fx.lastCastleBurst = now;
   const { x, y } = state.player.position;
   requestAnimationFrame(() => {
-    const map = state.map;
-    const canvasElement = ctx.canvas;
-    const viewportWidth = canvasElement.clientWidth || Math.round(canvasElement.width / DPR);
-    const viewportHeight = canvasElement.clientHeight || Math.round(canvasElement.height / DPR);
-    if (!viewportWidth || !viewportHeight || !map?.width || !map?.height) {
+    const rect = renderer.getMapScreenRect();
+    if (!rect.width || !rect.height) {
       return;
     }
-    const mapPixelWidth = map.width * renderer.tileSize;
-    const mapPixelHeight = map.height * renderer.tileSize;
-    const offsetX = Math.floor((viewportWidth - mapPixelWidth) / 2);
-    const offsetY = Math.floor((viewportHeight - mapPixelHeight) / 2);
-    const centerX = offsetX + (x + 0.5) * renderer.tileSize;
-    const centerY = offsetY + (y + 0.5) * renderer.tileSize;
+    const centerX = rect.x + (x + 0.5) * renderer.tileSize;
+    const centerY = rect.y + (y + 0.5) * renderer.tileSize;
+    renderer.shakeCamera(6, 0.2);
+    renderer.flashRectangle(rect.x, rect.y, rect.width, rect.height, 0.6, 90);
     for (let i = 0; i < 28; i += 1) {
       particles.spawn(centerX, centerY, {
         vx: (Math.random() - 0.5) * 28,
@@ -605,6 +628,16 @@ function setupEventListeners() {
     }
 
     switch (normalizedKey) {
+      case 'f3':
+        event.preventDefault();
+        renderer.toggleDebugOverlay();
+        break;
+      case 'u':
+        if (renderer.isDebugVisible()) {
+          event.preventDefault();
+          celebrateCastle(true);
+        }
+        break;
       case 'i':
         event.preventDefault();
         togglePanel('inventory');

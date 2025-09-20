@@ -2,6 +2,11 @@ import { TileInfo } from './GameMap.js';
 import { DPR } from './renderer/canvas.js';
 import { drawSprite } from './renderer/atlas.js';
 import { vignette, colorGrade } from './renderer/postfx.js';
+import { createCamera } from './renderer/camera.js';
+import { createFlashLayer } from './renderer/flash.js';
+import { createTimeOfDay } from './renderer/tod.js';
+import { createHUD } from './renderer/hud.js';
+import { createAnimFSM } from './renderer/animfsm.js';
 
 const TILE_SIZE = 48;
 const BACKGROUND_COLOR = '#05070d';
@@ -10,6 +15,18 @@ const DIRECTION_KEYS = {
   west: 'west',
   east: 'east',
   north: 'north'
+};
+const DEFAULT_DIRECTION = 'south';
+
+const PLAYER_ANIMATIONS = {
+  idle_south: { frames: ['player_south_1'], fps: 1 },
+  idle_north: { frames: ['player_north_1'], fps: 1 },
+  idle_east: { frames: ['player_east_1'], fps: 1 },
+  idle_west: { frames: ['player_west_1'], fps: 1 },
+  walk_south: { frames: ['player_south_0', 'player_south_1', 'player_south_2'], fps: 8 },
+  walk_north: { frames: ['player_north_0', 'player_north_1', 'player_north_2'], fps: 8 },
+  walk_east: { frames: ['player_east_0', 'player_east_1', 'player_east_2'], fps: 8 },
+  walk_west: { frames: ['player_west_0', 'player_west_1', 'player_west_2'], fps: 8 }
 };
 
 function computeSignature(items) {
@@ -26,14 +43,38 @@ function computeSignature(items) {
 }
 
 function normaliseDirection(direction) {
-  const value = (direction || 'south').toString().toLowerCase();
-  return DIRECTION_KEYS[value] ? value : 'south';
+  const value = (direction || DEFAULT_DIRECTION).toString().toLowerCase();
+  return DIRECTION_KEYS[value] ? value : DEFAULT_DIRECTION;
 }
 
-function playerFrameName(direction, frame) {
+function animationKey(direction, moving) {
   const dir = normaliseDirection(direction);
-  const index = Math.abs(frame) % 3;
-  return `player_${dir}_${index}`;
+  const base = moving ? 'walk' : 'idle';
+  const key = `${base}_${dir}`;
+  if (PLAYER_ANIMATIONS[key]) {
+    return key;
+  }
+  return moving ? 'walk_south' : 'idle_south';
+}
+
+function formatResourceValue(value) {
+  if (value == null) return '0';
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) return '0';
+    if (Number.isInteger(value)) return value.toString();
+    return value.toFixed(1);
+  }
+  return String(value);
+}
+
+function normaliseResources(resources) {
+  if (!resources || typeof resources !== 'object') return {};
+  const output = {};
+  Object.entries(resources).forEach(([key, value]) => {
+    if (!key) return;
+    output[String(key)] = formatResourceValue(value);
+  });
+  return output;
 }
 
 export default class RenderEngine {
@@ -62,12 +103,9 @@ export default class RenderEngine {
     this.gridWidth = 0;
     this.gridHeight = 0;
 
-    this.playerFrame = 1;
-    this.animationTimer = 0;
-    this.frameDuration = 130;
+    this.currentDirection = DEFAULT_DIRECTION;
     this.activeDirections = new Set();
     this.isMoving = false;
-    this.currentDirection = 'south';
 
     this.lastTimestamp = 0;
     this.running = false;
@@ -77,6 +115,16 @@ export default class RenderEngine {
     this.particles = null;
     this.viewportWidth = Math.round(this.canvas.width / DPR);
     this.viewportHeight = Math.round(this.canvas.height / DPR);
+
+    this.camera = createCamera({ w: this.viewportWidth, h: this.viewportHeight, lerp: 0.18 });
+    this.flashLayer = createFlashLayer();
+    this.timeOfDay = createTimeOfDay();
+    this.hudOverlay = createHUD();
+    this.playerAnim = createAnimFSM(PLAYER_ANIMATIONS, 'idle_south');
+    this.animationState = 'idle_south';
+    this.hudData = { resources: {}, castleLevel: 1 };
+    this.debugOverlay = false;
+    this.fps = 0;
 
     this._loop = this._loop.bind(this);
   }
@@ -112,15 +160,10 @@ export default class RenderEngine {
 
   update(delta) {
     if (!this.assetsLoaded) return;
-
-    if (this.isMoving) {
-      this.animationTimer += delta;
-      if (this.animationTimer >= this.frameDuration) {
-        this.playerFrame = (this.playerFrame + 1) % 3;
-        this.animationTimer = 0;
-      }
-    } else if (this.playerFrame !== 1) {
-      this.playerFrame = 1;
+    const deltaSeconds = Number.isFinite(delta) ? Math.max(0, delta / 1000) : 0;
+    if (deltaSeconds > 0) {
+      const instantaneous = 1 / deltaSeconds;
+      this.fps = this.fps ? this.fps * 0.9 + instantaneous * 0.1 : instantaneous;
     }
 
     if (this.highlight?.expires && this.highlight.expires <= Date.now()) {
@@ -128,8 +171,17 @@ export default class RenderEngine {
     }
 
     if (this.particles) {
-      this.particles.update(delta / 1000);
+      this.particles.update(deltaSeconds);
     }
+
+    this.timeOfDay.update(deltaSeconds);
+    this.flashLayer.update(deltaSeconds);
+
+    const target = this.getPlayerScreenCenter();
+    this.camera.follow(target.x, target.y);
+    this.camera.update(deltaSeconds);
+
+    this.playerAnim.update(deltaSeconds);
   }
 
   draw() {
@@ -146,6 +198,7 @@ export default class RenderEngine {
 
     const grid = this.getMapGrid();
     if (grid) {
+      this.camera.apply(ctx);
       this.drawMap(ctx, grid);
       this.drawObjects(ctx);
       this.drawNPCs(ctx);
@@ -159,33 +212,80 @@ export default class RenderEngine {
       if (this.particles) {
         this.particles.draw(ctx);
       }
+
+      this.camera.reset(ctx);
     }
 
     ctx.restore();
 
     if (grid) {
+      const { tint, vignette: vignetteStrength } = this.timeOfDay.getTint();
       ctx.save();
-      vignette(ctx, this.viewportWidth, this.viewportHeight);
-      colorGrade(ctx, undefined, this.viewportWidth, this.viewportHeight);
+      vignette(ctx, this.viewportWidth, this.viewportHeight, vignetteStrength);
+      colorGrade(ctx, tint, this.viewportWidth, this.viewportHeight);
       ctx.restore();
     }
 
-    this.drawHUD(ctx);
+    if (this.flashLayer.hasActive()) {
+      if (grid) {
+        this.camera.apply(ctx);
+        this.flashLayer.draw(ctx);
+        this.camera.reset(ctx);
+      } else {
+        this.flashLayer.draw(ctx);
+      }
+    }
+
+    const cameraState = this.camera.getState();
+    const debugPayload = this.debugOverlay
+      ? {
+          visible: true,
+          fps: this.fps,
+          camera: cameraState.position,
+          t: this.timeOfDay.t,
+          offset: cameraState.offset
+        }
+      : { visible: false };
+
+    this.hudOverlay.draw(ctx, {
+      fps: this.fps,
+      resources: this.hudData.resources,
+      castleLevel: this.hudData.castleLevel,
+      debug: debugPayload
+    });
   }
 
   updateCanvasMetrics() {
-    const width = Math.round((this.canvas.clientWidth || this.canvas.width / DPR));
-    const height = Math.round((this.canvas.clientHeight || this.canvas.height / DPR));
+    const width = Math.round(this.canvas.clientWidth || this.canvas.width / DPR);
+    const height = Math.round(this.canvas.clientHeight || this.canvas.height / DPR);
     this.viewportWidth = width;
     this.viewportHeight = height;
 
+    this.camera.setViewport(width, height);
+
     const grid = this.getMapGrid();
-    if (!grid) return;
+    if (!grid) {
+      this.mapPixelWidth = 0;
+      this.mapPixelHeight = 0;
+      this.offsetX = 0;
+      this.offsetY = 0;
+      this.camera.setBounds(0, 0, width, height);
+      return;
+    }
 
     this.mapPixelWidth = grid.width * this.tileSize;
     this.mapPixelHeight = grid.height * this.tileSize;
     this.offsetX = Math.floor((width - this.mapPixelWidth) / 2);
     this.offsetY = Math.floor((height - this.mapPixelHeight) / 2);
+
+    const minX = this.offsetX;
+    const minY = this.offsetY;
+    const maxX = this.offsetX + this.mapPixelWidth;
+    const maxY = this.offsetY + this.mapPixelHeight;
+    this.camera.setBounds(minX, minY, maxX, maxY);
+
+    const target = this.getPlayerScreenCenter();
+    this.camera.follow(target.x, target.y);
   }
 
   getMapGrid(map = this.map) {
@@ -296,46 +396,26 @@ export default class RenderEngine {
     if (!position) return;
     const px = this.offsetX + position.x * this.tileSize;
     const py = this.offsetY + position.y * this.tileSize;
-    const direction = this.player.facing || this.currentDirection;
-    const frameKey = playerFrameName(direction, this.playerFrame);
+    const frameKey = this.playerAnim.frame() || 'player_south_1';
     const drawn = drawSprite(ctx, this.atlas, frameKey, px, py, this.tileSize, this.tileSize);
     if (!drawn) {
       drawSprite(ctx, this.atlas, 'player_south_1', px, py, this.tileSize, this.tileSize);
     }
   }
 
-  drawHUD(ctx) {
-    if (!this.player) return;
-    const padding = 12;
-    const barHeight = 44;
-    const availableWidth = Math.max(this.viewportWidth - padding * 2, 0);
-    const barWidth = Math.min(Math.max(220, availableWidth), this.viewportWidth);
-    const x = (this.viewportWidth - barWidth) / 2;
-    const y = padding;
+  drawHUD() {
+    // Legacy stub retained for compatibility.
+  }
 
-    ctx.save();
-    ctx.fillStyle = 'rgba(12, 12, 24, 0.75)';
-    ctx.fillRect(x, y, barWidth, barHeight);
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(x + 0.5, y + 0.5, barWidth - 1, barHeight - 1);
-
-    ctx.fillStyle = '#f8f9ff';
-    ctx.font = '16px "Press Start 2P", monospace';
-    ctx.textBaseline = 'middle';
-
-    const character = this.player.character;
-    const currentHealth = Math.round(character?.currentHP ?? 0);
-    const hasMax = Number.isFinite(character?.maxHP);
-    const maxHealth = hasMax ? Math.round(character.maxHP) : currentHealth;
-    const healthText = hasMax ? `Health: ${currentHealth}/${maxHealth}` : `Health: ${currentHealth}`;
-    const coordsText = `x: ${this.player.position.x}, y: ${this.player.position.y}`;
-
-    const textY = y + barHeight / 2;
-    ctx.fillText(healthText, x + 16, textY);
-    const coordsWidth = ctx.measureText(coordsText).width;
-    ctx.fillText(coordsText, x + barWidth - 16 - coordsWidth, textY);
-    ctx.restore();
+  getPlayerScreenCenter() {
+    if (!this.player || !this.player.position) {
+      const x = this.offsetX + this.mapPixelWidth / 2 || this.viewportWidth / 2;
+      const y = this.offsetY + this.mapPixelHeight / 2 || this.viewportHeight / 2;
+      return { x, y };
+    }
+    const px = this.offsetX + (this.player.position.x + 0.5) * this.tileSize;
+    const py = this.offsetY + (this.player.position.y + 0.5) * this.tileSize;
+    return { x: px, y: py };
   }
 
   tileAtScreen(x, y) {
@@ -375,8 +455,9 @@ export default class RenderEngine {
 
     if (player) {
       this.player = player;
-      if (!this.isMoving && player.facing) {
-        this.currentDirection = normaliseDirection(player.facing);
+      const facing = player.facing ? normaliseDirection(player.facing) : this.currentDirection;
+      if (!this.isMoving) {
+        this.currentDirection = facing;
       }
     } else {
       this.player = null;
@@ -397,6 +478,25 @@ export default class RenderEngine {
 
     const npcs = options.npcs ?? map?.npcs ?? [];
     this.npcs = Array.isArray(npcs) ? npcs.slice() : [];
+
+    const hudOptions = options.hud || {};
+    this.hudData = {
+      resources: normaliseResources(hudOptions.resources),
+      castleLevel: Number.isFinite(hudOptions.castleLevel) ? hudOptions.castleLevel : this.hudData.castleLevel
+    };
+
+    this.syncAnimationState();
+
+    const target = this.getPlayerScreenCenter();
+    this.camera.follow(target.x, target.y);
+  }
+
+  syncAnimationState(force = false) {
+    const nextState = animationKey(this.currentDirection, this.isMoving);
+    if (force || nextState !== this.animationState) {
+      this.playerAnim.set(nextState);
+      this.animationState = nextState;
+    }
   }
 
   setPlayerMovement(direction, active) {
@@ -414,19 +514,46 @@ export default class RenderEngine {
       this.activeDirections.delete(normalized);
       if (this.activeDirections.size === 0) {
         this.isMoving = false;
-        this.animationTimer = 0;
-        this.playerFrame = 1;
       } else {
         const directions = Array.from(this.activeDirections);
         this.currentDirection = directions[directions.length - 1];
       }
     }
+    this.syncAnimationState();
   }
 
   stopAllMovement() {
     this.activeDirections.clear();
     this.isMoving = false;
-    this.animationTimer = 0;
-    this.playerFrame = 1;
+    this.syncAnimationState(true);
+  }
+
+  toggleDebugOverlay() {
+    this.debugOverlay = !this.debugOverlay;
+  }
+
+  setDebugOverlay(value) {
+    this.debugOverlay = Boolean(value);
+  }
+
+  isDebugVisible() {
+    return this.debugOverlay;
+  }
+
+  flashRectangle(x, y, w, h, alpha = 0.5, ms = 80) {
+    this.flashLayer.flashRect(x, y, w, h, alpha, ms);
+  }
+
+  shakeCamera(intensity = 6, duration = 0.2) {
+    this.camera.shake(intensity, duration);
+  }
+
+  getMapScreenRect() {
+    return {
+      x: this.offsetX,
+      y: this.offsetY,
+      width: this.mapPixelWidth,
+      height: this.mapPixelHeight
+    };
   }
 }

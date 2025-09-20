@@ -1,18 +1,21 @@
-export function vignette(ctx, width, height) {
+export function vignette(ctx, width, height, strength = 0.35) {
   if (!ctx || !width || !height) return;
   ctx.save();
   ctx.globalCompositeOperation = 'multiply';
   const maxDim = Math.max(width, height);
+  const clampStrength = Math.min(0.8, Math.max(0, strength));
+  const inner = maxDim * (0.35 + clampStrength * 0.1);
+  const outer = maxDim * (0.75 + clampStrength * 0.15);
   const gradient = ctx.createRadialGradient(
     width / 2,
     height / 2,
-    maxDim * 0.35,
+    inner,
     width / 2,
     height / 2,
-    maxDim * 0.75
+    outer
   );
   gradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
-  gradient.addColorStop(1, 'rgba(0, 0, 0, 0.35)');
+  gradient.addColorStop(1, `rgba(0, 0, 0, ${clampStrength})`);
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, width, height);
   ctx.restore();
