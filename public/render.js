@@ -3,6 +3,7 @@ import { TileInfo } from './GameMap.js';
 const TILE_SIZE = 48;
 const TILE_BASE_PATH = '/assets/tiles';
 const DEFAULT_PLAYER_SPRITE = '/assets/sprites/player.png';
+const FALLBACK_PLAYER_SPRITE = '/assets/sprites/heroa.png'; // Fallback to heroa.png as mentioned in requirements
 const BACKGROUND_COLOR = '#05070d';
 const DIRECTION_TO_ROW = {
   south: 0,
@@ -68,29 +69,141 @@ function createPlayerPlaceholder(size = TILE_SIZE) {
 }
 
 function loadImageWithFallback(src, fallbackColor) {
-  return new Promise((resolve) => {
-    const image = new Image();
-    image.decoding = 'async';
-    image.src = src;
-    image.onload = () => resolve(image);
-    image.onerror = () => {
-      console.warn(`[Renderer] Failed to load image: ${src}`);
-      resolve(createColorTile(fallbackColor));
-    };
+  return new Promise(async (resolve) => {
+    // Try multiple sprite source paths for better asset loading reliability
+    const candidates = await tryMultipleAssetSources(src);
+    console.log(`[Renderer] Attempting to load image from ${candidates.length} locations:`, candidates);
+    
+    let lastError = null;
+    
+    // Try each candidate source
+    for (let i = 0; i < candidates.length; i++) {
+      const candidateSrc = candidates[i];
+      const success = await new Promise((srcResolve) => {
+        const image = new Image();
+        image.decoding = 'async';
+        image.src = candidateSrc;
+        image.onload = () => {
+          console.log(`✓ [Renderer] Successfully loaded image from ${candidateSrc} (attempt ${i + 1}/${candidates.length})`);
+          resolve(image);
+          srcResolve(true);
+        };
+        image.onerror = (err) => {
+          console.warn(`✗ [Renderer] Failed to load image from ${candidateSrc} (attempt ${i + 1}/${candidates.length})`);
+          lastError = err;
+          srcResolve(false);
+        };
+      });
+      
+      if (success) return; // Successfully loaded
+    }
+    
+    // All candidates failed, use fallback
+    console.error(`[Renderer] All ${candidates.length} paths failed for image. Using fallback color: ${fallbackColor}`);
+    if (lastError) {
+      console.error(`[Renderer] Last error:`, lastError);
+    }
+    resolve(createColorTile(fallbackColor));
   });
 }
 
 function loadPlayerSprite(src, tileSize) {
-  return new Promise((resolve) => {
-    const image = new Image();
-    image.decoding = 'async';
-    image.src = src;
-    image.onload = () => resolve(image);
-    image.onerror = () => {
-      console.warn(`[Renderer] Failed to load player sprite: ${src}`);
-      resolve(createPlayerPlaceholder(tileSize));
-    };
+  return new Promise(async (resolve) => {
+    // Try multiple sprite source paths for better asset loading reliability
+    const candidates = await tryMultipleAssetSources(src);
+    console.log(`[Renderer] Attempting to load player sprite from ${candidates.length} locations:`, candidates);
+    
+    let lastError = null;
+    
+    // Try each candidate source
+    for (let i = 0; i < candidates.length; i++) {
+      const candidateSrc = candidates[i];
+      const success = await new Promise((srcResolve) => {
+        const image = new Image();
+        image.decoding = 'async';
+        image.src = candidateSrc;
+        image.onload = () => {
+          console.log(`✓ [Renderer] Successfully loaded player sprite from ${candidateSrc} (attempt ${i + 1}/${candidates.length})`);
+          resolve(image);
+          srcResolve(true);
+        };
+        image.onerror = (err) => {
+          console.warn(`✗ [Renderer] Failed to load player sprite from ${candidateSrc} (attempt ${i + 1}/${candidates.length})`);
+          lastError = err;
+          srcResolve(false);
+        };
+      });
+      
+      if (success) return; // Successfully loaded
+    }
+    
+    // Try fallback to heroa.png if we weren't already trying it
+    if (src !== FALLBACK_PLAYER_SPRITE && !candidates.some(c => c.includes('heroa.png'))) {
+      console.log(`[Renderer] Attempting fallback to heroa.png for player sprite`);
+      const fallbackCandidates = await tryMultipleAssetSources(FALLBACK_PLAYER_SPRITE);
+      
+      for (const fallbackSrc of fallbackCandidates) {
+        const success = await new Promise((fallbackResolve) => {
+          const fallbackImg = new Image();
+          fallbackImg.decoding = 'async';
+          fallbackImg.src = fallbackSrc;
+          fallbackImg.onload = () => {
+            console.log(`✓ [Renderer] Using fallback sprite heroa.png from ${fallbackSrc} for player sprite`);
+            resolve(fallbackImg);
+            fallbackResolve(true);
+          };
+          fallbackImg.onerror = () => {
+            console.warn(`✗ [Renderer] Fallback sprite heroa.png failed to load from ${fallbackSrc}`);
+            fallbackResolve(false);
+          };
+        });
+        
+        if (success) return; // Successfully loaded fallback
+      }
+      
+      console.error(`[Renderer] Fallback sprite heroa.png failed to load from all ${fallbackCandidates.length} possible locations.`);
+    }
+    
+    // All candidates and fallback failed, use placeholder
+    console.error(`[Renderer] All ${candidates.length} paths failed for player sprite. Using placeholder.`);
+    if (lastError) {
+      console.error(`[Renderer] Last error:`, lastError);
+    }
+    resolve(createPlayerPlaceholder(tileSize));
   });
+}
+
+// Enhanced asset source resolution with multiple path attempts
+async function tryMultipleAssetSources(src) {
+  const candidates = [];
+  
+  // Always try the original source first
+  candidates.push(src);
+  
+  // If source starts with /assets/, also try variations
+  if (src.startsWith('/assets/')) {
+    const filename = src.split('/').pop();
+    const pathWithoutFilename = src.substring(0, src.lastIndexOf('/') + 1);
+    
+    // Try sprites subdirectory if not already there
+    if (!pathWithoutFilename.includes('/sprites/')) {
+      candidates.push(`/assets/sprites/${filename}`);
+    }
+    
+    // Try without sprites subdirectory if it's there
+    if (pathWithoutFilename.includes('/sprites/')) {
+      candidates.push(`/assets/${filename}`);
+    }
+    
+    // Try public/assets variations
+    candidates.push(`/public${src}`);
+    if (!pathWithoutFilename.includes('/sprites/')) {
+      candidates.push(`/public/assets/sprites/${filename}`);
+    }
+  }
+  
+  // Remove duplicates while preserving order
+  return [...new Set(candidates)];
 }
 
 function computeSignature(items) {

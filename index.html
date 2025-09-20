@@ -243,7 +243,7 @@
     if (isRealSprite) {
       spriteStatusEl.style.display = 'none';
     } else {
-      spriteStatusEl.textContent = `⚠️ No sprite loaded - using placeholder. Try uploading a sprite or check /assets/sprites/`;
+      spriteStatusEl.textContent = `⚠️ No sprite loaded - using placeholder. Try uploading a sprite or check /assets/ and /assets/sprites/ directories`;
       spriteStatusEl.style.display = 'block';
     }
   }
@@ -427,7 +427,10 @@
     }
 
     const preferPublicFirst=(typeof location!=='undefined' && location.protocol==='file:');
-    const defaults=preferPublicFirst?['public/assets/','assets/']:['assets/','public/assets/'];
+    // Enhanced path detection: try both base directories and sprites subdirectories
+    const defaults=preferPublicFirst?
+      ['public/assets/sprites/','public/assets/','assets/sprites/','assets/']:
+      ['assets/sprites/','assets/','public/assets/sprites/','public/assets/'];
     for(const def of defaults){
       addCandidate(def);
     }
@@ -639,6 +642,32 @@
     return joinSpritePath(base, name);
   }
 
+  // Enhanced sprite source resolution with multiple path attempts
+  async function tryMultipleSpriteSources(name) {
+    const candidates = [];
+    
+    // Try the detected base path first
+    const basePath = await detectSpriteBasePath(name);
+    candidates.push(joinSpritePath(basePath, name));
+    
+    // If base path doesn't end with 'sprites/', also try with sprites subdirectory
+    if (!basePath.endsWith('sprites/')) {
+      candidates.push(joinSpritePath(basePath + 'sprites/', name));
+    }
+    
+    // Also try alternative base paths from our candidates list
+    for (const altBase of SPRITE_PATH_STATE.candidates) {
+      if (altBase !== basePath) {
+        candidates.push(joinSpritePath(altBase, name));
+        if (!altBase.endsWith('sprites/')) {
+          candidates.push(joinSpritePath(altBase + 'sprites/', name));
+        }
+      }
+    }
+    
+    return candidates;
+  }
+
   function finalizeSpriteLoad(name,image,options={}){
     const width=image.naturalWidth || image.width || (SHEET_COLS*32);
     const height=image.naturalHeight || image.height || (SHEET_ROWS*32);
@@ -678,52 +707,114 @@
   }
 
   async function loadSprite(name,url){
-    const source=await getSpriteSource(name,url);
+    // For explicit URLs, use the original logic
+    if (url) {
+      const source=await getSpriteSource(name,url);
+      return new Promise(async resolve=>{
+        const img=new Image();
+        img.decoding='async';
+        img.crossOrigin='anonymous';
+        img.onload=()=>{
+          console.log(`✓ Successfully loaded sprite "${name}" from ${source}`);
+          const entry=finalizeSpriteLoad(name,img,{ placeholder:false });
+          resolve(entry);
+        };
+        img.onerror=async (err)=>{
+          console.error(`✗ Sprite "${name}" failed to load from ${source}. Attempting fallback strategies.`, err);
+          // Continue with fallback logic below
+          await attemptSpriteFallbacks(name, resolve);
+        };
+        img.src=source;
+      });
+    }
+    
+    // For name-only requests, try multiple sources
     return new Promise(async resolve=>{
-      const img=new Image();
-      img.decoding='async';
-      img.crossOrigin='anonymous';
-      img.onload=()=>{
-        const entry=finalizeSpriteLoad(name,img,{ placeholder:false });
-        resolve(entry);
-      };
-      img.onerror=async (err)=>{
-        console.error(`Sprite "${name}" failed to load from ${source}. Attempting fallback to default sprite.`, err);
+      const candidates = await tryMultipleSpriteSources(name);
+      console.log(`Attempting to load sprite "${name}" from ${candidates.length} possible locations:`, candidates);
+      
+      let lastError = null;
+      
+      // Try each candidate source
+      for (let i = 0; i < candidates.length; i++) {
+        const source = candidates[i];
+        try {
+          const success = await new Promise((srcResolve) => {
+            const img = new Image();
+            img.decoding = 'async';
+            img.crossOrigin = 'anonymous';
+            img.onload = () => {
+              console.log(`✓ Successfully loaded sprite "${name}" from ${source} (attempt ${i + 1}/${candidates.length})`);
+              const entry = finalizeSpriteLoad(name, img, { placeholder: false });
+              resolve(entry);
+              srcResolve(true);
+            };
+            img.onerror = (err) => {
+              console.warn(`✗ Failed to load sprite "${name}" from ${source} (attempt ${i + 1}/${candidates.length})`);
+              lastError = err;
+              srcResolve(false);
+            };
+            img.src = source;
+          });
+          
+          if (success) return; // Successfully loaded
+        } catch (err) {
+          lastError = err;
+          console.warn(`Error trying to load "${name}" from ${source}:`, err);
+        }
+      }
+      
+      // All candidates failed, try fallback strategies
+      console.error(`All ${candidates.length} paths failed for sprite "${name}". Attempting fallback strategies.`);
+      await attemptSpriteFallbacks(name, resolve, lastError);
+    });
+  }
+  
+  async function attemptSpriteFallbacks(name, resolve, originalError = null) {
+    // Try fallback to default sprite if we're not already loading it
+    if (name !== 'heroa.png' && name !== PLACEHOLDER_PRESET.canonicalName) {
+      console.log(`Attempting fallback to default sprite 'heroa.png' for "${name}"`);
+      try {
+        const defaultCandidates = await tryMultipleSpriteSources('heroa.png');
         
-        // Try fallback to default sprite if we're not already loading it
-        if(name !== 'heroa.png' && name !== PLACEHOLDER_PRESET.canonicalName) {
-          try {
-            const defaultSource = await getSpriteSource('heroa.png', null);
+        for (const defaultSource of defaultCandidates) {
+          const success = await new Promise((fallbackResolve) => {
             const fallbackImg = new Image();
             fallbackImg.decoding = 'async';
             fallbackImg.crossOrigin = 'anonymous';
             fallbackImg.onload = () => {
-              console.log(`Using default sprite 'heroa.png' as fallback for "${name}"`);
-              const entry = finalizeSpriteLoad(name, fallbackImg, { placeholder: false, displayName: `${name} (using heroa.png)` });
+              console.log(`✓ Using default sprite 'heroa.png' from ${defaultSource} as fallback for "${name}"`);
+              const entry = finalizeSpriteLoad(name, fallbackImg, { 
+                placeholder: false, 
+                displayName: `${name} (using heroa.png)` 
+              });
               resolve(entry);
+              fallbackResolve(true);
             };
-            fallbackImg.onerror = () => {
-              // If even default sprite fails, use placeholder
-              console.error(`Default sprite 'heroa.png' also failed to load. Using placeholder for "${name}".`);
-              const placeholder=createPlaceholderSheet(name);
-              const entry=finalizeSpriteLoad(name,placeholder.image,{ placeholder:true, color:placeholder.color });
-              resolve(entry);
+            fallbackImg.onerror = (err) => {
+              console.warn(`✗ Default sprite 'heroa.png' failed to load from ${defaultSource}`);
+              fallbackResolve(false);
             };
             fallbackImg.src = defaultSource;
-            return;
-          } catch (fallbackErr) {
-            console.error(`Error attempting fallback sprite:`, fallbackErr);
-          }
+          });
+          
+          if (success) return; // Successfully loaded default
         }
         
-        // Fallback to placeholder
-        console.error(`Using placeholder rectangle instead for "${name}".`);
-        const placeholder=createPlaceholderSheet(name);
-        const entry=finalizeSpriteLoad(name,placeholder.image,{ placeholder:true, color:placeholder.color });
-        resolve(entry);
-      };
-      img.src=source;
-    });
+        console.error(`Default sprite 'heroa.png' failed to load from all ${defaultCandidates.length} possible locations.`);
+      } catch (fallbackErr) {
+        console.error(`Error attempting fallback sprite:`, fallbackErr);
+      }
+    }
+    
+    // Final fallback to placeholder
+    console.error(`Using placeholder sprite for "${name}". All loading strategies failed.`);
+    if (originalError) {
+      console.error(`Original error:`, originalError);
+    }
+    const placeholder=createPlaceholderSheet(name);
+    const entry=finalizeSpriteLoad(name,placeholder.image,{ placeholder:true, color:placeholder.color });
+    resolve(entry);
   }
   window.loadSprite=loadSprite;
 

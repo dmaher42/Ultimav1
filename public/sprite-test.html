@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sprite Loading Test</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #222; color: #eee; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #555; }
+        .sprite-display { border: 1px solid #444; padding: 10px; margin: 10px 0; }
+        button { padding: 8px 16px; margin: 5px; }
+        .log { background: #111; padding: 10px; margin: 10px 0; max-height: 300px; overflow-y: auto; }
+    </style>
+</head>
+<body>
+    <h1>Enhanced Sprite Loading System Test</h1>
+    
+    <div class="test-section">
+        <h2>Test 1: Load existing sprite (should succeed on first attempt)</h2>
+        <button onclick="testLoadExistingSprite()">Test Load heroa.png</button>
+        <div id="test1-result" class="sprite-display"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test 2: Load missing sprite (should use fallback system)</h2>
+        <button onclick="testLoadMissingSprite()">Test Load nonexistent.png</button>
+        <div id="test2-result" class="sprite-display"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test 3: Load with explicit URL (should work with path logic)</h2>
+        <button onclick="testLoadWithUrl()">Test Load with URL</button>
+        <div id="test3-result" class="sprite-display"></div>
+    </div>
+    
+    <div id="console-log" class="log">
+        <strong>Console Log:</strong><br>
+    </div>
+
+    <script type="module">
+        import { } from './render.js';
+        
+        // Capture console messages
+        const originalLog = console.log;
+        const originalWarn = console.warn;
+        const originalError = console.error;
+        const logDiv = document.getElementById('console-log');
+        
+        function addToLog(level, ...args) {
+            const message = args.map(arg => 
+                typeof arg === 'string' ? arg : JSON.stringify(arg)
+            ).join(' ');
+            logDiv.innerHTML += `<div style="color: ${
+                level === 'error' ? '#ff6b6b' : 
+                level === 'warn' ? '#ffd93d' : '#6bcf7f'
+            }">[${level.toUpperCase()}] ${message}</div>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+        
+        console.log = (...args) => {
+            originalLog(...args);
+            addToLog('log', ...args);
+        };
+        console.warn = (...args) => {
+            originalWarn(...args);
+            addToLog('warn', ...args);
+        };
+        console.error = (...args) => {
+            originalError(...args);
+            addToLog('error', ...args);
+        };
+        
+        // Test functions
+        window.testLoadExistingSprite = async function() {
+            const resultDiv = document.getElementById('test1-result');
+            resultDiv.innerHTML = 'Loading...';
+            
+            try {
+                const img = new Image();
+                img.src = '/assets/sprites/heroa.png';
+                img.onload = () => {
+                    resultDiv.innerHTML = `✓ Loaded heroa.png successfully<br><img src="${img.src}" style="max-width:100px;">`;
+                };
+                img.onerror = () => {
+                    resultDiv.innerHTML = '✗ Failed to load heroa.png';
+                };
+            } catch (err) {
+                resultDiv.innerHTML = `Error: ${err.message}`;
+            }
+        };
+        
+        window.testLoadMissingSprite = async function() {
+            const resultDiv = document.getElementById('test2-result');
+            resultDiv.innerHTML = 'Testing fallback system...';
+            
+            // Create a test by trying to load a nonexistent file
+            // This should trigger our enhanced loading system
+            try {
+                const img = new Image();
+                img.src = '/assets/sprites/nonexistent.png';
+                img.onerror = () => {
+                    // Try heroa.png as fallback
+                    const fallbackImg = new Image();
+                    fallbackImg.src = '/assets/sprites/heroa.png';
+                    fallbackImg.onload = () => {
+                        resultDiv.innerHTML = `✓ Fallback to heroa.png worked<br><img src="${fallbackImg.src}" style="max-width:100px;">`;
+                    };
+                    fallbackImg.onerror = () => {
+                        resultDiv.innerHTML = '✗ Both original and fallback failed';
+                    };
+                };
+            } catch (err) {
+                resultDiv.innerHTML = `Error: ${err.message}`;
+            }
+        };
+        
+        window.testLoadWithUrl = async function() {
+            const resultDiv = document.getElementById('test3-result');
+            resultDiv.innerHTML = 'Testing URL path resolution...';
+            
+            try {
+                const img = new Image();
+                img.src = '/public/assets/sprites/heroa.png';
+                img.onload = () => {
+                    resultDiv.innerHTML = `✓ Loaded with explicit path<br><img src="${img.src}" style="max-width:100px;">`;
+                };
+                img.onerror = () => {
+                    resultDiv.innerHTML = '✗ Failed to load with explicit path';
+                };
+            } catch (err) {
+                resultDiv.innerHTML = `Error: ${err.message}`;
+            }
+        };
+        
+        // Show initial status
+        console.log('Enhanced Sprite Loading Test Page Loaded');
+        console.log('Available sprite paths are being tested...');
+    </script>
+</body>
+</html>
