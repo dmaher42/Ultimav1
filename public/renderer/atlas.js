@@ -13,17 +13,50 @@ async function loadMeta(url) {
   if (!response.ok) {
     throw new Error(`Failed to load atlas metadata: ${url}`);
   }
-  return response.json();
+  const data = await response.json();
+  return { data, url: response.url || url };
 }
 
-export async function loadAtlas(imageUrl, jsonUrl) {
-  const metaData = await loadMeta(jsonUrl);
-  const frames = metaData.frames || metaData;
-  let source = metaData.image;
+function resolveSource(imageField, fallback, baseUrl) {
+  let source = imageField;
   if (Array.isArray(source)) {
     source = source.join('');
   }
-  source = source || imageUrl;
+  source = source || fallback;
+  if (!source) {
+    return null;
+  }
+
+  if (typeof source !== 'string') {
+    return source;
+  }
+
+  const trimmed = source.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const hasScheme = /^[a-z][a-z0-9+.-]*:/i.test(trimmed);
+  if (hasScheme || trimmed.startsWith('//') || trimmed.startsWith('/')) {
+    return trimmed;
+  }
+
+  if (baseUrl) {
+    try {
+      return new URL(trimmed, baseUrl).href;
+    } catch (error) {
+      // Ignore resolution errors and fall back to the trimmed string.
+    }
+  }
+
+  return trimmed;
+}
+
+export async function loadAtlas(imageUrl, jsonUrl) {
+  const { data: metaData, url: metaUrl } = await loadMeta(jsonUrl);
+  const frames = metaData.frames || metaData;
+  const baseForRelative = metaUrl || (typeof window !== 'undefined' ? window.location.href : undefined);
+  const source = resolveSource(metaData.image, imageUrl, baseForRelative);
   if (!source) {
     throw new Error('Atlas image source missing.');
   }
