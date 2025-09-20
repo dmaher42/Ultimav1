@@ -1,9 +1,24 @@
 import { TileInfo } from './GameMap.js';
 
+const MODULE_ROOT = new URL('.', import.meta.url);
+const ASSET_SEARCH_BASES = (() => {
+  const bases = [new URL('./assets/', MODULE_ROOT), new URL('../assets/', MODULE_ROOT)];
+  const modulePath = MODULE_ROOT.pathname || '';
+  if (!modulePath.includes('/public/')) {
+    bases.push(new URL('public/assets/', MODULE_ROOT));
+  }
+  const unique = new Map();
+  for (const base of bases) {
+    unique.set(base.toString(), base);
+  }
+  return [...unique.values()];
+})();
+
 const TILE_SIZE = 48;
-const TILE_BASE_PATH = '/assets/tiles';
-const DEFAULT_PLAYER_SPRITE = '/assets/sprites/player.png';
-const FALLBACK_PLAYER_SPRITE = '/assets/sprites/heroa.png'; // Fallback to heroa.png as mentioned in requirements
+const TILE_BASE_PATH = './assets/tiles/';
+const DEFAULT_PLAYER_BASE_PATH = './assets/';
+const DEFAULT_PLAYER_SPRITE = './assets/sprites/player.png';
+const FALLBACK_PLAYER_SPRITE = './assets/sprites/heroa.png'; // Fallback to heroa.png as mentioned in requirements
 const BACKGROUND_COLOR = '#05070d';
 const DIRECTION_TO_ROW = {
   south: 0,
@@ -22,11 +37,58 @@ const DEFAULT_TILE_MANIFEST = (() => {
 
 function resolveAssetPath(file, basePath = TILE_BASE_PATH) {
   if (!file) return '';
-  if (/^([a-z]+:)?\/\//i.test(file) || file.startsWith('data:') || file.startsWith('/')) {
+
+  if (file instanceof URL) {
+    return file.toString();
+  }
+
+  if (typeof file === 'string' && file.startsWith('data:')) {
     return file;
   }
-  const base = basePath.endsWith('/') ? basePath.slice(0, -1) : basePath;
-  return `${base}/${file}`;
+
+  try {
+    if (typeof file === 'string' && /^([a-z]+:)?\/\//i.test(file)) {
+      return file;
+    }
+
+    const sanitizedFile = typeof file === 'string' && file.startsWith('/') ? file.slice(1) : file;
+
+    let baseUrl;
+    if (basePath instanceof URL) {
+      baseUrl = basePath;
+    } else if (typeof basePath === 'string') {
+      if (/^([a-z]+:)?\/\//i.test(basePath)) {
+        baseUrl = new URL(basePath);
+      } else if (basePath.startsWith('./') || basePath.startsWith('../')) {
+        baseUrl = new URL(basePath, MODULE_ROOT);
+      } else if (basePath.startsWith('/')) {
+        baseUrl = new URL(basePath.slice(1), MODULE_ROOT);
+      } else if (basePath.startsWith('public/')) {
+        baseUrl = new URL(basePath.replace(/^public\//, ''), MODULE_ROOT);
+      } else {
+        baseUrl = new URL(basePath, MODULE_ROOT);
+      }
+    } else {
+      baseUrl = MODULE_ROOT;
+    }
+
+    return new URL(sanitizedFile, baseUrl).toString();
+  } catch (error) {
+    console.warn('[Renderer] Falling back to string-based asset resolution.', {
+      file,
+      basePath,
+      error
+    });
+    const baseString =
+      basePath instanceof URL
+        ? basePath.toString()
+        : typeof basePath === 'string'
+        ? basePath
+        : MODULE_ROOT.toString();
+    const normalizedBase = baseString.endsWith('/') ? baseString : `${baseString}/`;
+    const sanitizedFile = typeof file === 'string' && file.startsWith('/') ? file.slice(1) : file;
+    return `${normalizedBase}${sanitizedFile}`;
+  }
 }
 
 function createColorTile(color = '#555', size = TILE_SIZE) {
@@ -107,64 +169,77 @@ function loadImageWithFallback(src, fallbackColor) {
   });
 }
 
-function loadPlayerSprite(src, tileSize) {
+function loadPlayerSprite(
+  src,
+  tileSize,
+  fallbackSrc = resolveAssetPath(FALLBACK_PLAYER_SPRITE, DEFAULT_PLAYER_BASE_PATH)
+) {
   return new Promise(async (resolve) => {
-    // Try multiple sprite source paths for better asset loading reliability
     const candidates = await tryMultipleAssetSources(src);
     console.log(`[Renderer] Attempting to load player sprite from ${candidates.length} locations:`, candidates);
-    
+
     let lastError = null;
-    
-    // Try each candidate source
-    for (let i = 0; i < candidates.length; i++) {
+
+    for (let i = 0; i < candidates.length; i += 1) {
       const candidateSrc = candidates[i];
       const success = await new Promise((srcResolve) => {
         const image = new Image();
         image.decoding = 'async';
         image.src = candidateSrc;
         image.onload = () => {
-          console.log(`✓ [Renderer] Successfully loaded player sprite from ${candidateSrc} (attempt ${i + 1}/${candidates.length})`);
+          console.log(
+            `✓ [Renderer] Successfully loaded player sprite from ${candidateSrc} (attempt ${i + 1}/${candidates.length})`
+          );
           resolve(image);
           srcResolve(true);
         };
         image.onerror = (err) => {
-          console.warn(`✗ [Renderer] Failed to load player sprite from ${candidateSrc} (attempt ${i + 1}/${candidates.length})`);
+          console.warn(
+            `✗ [Renderer] Failed to load player sprite from ${candidateSrc} (attempt ${i + 1}/${candidates.length})`
+          );
           lastError = err;
           srcResolve(false);
         };
       });
-      
-      if (success) return; // Successfully loaded
+
+      if (success) return;
     }
-    
-    // Try fallback to heroa.png if we weren't already trying it
-    if (src !== FALLBACK_PLAYER_SPRITE && !candidates.some(c => c.includes('heroa.png'))) {
+
+    const fallbackTarget = fallbackSrc
+      ? await tryMultipleAssetSources(fallbackSrc)
+      : await tryMultipleAssetSources(FALLBACK_PLAYER_SPRITE);
+    const fallbackCandidates = fallbackTarget.filter((candidate) => !candidates.includes(candidate));
+
+    if (fallbackCandidates.length) {
       console.log(`[Renderer] Attempting fallback to heroa.png for player sprite`);
-      const fallbackCandidates = await tryMultipleAssetSources(FALLBACK_PLAYER_SPRITE);
-      
-      for (const fallbackSrc of fallbackCandidates) {
+      for (let i = 0; i < fallbackCandidates.length; i += 1) {
+        const fallbackCandidate = fallbackCandidates[i];
         const success = await new Promise((fallbackResolve) => {
           const fallbackImg = new Image();
           fallbackImg.decoding = 'async';
-          fallbackImg.src = fallbackSrc;
+          fallbackImg.src = fallbackCandidate;
           fallbackImg.onload = () => {
-            console.log(`✓ [Renderer] Using fallback sprite heroa.png from ${fallbackSrc} for player sprite`);
+            console.log(
+              `✓ [Renderer] Using fallback sprite heroa.png from ${fallbackCandidate} (attempt ${i + 1}/${fallbackCandidates.length})`
+            );
             resolve(fallbackImg);
             fallbackResolve(true);
           };
           fallbackImg.onerror = () => {
-            console.warn(`✗ [Renderer] Fallback sprite heroa.png failed to load from ${fallbackSrc}`);
+            console.warn(
+              `✗ [Renderer] Fallback sprite heroa.png failed to load from ${fallbackCandidate} (attempt ${i + 1}/${fallbackCandidates.length})`
+            );
             fallbackResolve(false);
           };
         });
-        
-        if (success) return; // Successfully loaded fallback
+
+        if (success) return;
       }
-      
-      console.error(`[Renderer] Fallback sprite heroa.png failed to load from all ${fallbackCandidates.length} possible locations.`);
+      console.error(
+        `[Renderer] Fallback sprite heroa.png failed to load from all ${fallbackCandidates.length} possible locations.`
+      );
     }
-    
-    // All candidates and fallback failed, use placeholder
+
     console.error(`[Renderer] All ${candidates.length} paths failed for player sprite. Using placeholder.`);
     if (lastError) {
       console.error(`[Renderer] Last error:`, lastError);
@@ -175,35 +250,50 @@ function loadPlayerSprite(src, tileSize) {
 
 // Enhanced asset source resolution with multiple path attempts
 async function tryMultipleAssetSources(src) {
-  const candidates = [];
-  
-  // Always try the original source first
-  candidates.push(src);
-  
-  // If source starts with /assets/, also try variations
-  if (src.startsWith('/assets/')) {
-    const filename = src.split('/').pop();
-    const pathWithoutFilename = src.substring(0, src.lastIndexOf('/') + 1);
-    
-    // Try sprites subdirectory if not already there
-    if (!pathWithoutFilename.includes('/sprites/')) {
-      candidates.push(`/assets/sprites/${filename}`);
-    }
-    
-    // Try without sprites subdirectory if it's there
-    if (pathWithoutFilename.includes('/sprites/')) {
-      candidates.push(`/assets/${filename}`);
-    }
-    
-    // Try public/assets variations
-    candidates.push(`/public${src}`);
-    if (!pathWithoutFilename.includes('/sprites/')) {
-      candidates.push(`/public/assets/sprites/${filename}`);
+  if (!src) return [];
+
+  const candidates = new Map();
+  let normalizedSrc = src;
+
+  try {
+    normalizedSrc = new URL(src, MODULE_ROOT).toString();
+  } catch (error) {
+    console.warn('[Renderer] Could not normalise asset URL, using raw value.', { src, error });
+  }
+
+  candidates.set(normalizedSrc, normalizedSrc);
+
+  const primary = candidates.keys().next().value;
+  const assetsIndex = typeof primary === 'string' ? primary.indexOf('/assets/') : -1;
+  if (assetsIndex === -1) {
+    return [...candidates.values()];
+  }
+
+  const relativeFromAssets = primary.slice(assetsIndex + '/assets/'.length);
+  const filename = relativeFromAssets.split('/').pop() || '';
+  const directory = relativeFromAssets.slice(0, relativeFromAssets.lastIndexOf('/') + 1);
+
+  ASSET_SEARCH_BASES.forEach((base) => {
+    const url = new URL(relativeFromAssets, base).toString();
+    candidates.set(url, url);
+  });
+
+  if (filename) {
+    if (!directory.includes('sprites/')) {
+      ASSET_SEARCH_BASES.forEach((base) => {
+        const spriteUrl = new URL(`sprites/${filename}`, base).toString();
+        candidates.set(spriteUrl, spriteUrl);
+      });
+    } else {
+      const withoutSprites = directory.replace('sprites/', '');
+      ASSET_SEARCH_BASES.forEach((base) => {
+        const altUrl = new URL(`${withoutSprites}${filename}`, base).toString();
+        candidates.set(altUrl, altUrl);
+      });
     }
   }
-  
-  // Remove duplicates while preserving order
-  return [...new Set(candidates)];
+
+  return [...candidates.values()];
 }
 
 function computeSignature(items) {
@@ -298,9 +388,10 @@ export default class RenderEngine {
     });
 
     const playerPath = customManifest.player || this.manifest.player || DEFAULT_PLAYER_SPRITE;
-    const playerBase = customManifest.playerBasePath || this.manifest.playerBasePath || '/assets';
+    const playerBase = customManifest.playerBasePath || this.manifest.playerBasePath || DEFAULT_PLAYER_BASE_PATH;
     const resolvedPlayer = resolveAssetPath(playerPath, playerBase);
-    const playerPromise = loadPlayerSprite(resolvedPlayer, this.tileSize).then((sprite) => {
+    const resolvedFallback = resolveAssetPath(FALLBACK_PLAYER_SPRITE, playerBase);
+    const playerPromise = loadPlayerSprite(resolvedPlayer, this.tileSize, resolvedFallback).then((sprite) => {
       this.playerSprite = sprite;
     });
 

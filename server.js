@@ -11,6 +11,7 @@ dotenv.config();
 
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
+const PUBLIC_DIR = path.join(__dirname, 'public');
 
 const ITEM_CATALOG = [
   { id: 'flour', name: 'Bag of Flour' },
@@ -37,8 +38,14 @@ const ALLOWED_ACTIONS = ['set_flag', 'give_item', 'start_quest', 'advance_quest'
 
 app.use(cors());
 app.use(express.json({ limit: '1mb' }));
-app.use(express.static(path.join(__dirname, 'public')));
+
+app.get(['/', '/index.html'], (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+app.use('/public', express.static(PUBLIC_DIR));
 app.use('/assets', express.static(path.join(__dirname, 'assets')));
+app.use(express.static(PUBLIC_DIR));
 
 app.post('/npc', async (req, res) => {
   const snapshot = req.body;
