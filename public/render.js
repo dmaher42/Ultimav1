@@ -1,6 +1,7 @@
 import { TileInfo } from './GameMap.js';
 import { DPR } from './renderer/canvas.js';
 import { drawSprite } from './renderer/atlas.js';
+import { drawTile, tileLoader } from './renderer/tileloader.js';
 import { vignette, colorGrade } from './renderer/postfx.js';
 import { createCamera } from './renderer/camera.js';
 import { createFlashLayer } from './renderer/flash.js';
@@ -132,6 +133,19 @@ export default class RenderEngine {
   setAtlas(atlas) {
     this.atlas = atlas || null;
     this.assetsLoaded = Boolean(atlas?.img && atlas?.meta);
+    
+    // Preload individual castle tiles for better graphics
+    if (this.assetsLoaded) {
+      const castleTiles = [
+        'castle_wall', 'castle_floor', 'red_carpet', 'throne', 
+        'banner', 'torch_wall', 'castle_door', 'castle_window',
+        'fountain', 'garden', 'courtyard'
+      ];
+      
+      tileLoader.preloadTiles(castleTiles).catch(err => {
+        console.warn('Failed to preload individual tiles:', err);
+      });
+    }
   }
 
   setParticles(emitter) {
@@ -325,11 +339,10 @@ export default class RenderEngine {
   drawAtlasTile(ctx, sprite, tileX, tileY, fallbackColor) {
     const px = this.offsetX + tileX * this.tileSize;
     const py = this.offsetY + tileY * this.tileSize;
-    const drawn = drawSprite(ctx, this.atlas, sprite, px, py, this.tileSize, this.tileSize);
-    if (!drawn && fallbackColor) {
-      ctx.fillStyle = fallbackColor;
-      ctx.fillRect(px, py, this.tileSize, this.tileSize);
-    }
+    
+    // Try individual tile first, then atlas, then fallback color
+    const drawn = drawTile(ctx, this.atlas, sprite, px, py, this.tileSize, this.tileSize, fallbackColor);
+    
     return drawn;
   }
 
