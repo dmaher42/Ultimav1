@@ -151,6 +151,9 @@ export default class RenderEngine {
     this.offsetX = 0;
     this.offsetY = 0;
 
+    this.gridWidth = 0;
+    this.gridHeight = 0;
+
     this.playerSprite = null;
     this.playerFrame = 1;
     this.animationTimer = 0;
@@ -247,12 +250,13 @@ export default class RenderEngine {
     ctx.fillStyle = BACKGROUND_COLOR;
     ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
-    if (!this.map) {
+    const grid = this.getMapGrid();
+    if (!grid) {
       ctx.restore();
       return;
     }
 
-    this.drawMap(ctx);
+    this.drawMap(ctx, grid);
     this.drawObjects(ctx);
     this.drawNPCs(ctx);
 
@@ -275,26 +279,54 @@ export default class RenderEngine {
       this.ctx.imageSmoothingEnabled = false;
     }
 
-    if (!this.map) return;
+    const grid = this.getMapGrid();
+    if (!grid) return;
 
-    this.mapPixelWidth = this.map.width * this.tileSize;
-    this.mapPixelHeight = this.map.height * this.tileSize;
+    this.mapPixelWidth = grid.width * this.tileSize;
+    this.mapPixelHeight = grid.height * this.tileSize;
     this.offsetX = Math.floor((this.canvas.width - this.mapPixelWidth) / 2);
     this.offsetY = Math.floor((this.canvas.height - this.mapPixelHeight) / 2);
   }
 
-  drawMap(ctx) {
-    if (!this.map) return;
-    for (let y = 0; y < this.map.height; y += 1) {
-      const row = this.map.tiles[y];
-      for (let x = 0; x < this.map.width; x += 1) {
+  getMapGrid(map = this.map) {
+    if (!map) return null;
+
+    let tiles = null;
+    if (Array.isArray(map.tiles)) {
+      tiles = map.tiles;
+    } else if (Array.isArray(map)) {
+      tiles = map;
+    }
+
+    if (!Array.isArray(tiles) || tiles.length === 0 || !Array.isArray(tiles[0])) {
+      return null;
+    }
+
+    const height = typeof map.height === 'number' ? map.height : tiles.length;
+    const width = typeof map.width === 'number' ? map.width : tiles[0]?.length || 0;
+    if (!width || !height) return null;
+
+    return {
+      tiles,
+      width,
+      height,
+      safe: Boolean(map.safe)
+    };
+  }
+
+  drawMap(ctx, grid = this.getMapGrid()) {
+    if (!grid) return;
+    for (let y = 0; y < grid.height; y += 1) {
+      const row = grid.tiles[y];
+      if (!Array.isArray(row)) continue;
+      for (let x = 0; x < grid.width; x += 1) {
         const tileType = row[x];
         const fallback = TileInfo[tileType]?.color;
         drawTile(ctx, this.assets, x, y, tileType, this.tileSize, fallback, this.offsetX, this.offsetY);
       }
     }
 
-    if (this.map.safe) {
+    if (grid.safe) {
       ctx.fillStyle = 'rgba(255, 255, 255, 0.06)';
       ctx.fillRect(this.offsetX, this.offsetY, this.mapPixelWidth, this.mapPixelHeight);
     }
@@ -381,10 +413,10 @@ export default class RenderEngine {
   }
 
   tileAtScreen(x, y) {
-    if (!this.map) return null;
+    if (!this.map || !this.gridWidth || !this.gridHeight) return null;
     const tileX = Math.floor((x - this.offsetX) / this.tileSize);
     const tileY = Math.floor((y - this.offsetY) / this.tileSize);
-    if (tileX < 0 || tileY < 0 || tileX >= this.map.width || tileY >= this.map.height) {
+    if (tileX < 0 || tileY < 0 || tileX >= this.gridWidth || tileY >= this.gridHeight) {
       return null;
     }
     return { x: tileX, y: tileY };
@@ -397,12 +429,22 @@ export default class RenderEngine {
       this.map = map || null;
       if (!map) {
         this.stopAllMovement();
+        this.gridWidth = 0;
+        this.gridHeight = 0;
       }
     }
 
-    if (map) {
-      this.mapPixelWidth = map.width * this.tileSize;
-      this.mapPixelHeight = map.height * this.tileSize;
+    const grid = this.getMapGrid();
+    if (grid) {
+      this.gridWidth = grid.width;
+      this.gridHeight = grid.height;
+      this.mapPixelWidth = grid.width * this.tileSize;
+      this.mapPixelHeight = grid.height * this.tileSize;
+    } else {
+      this.gridWidth = 0;
+      this.gridHeight = 0;
+      this.mapPixelWidth = 0;
+      this.mapPixelHeight = 0;
     }
 
     if (player) {
