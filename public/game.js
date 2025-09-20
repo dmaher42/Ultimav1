@@ -721,7 +721,28 @@ function giveStarterGear(character) {
 
 async function bootstrap() {
   try {
-    const atlas = await loadAtlas(null, './assets/atlas.json');
+    const atlasCandidates = [];
+    try {
+      atlasCandidates.push(new URL('./assets/atlas.json', import.meta.url).href);
+    } catch (error) {
+      console.warn('Failed to resolve atlas relative to module.', error);
+    }
+    atlasCandidates.push('./assets/atlas.json');
+    let atlas = null;
+    let lastError = null;
+    for (const candidate of atlasCandidates) {
+      if (!candidate || lastError?.metadataUrl === candidate) continue;
+      try {
+        atlas = await loadAtlas(null, candidate);
+        break;
+      } catch (error) {
+        lastError = Object.assign(error, { metadataUrl: candidate });
+        console.warn(`Atlas load failed from ${candidate}`, error);
+      }
+    }
+    if (!atlas) {
+      throw lastError || new Error('Failed to load atlas metadata.');
+    }
     renderer.setAtlas(atlas);
   } catch (error) {
     console.error('Failed to load texture atlas.', error);
