@@ -2,293 +2,31 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <meta http-equiv="refresh" content="0; url=../index.html" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Britannia Reborn</title>
-    <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap"
-    />
+    <link rel="canonical" href="../index.html" />
     <style>
-      :root {
-        color-scheme: dark;
-        font-family: 'Trebuchet MS', 'Lucida Sans Unicode', sans-serif;
-      }
-      * {
-        box-sizing: border-box;
-      }
       body {
         margin: 0;
+        height: 100vh;
+        display: grid;
+        place-items: center;
+        font-family: 'Trebuchet MS', 'Lucida Sans Unicode', sans-serif;
         background: radial-gradient(circle at 30% 20%, #101628, #04070f 70%);
         color: #f3efe3;
-        overflow: hidden;
       }
-      canvas {
-        display: block;
-        width: 100vw;
-        height: 100vh;
-        image-rendering: pixelated;
-        image-rendering: crisp-edges;
-        background: #050607;
-      }
-      #hud {
-        position: fixed;
-        top: 12px;
-        left: 12px;
-        padding: 10px 14px;
-        background: rgba(14, 18, 34, 0.82);
-        border: 1px solid rgba(120, 160, 255, 0.3);
-        border-radius: 8px;
-        min-width: 220px;
-        font-size: 13px;
-        line-height: 1.6;
-        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.35);
-        backdrop-filter: blur(6px);
-        z-index: 10;
-      }
-      #hud strong {
-        color: #fff6d1;
-      }
-      #hud .keys {
-        display: block;
-        font-size: 11px;
-        color: #b8c4f2;
-        margin-top: 6px;
-      }
-      #message-log {
-        position: fixed;
-        bottom: 12px;
-        left: 12px;
-        width: 320px;
-        max-height: 40vh;
-        padding: 12px;
-        background: rgba(6, 10, 20, 0.8);
-        border: 1px solid rgba(160, 140, 90, 0.35);
-        border-radius: 8px;
-        overflow-y: auto;
-        font-size: 12px;
-        line-height: 1.5;
-        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
-        backdrop-filter: blur(4px);
-        z-index: 10;
-      }
-      .panel {
-        position: fixed;
-        top: 50%;
-        right: 24px;
-        transform: translateY(-50%);
-        width: 320px;
-        max-height: 70vh;
-        padding: 16px;
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-        background: rgba(12, 16, 28, 0.92);
-        border: 1px solid rgba(180, 150, 90, 0.45);
-        border-radius: 10px;
-        box-shadow: 0 16px 32px rgba(0, 0, 0, 0.45);
-        backdrop-filter: blur(8px);
-        z-index: 15;
-      }
-      .panel h2 {
-        margin: 0;
-        font-size: 18px;
+      a {
         color: #ffe6aa;
-      }
-      .panel button.close {
-        align-self: flex-end;
-        padding: 6px 10px;
-      }
-      .hidden {
-        display: none !important;
-      }
-      button {
-        appearance: none;
-        border: 1px solid rgba(255, 214, 153, 0.4);
-        border-radius: 6px;
-        padding: 6px 12px;
-        font-size: 12px;
-        letter-spacing: 0.05em;
-        background: linear-gradient(135deg, rgba(255, 214, 153, 0.2), rgba(140, 90, 40, 0.2));
-        color: #ffe9c6;
-        cursor: pointer;
-      }
-      button:hover {
-        background: linear-gradient(135deg, rgba(255, 214, 153, 0.32), rgba(180, 120, 60, 0.35));
-      }
-      button:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-      }
-      .inventory-list {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        overflow-y: auto;
-      }
-      .inventory-item {
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-        padding: 8px;
-        border: 1px solid rgba(120, 140, 210, 0.3);
-        border-radius: 6px;
-        background: rgba(16, 22, 40, 0.65);
-      }
-      .inventory-item-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 8px;
-      }
-      .inventory-item-actions {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
-      }
-      table.stats {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 13px;
-      }
-      table.stats td {
-        padding: 4px 0;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-      }
-      table.stats td:first-child {
-        color: #ffdb92;
-        width: 120px;
-      }
-      .modal {
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        width: min(460px, 90vw);
-        padding: 18px;
-        background: rgba(12, 16, 30, 0.95);
-        border: 1px solid rgba(180, 140, 90, 0.45);
-        border-radius: 12px;
-        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
-        backdrop-filter: blur(10px);
-        z-index: 30;
-      }
-      .modal h2 {
-        margin-top: 0;
-        color: #ffe1a6;
-        text-align: center;
-      }
-      .creator-stats {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 10px;
-      }
-      .creator-stat {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-        padding: 8px;
-        border-radius: 6px;
-        background: rgba(18, 24, 42, 0.75);
-        border: 1px solid rgba(130, 160, 230, 0.3);
-      }
-      .creator-stat label {
-        font-size: 12px;
-        color: #cdd9ff;
-      }
-      .creator-actions {
-        display: flex;
-        justify-content: space-between;
-        margin-top: 14px;
-      }
-      input[type='text'],
-      input[type='number'] {
-        appearance: none;
-        padding: 6px 8px;
-        border-radius: 4px;
-        border: 1px solid rgba(255, 214, 153, 0.35);
-        background: rgba(8, 12, 24, 0.8);
-        color: #f4e9d8;
-        font-size: 13px;
-      }
-      .combat-log {
-        height: 160px;
-        overflow-y: auto;
-        background: rgba(6, 10, 18, 0.6);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        padding: 8px;
-        border-radius: 8px;
-        font-size: 12px;
-        line-height: 1.5;
-      }
-      .combat-actions {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-        justify-content: center;
-      }
-      #tooltip {
-        position: fixed;
-        pointer-events: none;
-        padding: 6px 8px;
-        border-radius: 6px;
-        background: rgba(18, 22, 38, 0.95);
-        border: 1px solid rgba(140, 180, 255, 0.4);
-        color: #f0f6ff;
-        font-size: 12px;
-        z-index: 25;
-        max-width: 240px;
-        white-space: pre-wrap;
       }
     </style>
   </head>
   <body>
-    <canvas id="game" width="640" height="640"></canvas>
-    <section id="hud">
-      <div><strong>Name:</strong> <span id="hud-name">--</span></div>
-      <div><strong>Level:</strong> <span id="hud-level">1</span></div>
-      <div><strong>HP:</strong> <span id="hud-hp">0 / 0</span></div>
-      <div><strong>MP:</strong> <span id="hud-mp">0 / 0</span></div>
-      <div><strong>XP:</strong> <span id="hud-xp">0</span></div>
-      <div><strong>Area:</strong> <span id="hud-area">Unknown</span></div>
-      <span class="keys">WASD/Arrows: Move · Shift+Arrows: Look · I: Inventory · C: Character · M: Menu</span>
-    </section>
-    <section id="message-log"></section>
-    <aside id="inventory-panel" class="panel hidden">
-      <h2>Inventory</h2>
-      <div id="inventory-capacity"></div>
-      <div class="inventory-list" id="inventory-list"></div>
-      <button class="close" data-close="inventory">Close (I)</button>
-    </aside>
-    <aside id="character-panel" class="panel hidden">
-      <h2>Character Sheet</h2>
-      <div id="character-summary"></div>
-      <table class="stats" id="character-stats"></table>
-      <div id="stat-points"></div>
-      <div class="inventory-item-actions" id="stat-allocation"></div>
-      <button class="close" data-close="character">Close (C)</button>
-    </aside>
-    <aside id="menu-panel" class="panel hidden">
-      <h2>Adventurer's Journal</h2>
-      <button id="menu-save">Manual Save</button>
-      <button id="menu-load">Load</button>
-      <button id="menu-clear">Clear Save</button>
-      <div id="menu-last-save"></div>
-      <button class="close" data-close="menu">Close (M)</button>
-    </aside>
-    <section id="combat-ui" class="modal hidden">
-      <h2>Battle!</h2>
-      <div id="combat-status"></div>
-      <div class="combat-log" id="combat-log"></div>
-      <div class="combat-actions">
-        <button data-action="attack">Attack</button>
-        <button data-action="defend">Defend</button>
-        <button data-action="item">Use Item</button>
-        <button data-action="flee">Flee</button>
-      </div>
-      <div id="combat-item-list" class="inventory-list hidden"></div>
-    </section>
-    <section id="character-creator" class="modal hidden"></section>
-    <div id="tooltip" class="hidden"></div>
-    <script type="module" src="game.js"></script>
+    <div>
+      <p>Redirecting to the main game…</p>
+      <p>
+        If you are not redirected automatically, <a href="../index.html">open Britannia Reborn</a>.
+      </p>
+    </div>
   </body>
 </html>
