@@ -38,6 +38,7 @@ const ALLOWED_ACTIONS = ['set_flag', 'give_item', 'start_quest', 'advance_quest'
 app.use(cors());
 app.use(express.json({ limit: '1mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
+app.use('/assets', express.static(path.join(__dirname, 'assets')));
 
 app.post('/npc', async (req, res) => {
   const snapshot = req.body;
