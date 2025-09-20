@@ -1,7 +1,7 @@
 import CharacterCreator from './CharacterCreator.js';
 import Character from './Character.js';
 import { createWorld, TileInfo } from './GameMap.js';
-import MapRenderer from './MapRenderer.js';
+import Renderer from './render.js';
 import Player from './Player.js';
 import CombatEngine from './CombatEngine.js';
 import { createEnemy } from './Enemy.js';
@@ -9,7 +9,7 @@ import ItemGenerator from './ItemGenerator.js';
 import SaveManager, { formatTimestamp } from './SaveManager.js';
 
 const canvas = document.getElementById('game');
-const renderer = new MapRenderer(canvas);
+const renderer = new Renderer(canvas);
 const combatEngine = new CombatEngine(document.getElementById('combat-ui'));
 const creator = new CharacterCreator(document.getElementById('character-creator'));
 const itemGenerator = new ItemGenerator();
@@ -50,6 +50,26 @@ const state = {
   inCombat: false,
   lastSaveTimestamp: null
 };
+
+const KEY_TO_DIRECTION = {
+  arrowup: 'north',
+  w: 'north',
+  arrowdown: 'south',
+  s: 'south',
+  arrowleft: 'west',
+  a: 'west',
+  arrowright: 'east',
+  d: 'east'
+};
+
+const DIRECTION_OFFSETS = {
+  north: { dx: 0, dy: -1 },
+  south: { dx: 0, dy: 1 },
+  west: { dx: -1, dy: 0 },
+  east: { dx: 1, dy: 0 }
+};
+
+const activeMovementDirections = new Set();
 
 function log(message) {
   const stamp = new Date().toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -108,9 +128,16 @@ function renderGame() {
     state.lookHighlight = null;
   }
   const highlight = state.lookHighlight
-    ? { x: state.lookHighlight.x, y: state.lookHighlight.y }
+    ? {
+        x: state.lookHighlight.x,
+        y: state.lookHighlight.y,
+        expires: state.lookHighlight.expires,
+        color: state.lookHighlight.color
+      }
     : null;
-  renderer.render(state.map, state.player, { highlight });
+  const npcs = Array.isArray(state.map.npcs) ? state.map.npcs : [];
+  const objects = Array.isArray(state.map.objects) ? state.map.objects : [];
+  renderer.render(state.map, state.player, { highlight, npcs, objects });
 }
 
 function showTooltip(event, text) {
@@ -332,6 +359,8 @@ function changeMap(mapId, spawnTag) {
     }
   });
   state.player.setMap(map, spawnTag);
+  activeMovementDirections.clear();
+  renderer.stopAllMovement();
   updateHUD();
   renderGame();
   autoSave('area-transition');
@@ -387,6 +416,10 @@ async function startEncounter() {
   if (state.inCombat) return;
   if (isPanelOpen()) {
     closeAllPanels();
+  }
+  if (activeMovementDirections.size) {
+    activeMovementDirections.clear();
+    renderer.stopAllMovement();
   }
   state.inCombat = true;
   const enemy = createEnemy(state.map.id, state.map.areaLevel);
@@ -475,6 +508,8 @@ function loadGame(manual = false) {
   state.character = character;
   state.player = player;
   state.map = currentMap;
+  activeMovementDirections.clear();
+  renderer.stopAllMovement();
   state.discoveredAreas = new Set(data.world?.discovered_areas || []);
   state.discoveredAreas.add(currentMap.id);
   Object.values(state.world.maps).forEach((map) => {
@@ -494,60 +529,68 @@ function setupEventListeners() {
   document.addEventListener('keydown', (event) => {
     if (event.target instanceof HTMLInputElement) return;
     if (state.inCombat) return;
-    const key = event.key;
-    if (event.shiftKey) {
-      if (key === 'ArrowUp') { event.preventDefault(); handleLook(0, -1); }
-      if (key === 'ArrowDown') { event.preventDefault(); handleLook(0, 1); }
-      if (key === 'ArrowLeft') { event.preventDefault(); handleLook(-1, 0); }
-      if (key === 'ArrowRight') { event.preventDefault(); handleLook(1, 0); }
+    const normalizedKey = event.key.toLowerCase();
+    const direction = KEY_TO_DIRECTION[normalizedKey];
+
+    if (event.shiftKey && direction) {
+      event.preventDefault();
+      const offset = DIRECTION_OFFSETS[direction];
+      handleLook(offset.dx, offset.dy);
       return;
     }
-    switch (key) {
-      case 'ArrowUp':
-      case 'w':
-      case 'W':
-        event.preventDefault();
-        attemptMove(0, -1);
-        break;
-      case 'ArrowDown':
-      case 's':
-      case 'S':
-        event.preventDefault();
-        attemptMove(0, 1);
-        break;
-      case 'ArrowLeft':
-      case 'a':
-      case 'A':
-        event.preventDefault();
-        attemptMove(-1, 0);
-        break;
-      case 'ArrowRight':
-      case 'd':
-      case 'D':
-        event.preventDefault();
-        attemptMove(1, 0);
-        break;
+
+    if (direction) {
+      event.preventDefault();
+      if (!state.player) return;
+      if (!activeMovementDirections.has(direction)) {
+        activeMovementDirections.add(direction);
+        renderer.setPlayerMovement(direction, true);
+      }
+      const offset = DIRECTION_OFFSETS[direction];
+      attemptMove(offset.dx, offset.dy);
+      return;
+    }
+
+    switch (normalizedKey) {
       case 'i':
-      case 'I':
         event.preventDefault();
         togglePanel('inventory');
         break;
       case 'c':
-      case 'C':
         event.preventDefault();
         togglePanel('character');
         break;
       case 'm':
-      case 'M':
         event.preventDefault();
         togglePanel('menu');
         break;
-      case 'Escape':
+      case 'escape':
         closeAllPanels();
         break;
       default:
         break;
     }
+  });
+
+  document.addEventListener('keyup', (event) => {
+    if (event.target instanceof HTMLInputElement) return;
+    const normalizedKey = event.key.toLowerCase();
+    const direction = KEY_TO_DIRECTION[normalizedKey];
+    if (!direction) return;
+    if (activeMovementDirections.has(direction)) {
+      activeMovementDirections.delete(direction);
+    }
+    renderer.setPlayerMovement(direction, false);
+  });
+
+  window.addEventListener('blur', () => {
+    if (activeMovementDirections.size) {
+      activeMovementDirections.forEach((direction) => {
+        renderer.setPlayerMovement(direction, false);
+      });
+      activeMovementDirections.clear();
+    }
+    renderer.stopAllMovement();
   });
 
   document.querySelectorAll('.panel button[data-close]').forEach((button) => {
@@ -591,6 +634,8 @@ function giveStarterGear(character) {
 }
 
 async function bootstrap() {
+  await renderer.preloadAssets();
+  renderer.start();
   setupEventListeners();
   if (loadGame(false)) {
     return;
@@ -602,6 +647,8 @@ async function bootstrap() {
   state.character = character;
   state.player = new Player(character);
   state.map = state.world.startingMap;
+  activeMovementDirections.clear();
+  renderer.stopAllMovement();
   changeMap(state.map.id, 'village');
   renderInventory();
   renderCharacterSheet();
