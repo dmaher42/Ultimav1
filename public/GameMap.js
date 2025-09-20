@@ -54,6 +54,84 @@ const TILE_DEFINITIONS = {
     color: '#2b2b30',
     passable: false,
     encounterChance: 0
+  },
+  // Lord British's Castle themed tiles
+  castle_wall: {
+    name: 'Castle Wall',
+    description: 'Sturdy stone walls of Lord British\'s magnificent castle.',
+    color: '#4a4a52',
+    passable: false,
+    encounterChance: 0
+  },
+  castle_floor: {
+    name: 'Castle Floor',
+    description: 'Polished stone floors worn smooth by countless visitors.',
+    color: '#6b6b73',
+    passable: true,
+    encounterChance: 0
+  },
+  red_carpet: {
+    name: 'Royal Carpet',
+    description: 'A rich red carpet leading to the throne.',
+    color: '#8b1538',
+    passable: true,
+    encounterChance: 0
+  },
+  throne: {
+    name: 'Lord British\'s Throne',
+    description: 'The magnificent throne of the ruler of Britannia.',
+    color: '#d4af37',
+    passable: false,
+    encounterChance: 0
+  },
+  banner: {
+    name: 'Royal Banner',
+    description: 'Heraldic banners displaying the royal arms.',
+    color: '#1e40af',
+    passable: false,
+    encounterChance: 0
+  },
+  torch_wall: {
+    name: 'Wall Torch',
+    description: 'A flickering torch mounted on the castle wall.',
+    color: '#ff6b35',
+    passable: false,
+    encounterChance: 0
+  },
+  castle_door: {
+    name: 'Castle Door',
+    description: 'Heavy wooden doors reinforced with iron.',
+    color: '#654321',
+    passable: true,
+    encounterChance: 0
+  },
+  castle_window: {
+    name: 'Castle Window',
+    description: 'Tall windows letting in natural light.',
+    color: '#87ceeb',
+    passable: false,
+    encounterChance: 0
+  },
+  fountain: {
+    name: 'Castle Fountain',
+    description: 'A decorative fountain in the courtyard.',
+    color: '#4682b4',
+    passable: false,
+    encounterChance: 0
+  },
+  garden: {
+    name: 'Castle Gardens',
+    description: 'Well-tended gardens with fragrant flowers.',
+    color: '#228b22',
+    passable: true,
+    encounterChance: 0
+  },
+  courtyard: {
+    name: 'Castle Courtyard',
+    description: 'The main courtyard paved with smooth stones.',
+    color: '#778899',
+    passable: true,
+    encounterChance: 0
   }
 };
 
@@ -103,6 +181,31 @@ const CAVE_LAYOUT = [
   '####################'
 ];
 
+// Lord British's Castle Layout - Throne room centered with courtyards
+const CASTLE_LAYOUT = [
+  'WWWWWWWWWDWWWWWWWWWW',
+  'WGGGGGGGGGGGGGGGGGW',
+  'WGFFFGGGGGGGGGFFFGW',
+  'WGFGFGGGGGGGGGFGFGW',
+  'WGGGGGGGGGGGGGGGGGW',
+  'WGGGGGGWWDWWGGGGGGW',
+  'WGGGGGGWCCCWGGGGGGW',
+  'WGGGGGGWCRCWGGGGGGW',
+  'WGGGGGGWCRCWGGGGGGW',
+  'WGGGGGGWCRCWGGGGGGW',
+  'DCCCCCCCCRTCCCCCCCCD',
+  'WGGGGGGWCRCWGGGGGGW',
+  'WGGGGGGWCRCWGGGGGGW',
+  'WGGGGGGWCRCWGGGGGGW',
+  'WGGGGGGWCCCWGGGGGGW',
+  'WGGGGGGWWDWWGGGGGGW',
+  'WGGGGGGGGGGGGGGGGGW',
+  'WGFGFGGGGGGGGGFGFGW',
+  'WGFFFGGGSGGGGGFFFGW',
+  'WGGGGGGGGGGGGGGGGGW',
+  'WWWWWWWWWDWWWWWWWWWW'
+];
+
 const FOREST_CHAR_MAP = {
   G: { tile: 'grass' },
   S: { tile: 'grass', spawn: 'village' },
@@ -115,6 +218,18 @@ const CAVE_CHAR_MAP = {
   '#': { tile: 'wall' },
   '.': { tile: 'cave_floor' },
   E: { tile: 'cave_exit', transition: { map: 'forest', spawn: 'mouth' }, spawn: 'mouth' }
+};
+
+// Lord British's Castle character mapping
+const CASTLE_CHAR_MAP = {
+  W: { tile: 'castle_wall' },     // Castle walls
+  C: { tile: 'castle_floor' },    // Castle floor
+  R: { tile: 'red_carpet' },      // Red carpet leading to throne
+  T: { tile: 'throne' },          // Lord British's throne
+  D: { tile: 'castle_door' },     // Castle doors
+  G: { tile: 'garden' },          // Castle gardens/courtyard
+  F: { tile: 'fountain' },        // Decorative fountains
+  S: { tile: 'castle_floor', spawn: 'entrance' }  // Spawn point (entrance)
 };
 
 function parseLayout(layout, charMap) {
@@ -141,13 +256,14 @@ function parseLayout(layout, charMap) {
 }
 
 export class GameMap {
-  constructor({ id, name, layout, charMap, areaLevel = 1, encounterRate = 0.1, safe = false }) {
+  constructor({ id, name, layout, charMap, areaLevel = 1, encounterRate = 0.1, safe = false, npcs = [] }) {
     this.id = id;
     this.name = name;
     this.safe = safe;
     this.areaLevel = areaLevel;
     this.encounterRate = encounterRate;
     this.discovered = safe;
+    this.npcs = npcs;
     const parsed = parseLayout(layout, charMap);
     this.tiles = parsed.tiles;
     this.meta = parsed.meta;
@@ -207,6 +323,53 @@ export class GameMap {
 }
 
 export function createWorld() {
+  const castle = new GameMap({
+    id: 'castle',
+    name: 'Lord British\'s Castle',
+    layout: CASTLE_LAYOUT,
+    charMap: CASTLE_CHAR_MAP,
+    areaLevel: 1,
+    encounterRate: 0,
+    safe: true,
+    npcs: [
+      {
+        id: 'lord_british',
+        name: 'Lord British',
+        x: 10,
+        y: 10,
+        sprite: 'npc',
+        color: '#d4af37',
+        dialogue: 'Welcome to my castle, brave adventurer! I am Lord British, ruler of Britannia.'
+      },
+      {
+        id: 'royal_guard_1',
+        name: 'Royal Guard',
+        x: 8,
+        y: 10,
+        sprite: 'npc',
+        color: '#4169e1',
+        dialogue: 'I serve to protect Lord British and his castle.'
+      },
+      {
+        id: 'royal_guard_2',
+        name: 'Royal Guard',
+        x: 12,
+        y: 10,
+        sprite: 'npc',
+        color: '#4169e1',
+        dialogue: 'Stay vigilant, citizen. The realm must be protected.'
+      },
+      {
+        id: 'castle_servant',
+        name: 'Castle Servant',
+        x: 6,
+        y: 8,
+        sprite: 'npc',
+        color: '#8b4513',
+        dialogue: 'The castle is magnificent, is it not? Lord British rules with wisdom and justice.'
+      }
+    ]
+  });
   const forest = new GameMap({
     id: 'forest',
     name: 'Silvan Glade',
@@ -227,10 +390,11 @@ export function createWorld() {
   });
   return {
     maps: {
+      castle,
       forest,
       cave
     },
-    startingMap: forest
+    startingMap: castle
   };
 }
 
