@@ -7,9 +7,21 @@ import CombatEngine from './CombatEngine.js';
 import { createEnemy } from './Enemy.js';
 import ItemGenerator from './ItemGenerator.js';
 import SaveManager, { formatTimestamp } from './SaveManager.js';
+import { initCanvas, resize, DPR } from './renderer/canvas.js';
+import { loadAtlas } from './renderer/atlas.js';
+import { createEmitter } from './renderer/particles.js';
 
-const canvas = document.getElementById('game');
-const renderer = new Renderer(canvas);
+const ctx = initCanvas('game');
+const renderer = new Renderer(ctx);
+const particles = createEmitter();
+renderer.setParticles(particles);
+const syncCanvasSize = () => {
+  resize();
+};
+
+window.addEventListener('resize', syncCanvasSize);
+window.addEventListener('orientationchange', syncCanvasSize);
+syncCanvasSize();
 const combatEngine = new CombatEngine(document.getElementById('combat-ui'));
 const creator = new CharacterCreator(document.getElementById('character-creator'));
 const itemGenerator = new ItemGenerator();
@@ -48,7 +60,10 @@ const state = {
   lookHighlight: null,
   messageLog: [],
   inCombat: false,
-  lastSaveTimestamp: null
+  lastSaveTimestamp: null,
+  fx: {
+    lastCastleBurst: 0
+  }
 };
 
 const KEY_TO_DIRECTION = {
@@ -138,6 +153,41 @@ function renderGame() {
   const npcs = Array.isArray(state.map.npcs) ? state.map.npcs : [];
   const objects = Array.isArray(state.map.objects) ? state.map.objects : [];
   renderer.render(state.map, state.player, { highlight, npcs, objects });
+}
+
+function celebrateCastle() {
+  if (!state.map || state.map.id !== 'castle' || !state.player) return;
+  const now = performance.now();
+  if (state.fx.lastCastleBurst && now - state.fx.lastCastleBurst < 1200) {
+    return;
+  }
+  state.fx.lastCastleBurst = now;
+  const { x, y } = state.player.position;
+  requestAnimationFrame(() => {
+    const map = state.map;
+    const canvasElement = ctx.canvas;
+    const viewportWidth = canvasElement.clientWidth || Math.round(canvasElement.width / DPR);
+    const viewportHeight = canvasElement.clientHeight || Math.round(canvasElement.height / DPR);
+    if (!viewportWidth || !viewportHeight || !map?.width || !map?.height) {
+      return;
+    }
+    const mapPixelWidth = map.width * renderer.tileSize;
+    const mapPixelHeight = map.height * renderer.tileSize;
+    const offsetX = Math.floor((viewportWidth - mapPixelWidth) / 2);
+    const offsetY = Math.floor((viewportHeight - mapPixelHeight) / 2);
+    const centerX = offsetX + (x + 0.5) * renderer.tileSize;
+    const centerY = offsetY + (y + 0.5) * renderer.tileSize;
+    for (let i = 0; i < 28; i += 1) {
+      particles.spawn(centerX, centerY, {
+        vx: (Math.random() - 0.5) * 28,
+        vy: -32 - Math.random() * 18,
+        life: 0.6 + Math.random() * 0.4,
+        size: 1 + Math.random() * 1.5,
+        gravity: 60,
+        blend: 'lighter'
+      });
+    }
+  });
 }
 
 function showTooltip(event, text) {
@@ -363,6 +413,7 @@ function changeMap(mapId, spawnTag) {
   renderer.stopAllMovement();
   updateHUD();
   renderGame();
+  celebrateCastle();
   autoSave('area-transition');
 }
 
@@ -516,11 +567,13 @@ function loadGame(manual = false) {
     map.discovered = map.safe || state.discoveredAreas.has(map.id);
   });
   state.lastSaveTimestamp = data.timestamp || Date.now();
+  state.fx.lastCastleBurst = 0;
   updateMenuStatus();
   renderInventory();
   renderCharacterSheet();
   updateHUD();
   renderGame();
+  celebrateCastle();
   log(manual ? 'Save data loaded.' : 'Journey resumed from last save.');
   return true;
 }
@@ -634,7 +687,13 @@ function giveStarterGear(character) {
 }
 
 async function bootstrap() {
-  await renderer.preloadAssets();
+  try {
+    const atlas = await loadAtlas(null, './assets/atlas.json');
+    renderer.setAtlas(atlas);
+  } catch (error) {
+    console.error('Failed to load texture atlas.', error);
+    return;
+  }
   renderer.start();
   setupEventListeners();
   if (loadGame(false)) {
@@ -654,6 +713,7 @@ async function bootstrap() {
   renderCharacterSheet();
   updateHUD();
   renderGame();
+  celebrateCastle();
   saveGame('new-adventurer', true);
   log('Use WASD or arrows to explore.');
 }

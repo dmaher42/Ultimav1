@@ -1,345 +1,50 @@
 import { TileInfo } from './GameMap.js';
-
-const MODULE_ROOT = new URL('.', import.meta.url);
-const ASSET_SEARCH_BASES = (() => {
-  const bases = [new URL('./assets/', MODULE_ROOT), new URL('../assets/', MODULE_ROOT)];
-  const modulePath = MODULE_ROOT.pathname || '';
-  if (!modulePath.includes('/public/')) {
-    bases.push(new URL('public/assets/', MODULE_ROOT));
-  }
-  const unique = new Map();
-  for (const base of bases) {
-    unique.set(base.toString(), base);
-  }
-  return [...unique.values()];
-})();
+import { DPR } from './renderer/canvas.js';
+import { drawSprite } from './renderer/atlas.js';
+import { vignette, colorGrade } from './renderer/postfx.js';
 
 const TILE_SIZE = 48;
-const TILE_BASE_PATH = './assets/tiles/';
-const DEFAULT_PLAYER_BASE_PATH = './assets/';
-const DEFAULT_PLAYER_SPRITE = './assets/sprites/player.png';
-const FALLBACK_PLAYER_SPRITE = './assets/sprites/heroa.png'; // Fallback to heroa.png as mentioned in requirements
 const BACKGROUND_COLOR = '#05070d';
-const DIRECTION_TO_ROW = {
-  south: 0,
-  west: 1,
-  east: 2,
-  north: 3
+const DIRECTION_KEYS = {
+  south: 'south',
+  west: 'west',
+  east: 'east',
+  north: 'north'
 };
-
-const DEFAULT_TILE_MANIFEST = (() => {
-  const manifest = { npc: 'npc.png' };
-  Object.keys(TileInfo).forEach((type) => {
-    manifest[type] = `${type}.png`;
-  });
-  return manifest;
-})();
-
-function resolveAssetPath(file, basePath = TILE_BASE_PATH) {
-  if (!file) return '';
-
-  if (file instanceof URL) {
-    return file.toString();
-  }
-
-  if (typeof file === 'string' && file.startsWith('data:')) {
-    return file;
-  }
-
-  try {
-    if (typeof file === 'string' && /^([a-z]+:)?\/\//i.test(file)) {
-      return file;
-    }
-
-    const sanitizedFile = typeof file === 'string' && file.startsWith('/') ? file.slice(1) : file;
-
-    let baseUrl;
-    if (basePath instanceof URL) {
-      baseUrl = basePath;
-    } else if (typeof basePath === 'string') {
-      if (/^([a-z]+:)?\/\//i.test(basePath)) {
-        baseUrl = new URL(basePath);
-      } else if (basePath.startsWith('./') || basePath.startsWith('../')) {
-        baseUrl = new URL(basePath, MODULE_ROOT);
-      } else if (basePath.startsWith('/')) {
-        baseUrl = new URL(basePath.slice(1), MODULE_ROOT);
-      } else if (basePath.startsWith('public/')) {
-        baseUrl = new URL(basePath.replace(/^public\//, ''), MODULE_ROOT);
-      } else {
-        baseUrl = new URL(basePath, MODULE_ROOT);
-      }
-    } else {
-      baseUrl = MODULE_ROOT;
-    }
-
-    return new URL(sanitizedFile, baseUrl).toString();
-  } catch (error) {
-    console.warn('[Renderer] Falling back to string-based asset resolution.', {
-      file,
-      basePath,
-      error
-    });
-    const baseString =
-      basePath instanceof URL
-        ? basePath.toString()
-        : typeof basePath === 'string'
-        ? basePath
-        : MODULE_ROOT.toString();
-    const normalizedBase = baseString.endsWith('/') ? baseString : `${baseString}/`;
-    const sanitizedFile = typeof file === 'string' && file.startsWith('/') ? file.slice(1) : file;
-    return `${normalizedBase}${sanitizedFile}`;
-  }
-}
-
-function createColorTile(color = '#555', size = TILE_SIZE) {
-  const canvas = document.createElement('canvas');
-  canvas.width = size;
-  canvas.height = size;
-  const ctx = canvas.getContext('2d');
-  ctx.imageSmoothingEnabled = false;
-  ctx.fillStyle = color;
-  ctx.fillRect(0, 0, size, size);
-  ctx.strokeStyle = 'rgba(0, 0, 0, 0.35)';
-  ctx.lineWidth = Math.max(1, Math.round(size * 0.05));
-  ctx.strokeRect(0, 0, size, size);
-  return canvas;
-}
-
-function createPlayerPlaceholder(size = TILE_SIZE) {
-  const canvas = document.createElement('canvas');
-  canvas.width = size * 3;
-  canvas.height = size * 4;
-  const ctx = canvas.getContext('2d');
-  ctx.imageSmoothingEnabled = false;
-  const palette = ['#f7d794', '#ffd166', '#f6c270', '#f5a962'];
-  for (let row = 0; row < 4; row += 1) {
-    for (let col = 0; col < 3; col += 1) {
-      const x = col * size;
-      const y = row * size;
-      ctx.fillStyle = '#1f1b24';
-      ctx.fillRect(x, y, size, size);
-      ctx.fillStyle = palette[row % palette.length];
-      ctx.beginPath();
-      ctx.arc(x + size / 2, y + size / 2, size * 0.34 + (col === 1 ? size * 0.02 : 0), 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = 'rgba(0, 0, 0, 0.45)';
-      ctx.lineWidth = Math.max(1, Math.round(size * 0.06));
-      ctx.strokeRect(x + size * 0.18, y + size * 0.2, size * 0.64, size * 0.64);
-    }
-  }
-  return canvas;
-}
-
-function loadImageWithFallback(src, fallbackColor) {
-  return new Promise(async (resolve) => {
-    // Try multiple sprite source paths for better asset loading reliability
-    const candidates = await tryMultipleAssetSources(src);
-    console.log(`[Renderer] Attempting to load image from ${candidates.length} locations:`, candidates);
-    
-    let lastError = null;
-    
-    // Try each candidate source
-    for (let i = 0; i < candidates.length; i++) {
-      const candidateSrc = candidates[i];
-      const success = await new Promise((srcResolve) => {
-        const image = new Image();
-        image.decoding = 'async';
-        image.src = candidateSrc;
-        image.onload = () => {
-          console.log(`✓ [Renderer] Successfully loaded image from ${candidateSrc} (attempt ${i + 1}/${candidates.length})`);
-          resolve(image);
-          srcResolve(true);
-        };
-        image.onerror = (err) => {
-          console.warn(`✗ [Renderer] Failed to load image from ${candidateSrc} (attempt ${i + 1}/${candidates.length})`);
-          lastError = err;
-          srcResolve(false);
-        };
-      });
-      
-      if (success) return; // Successfully loaded
-    }
-    
-    // All candidates failed, use fallback
-    console.error(`[Renderer] All ${candidates.length} paths failed for image. Using fallback color: ${fallbackColor}`);
-    if (lastError) {
-      console.error(`[Renderer] Last error:`, lastError);
-    }
-    resolve(createColorTile(fallbackColor));
-  });
-}
-
-function loadPlayerSprite(
-  src,
-  tileSize,
-  fallbackSrc = resolveAssetPath(FALLBACK_PLAYER_SPRITE, DEFAULT_PLAYER_BASE_PATH)
-) {
-  return new Promise(async (resolve) => {
-    const candidates = await tryMultipleAssetSources(src);
-    console.log(`[Renderer] Attempting to load player sprite from ${candidates.length} locations:`, candidates);
-
-    let lastError = null;
-
-    for (let i = 0; i < candidates.length; i += 1) {
-      const candidateSrc = candidates[i];
-      const success = await new Promise((srcResolve) => {
-        const image = new Image();
-        image.decoding = 'async';
-        image.src = candidateSrc;
-        image.onload = () => {
-          console.log(
-            `✓ [Renderer] Successfully loaded player sprite from ${candidateSrc} (attempt ${i + 1}/${candidates.length})`
-          );
-          resolve(image);
-          srcResolve(true);
-        };
-        image.onerror = (err) => {
-          console.warn(
-            `✗ [Renderer] Failed to load player sprite from ${candidateSrc} (attempt ${i + 1}/${candidates.length})`
-          );
-          lastError = err;
-          srcResolve(false);
-        };
-      });
-
-      if (success) return;
-    }
-
-    const fallbackTarget = fallbackSrc
-      ? await tryMultipleAssetSources(fallbackSrc)
-      : await tryMultipleAssetSources(FALLBACK_PLAYER_SPRITE);
-    const fallbackCandidates = fallbackTarget.filter((candidate) => !candidates.includes(candidate));
-
-    if (fallbackCandidates.length) {
-      console.log(`[Renderer] Attempting fallback to heroa.png for player sprite`);
-      for (let i = 0; i < fallbackCandidates.length; i += 1) {
-        const fallbackCandidate = fallbackCandidates[i];
-        const success = await new Promise((fallbackResolve) => {
-          const fallbackImg = new Image();
-          fallbackImg.decoding = 'async';
-          fallbackImg.src = fallbackCandidate;
-          fallbackImg.onload = () => {
-            console.log(
-              `✓ [Renderer] Using fallback sprite heroa.png from ${fallbackCandidate} (attempt ${i + 1}/${fallbackCandidates.length})`
-            );
-            resolve(fallbackImg);
-            fallbackResolve(true);
-          };
-          fallbackImg.onerror = () => {
-            console.warn(
-              `✗ [Renderer] Fallback sprite heroa.png failed to load from ${fallbackCandidate} (attempt ${i + 1}/${fallbackCandidates.length})`
-            );
-            fallbackResolve(false);
-          };
-        });
-
-        if (success) return;
-      }
-      console.error(
-        `[Renderer] Fallback sprite heroa.png failed to load from all ${fallbackCandidates.length} possible locations.`
-      );
-    }
-
-    console.error(`[Renderer] All ${candidates.length} paths failed for player sprite. Using placeholder.`);
-    if (lastError) {
-      console.error(`[Renderer] Last error:`, lastError);
-    }
-    resolve(createPlayerPlaceholder(tileSize));
-  });
-}
-
-// Enhanced asset source resolution with multiple path attempts
-async function tryMultipleAssetSources(src) {
-  if (!src) return [];
-
-  const candidates = new Map();
-  let normalizedSrc = src;
-
-  try {
-    normalizedSrc = new URL(src, MODULE_ROOT).toString();
-  } catch (error) {
-    console.warn('[Renderer] Could not normalise asset URL, using raw value.', { src, error });
-  }
-
-  candidates.set(normalizedSrc, normalizedSrc);
-
-  const primary = candidates.keys().next().value;
-  const assetsIndex = typeof primary === 'string' ? primary.indexOf('/assets/') : -1;
-  if (assetsIndex === -1) {
-    return [...candidates.values()];
-  }
-
-  const relativeFromAssets = primary.slice(assetsIndex + '/assets/'.length);
-  const filename = relativeFromAssets.split('/').pop() || '';
-  const directory = relativeFromAssets.slice(0, relativeFromAssets.lastIndexOf('/') + 1);
-
-  ASSET_SEARCH_BASES.forEach((base) => {
-    const url = new URL(relativeFromAssets, base).toString();
-    candidates.set(url, url);
-  });
-
-  if (filename) {
-    if (!directory.includes('sprites/')) {
-      ASSET_SEARCH_BASES.forEach((base) => {
-        const spriteUrl = new URL(`sprites/${filename}`, base).toString();
-        candidates.set(spriteUrl, spriteUrl);
-      });
-    } else {
-      const withoutSprites = directory.replace('sprites/', '');
-      ASSET_SEARCH_BASES.forEach((base) => {
-        const altUrl = new URL(`${withoutSprites}${filename}`, base).toString();
-        candidates.set(altUrl, altUrl);
-      });
-    }
-  }
-
-  return [...candidates.values()];
-}
 
 function computeSignature(items) {
   if (!Array.isArray(items) || items.length === 0) return '';
   return items
     .map((item) => {
-      const type = item?.sprite || item?.type || 'default';
+      const sprite = item?.sprite || item?.type || 'default';
       const frame = item?.frame ?? 0;
-      return `${item?.x ?? 0}|${item?.y ?? 0}|${type}|${frame}`;
+      const x = item?.x ?? 0;
+      const y = item?.y ?? 0;
+      return `${x}|${y}|${sprite}|${frame}`;
     })
     .join(';');
 }
 
-export function drawTile(ctx, assets, x, y, type, tileSize, fallbackColor, offsetX = 0, offsetY = 0) {
-  const key = type ?? 'default';
-  const image = assets.tiles[key] || assets.tiles.default;
-  const px = offsetX + x * tileSize;
-  const py = offsetY + y * tileSize;
-  if (image) {
-    ctx.drawImage(image, px, py, tileSize, tileSize);
-  } else {
-    ctx.fillStyle = fallbackColor || '#444';
-    ctx.fillRect(px, py, tileSize, tileSize);
-  }
+function normaliseDirection(direction) {
+  const value = (direction || 'south').toString().toLowerCase();
+  return DIRECTION_KEYS[value] ? value : 'south';
 }
 
-export function drawPlayerSprite(ctx, spriteSheet, x, y, direction, frameIndex, tileSize) {
-  if (!spriteSheet) return;
-  const frameWidth = Math.floor(spriteSheet.width / 3);
-  const frameHeight = Math.floor(spriteSheet.height / 4);
-  const normalized = (direction || 'south').toLowerCase();
-  const row = DIRECTION_TO_ROW[normalized] ?? DIRECTION_TO_ROW.south;
-  const column = frameIndex % 3;
-  const sx = column * frameWidth;
-  const sy = row * frameHeight;
-  ctx.drawImage(spriteSheet, sx, sy, frameWidth, frameHeight, x, y, tileSize, tileSize);
+function playerFrameName(direction, frame) {
+  const dir = normaliseDirection(direction);
+  const index = Math.abs(frame) % 3;
+  return `player_${dir}_${index}`;
 }
 
 export default class RenderEngine {
-  constructor(canvas, manifest = {}) {
-    this.canvas = canvas;
-    this.ctx = canvas.getContext('2d');
-    this.ctx.imageSmoothingEnabled = false;
-    this.tileSize = TILE_SIZE;
-    this.assets = { tiles: {} };
-    this.manifest = manifest;
+  constructor(ctx, options = {}) {
+    if (!ctx) {
+      throw new Error('Renderer requires a valid 2D context.');
+    }
+    this.ctx = ctx;
+    this.canvas = ctx.canvas;
+    this.tileSize = options.tileSize || TILE_SIZE;
+    this.backgroundColor = options.backgroundColor || BACKGROUND_COLOR;
 
     this.map = null;
     this.player = null;
@@ -357,7 +62,6 @@ export default class RenderEngine {
     this.gridWidth = 0;
     this.gridHeight = 0;
 
-    this.playerSprite = null;
     this.playerFrame = 1;
     this.animationTimer = 0;
     this.frameDuration = 130;
@@ -369,39 +73,21 @@ export default class RenderEngine {
     this.running = false;
     this.assetsLoaded = false;
 
+    this.atlas = null;
+    this.particles = null;
+    this.viewportWidth = Math.round(this.canvas.width / DPR);
+    this.viewportHeight = Math.round(this.canvas.height / DPR);
+
     this._loop = this._loop.bind(this);
   }
 
-  async preloadAssets(customManifest = {}) {
-    const tileBase = customManifest.tileBasePath || this.manifest.tileBasePath || TILE_BASE_PATH;
-    const tilesManifest = {
-      ...DEFAULT_TILE_MANIFEST,
-      ...(this.manifest.tiles || {}),
-      ...(customManifest.tiles || {})
-    };
+  setAtlas(atlas) {
+    this.atlas = atlas || null;
+    this.assetsLoaded = Boolean(atlas?.img && atlas?.meta);
+  }
 
-    const tilePromises = Object.entries(tilesManifest).map(async ([type, file]) => {
-      const fallback = TileInfo[type]?.color || '#444';
-      const path = resolveAssetPath(file, tileBase);
-      const image = await loadImageWithFallback(path, fallback);
-      this.assets.tiles[type] = image;
-    });
-
-    const playerPath = customManifest.player || this.manifest.player || DEFAULT_PLAYER_SPRITE;
-    const playerBase = customManifest.playerBasePath || this.manifest.playerBasePath || DEFAULT_PLAYER_BASE_PATH;
-    const resolvedPlayer = resolveAssetPath(playerPath, playerBase);
-    const resolvedFallback = resolveAssetPath(FALLBACK_PLAYER_SPRITE, playerBase);
-    const playerPromise = loadPlayerSprite(resolvedPlayer, this.tileSize, resolvedFallback).then((sprite) => {
-      this.playerSprite = sprite;
-    });
-
-    await Promise.all([...tilePromises, playerPromise]);
-
-    if (!this.assets.tiles.default) {
-      this.assets.tiles.default = this.assets.tiles.grass || createColorTile('#4a7852');
-    }
-
-    this.assetsLoaded = true;
+  setParticles(emitter) {
+    this.particles = emitter || null;
   }
 
   start() {
@@ -440,56 +126,66 @@ export default class RenderEngine {
     if (this.highlight?.expires && this.highlight.expires <= Date.now()) {
       this.highlight = null;
     }
+
+    if (this.particles) {
+      this.particles.update(delta / 1000);
+    }
   }
 
   draw() {
     if (!this.assetsLoaded) return;
 
     this.updateCanvasMetrics();
-
     const ctx = this.ctx;
-    ctx.save();
     ctx.imageSmoothingEnabled = false;
-    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-    ctx.fillStyle = BACKGROUND_COLOR;
-    ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+    ctx.save();
+    ctx.clearRect(0, 0, this.viewportWidth, this.viewportHeight);
+    ctx.fillStyle = this.backgroundColor;
+    ctx.fillRect(0, 0, this.viewportWidth, this.viewportHeight);
 
     const grid = this.getMapGrid();
-    if (!grid) {
-      ctx.restore();
-      return;
+    if (grid) {
+      this.drawMap(ctx, grid);
+      this.drawObjects(ctx);
+      this.drawNPCs(ctx);
+
+      if (this.highlight) {
+        this.drawHighlight(ctx, this.highlight);
+      }
+
+      this.drawPlayer(ctx);
+
+      if (this.particles) {
+        this.particles.draw(ctx);
+      }
     }
-
-    this.drawMap(ctx, grid);
-    this.drawObjects(ctx);
-    this.drawNPCs(ctx);
-
-    if (this.highlight) {
-      this.drawHighlight(ctx, this.highlight);
-    }
-
-    this.drawPlayer(ctx);
-    this.drawHUD(ctx);
 
     ctx.restore();
+
+    if (grid) {
+      ctx.save();
+      vignette(ctx, this.viewportWidth, this.viewportHeight);
+      colorGrade(ctx, undefined, this.viewportWidth, this.viewportHeight);
+      ctx.restore();
+    }
+
+    this.drawHUD(ctx);
   }
 
   updateCanvasMetrics() {
-    const width = this.canvas.clientWidth || this.canvas.width;
-    const height = this.canvas.clientHeight || this.canvas.height;
-    if (this.canvas.width !== width || this.canvas.height !== height) {
-      this.canvas.width = width;
-      this.canvas.height = height;
-      this.ctx.imageSmoothingEnabled = false;
-    }
+    const width = Math.round((this.canvas.clientWidth || this.canvas.width / DPR));
+    const height = Math.round((this.canvas.clientHeight || this.canvas.height / DPR));
+    this.viewportWidth = width;
+    this.viewportHeight = height;
 
     const grid = this.getMapGrid();
     if (!grid) return;
 
     this.mapPixelWidth = grid.width * this.tileSize;
     this.mapPixelHeight = grid.height * this.tileSize;
-    this.offsetX = Math.floor((this.canvas.width - this.mapPixelWidth) / 2);
-    this.offsetY = Math.floor((this.canvas.height - this.mapPixelHeight) / 2);
+    this.offsetX = Math.floor((width - this.mapPixelWidth) / 2);
+    this.offsetY = Math.floor((height - this.mapPixelHeight) / 2);
   }
 
   getMapGrid(map = this.map) {
@@ -500,33 +196,48 @@ export default class RenderEngine {
       tiles = map.tiles;
     } else if (Array.isArray(map)) {
       tiles = map;
+    } else if (typeof map.getTiles === 'function') {
+      tiles = map.getTiles();
+    } else if (Array.isArray(map?.data)) {
+      tiles = map.data;
     }
 
-    if (!Array.isArray(tiles) || tiles.length === 0 || !Array.isArray(tiles[0])) {
+    if (!Array.isArray(tiles) || !tiles.length) {
       return null;
     }
 
-    const height = typeof map.height === 'number' ? map.height : tiles.length;
-    const width = typeof map.width === 'number' ? map.width : tiles[0]?.length || 0;
-    if (!width || !height) return null;
-
+    const width = tiles[0]?.length || 0;
+    const height = tiles.length;
     return {
       tiles,
       width,
       height,
-      safe: Boolean(map.safe)
+      safe: Boolean(map.safe),
+      name: map.name || '',
+      discovered: Boolean(map.discovered)
     };
   }
 
-  drawMap(ctx, grid = this.getMapGrid()) {
-    if (!grid) return;
+  drawAtlasTile(ctx, sprite, tileX, tileY, fallbackColor) {
+    const px = this.offsetX + tileX * this.tileSize;
+    const py = this.offsetY + tileY * this.tileSize;
+    const drawn = drawSprite(ctx, this.atlas, sprite, px, py, this.tileSize, this.tileSize);
+    if (!drawn && fallbackColor) {
+      ctx.fillStyle = fallbackColor;
+      ctx.fillRect(px, py, this.tileSize, this.tileSize);
+    }
+    return drawn;
+  }
+
+  drawMap(ctx, grid) {
+    const tiles = grid.tiles;
     for (let y = 0; y < grid.height; y += 1) {
-      const row = grid.tiles[y];
+      const row = tiles[y];
       if (!Array.isArray(row)) continue;
       for (let x = 0; x < grid.width; x += 1) {
         const tileType = row[x];
         const fallback = TileInfo[tileType]?.color;
-        drawTile(ctx, this.assets, x, y, tileType, this.tileSize, fallback, this.offsetX, this.offsetY);
+        this.drawAtlasTile(ctx, tileType, x, y, fallback);
       }
     }
 
@@ -539,19 +250,22 @@ export default class RenderEngine {
   drawObjects(ctx) {
     if (!this.objects.length) return;
     this.objects.forEach((object) => {
-      const sprite = object?.sprite || object?.type || 'default';
-      const color = object?.color || '#8c7853';
       if (typeof object?.draw === 'function') {
         ctx.save();
         ctx.translate(this.offsetX, this.offsetY);
         object.draw(ctx, {
           tileSize: this.tileSize,
-          assets: this.assets,
-          drawTile: (x, y, type) => drawTile(ctx, this.assets, x, y, type, this.tileSize, color)
+          drawSprite: (name, gridX, gridY, width = this.tileSize, height = this.tileSize) => {
+            const px = gridX * this.tileSize;
+            const py = gridY * this.tileSize;
+            return drawSprite(ctx, this.atlas, name, px, py, width, height);
+          }
         });
         ctx.restore();
       } else if (typeof object?.x === 'number' && typeof object?.y === 'number') {
-        drawTile(ctx, this.assets, object.x, object.y, sprite, this.tileSize, color, this.offsetX, this.offsetY);
+        const sprite = object?.sprite || object?.type || 'default';
+        const color = object?.color || '#8c7853';
+        this.drawAtlasTile(ctx, sprite, object.x, object.y, color);
       }
     });
   }
@@ -562,33 +276,41 @@ export default class RenderEngine {
       if (typeof npc?.x !== 'number' || typeof npc?.y !== 'number') return;
       const sprite = npc?.sprite || npc?.type || 'npc';
       const color = npc?.color || '#cfa658';
-      drawTile(ctx, this.assets, npc.x, npc.y, sprite, this.tileSize, color, this.offsetX, this.offsetY);
+      this.drawAtlasTile(ctx, sprite, npc.x, npc.y, color);
     });
   }
 
   drawHighlight(ctx, highlight) {
     const px = this.offsetX + highlight.x * this.tileSize;
     const py = this.offsetY + highlight.y * this.tileSize;
+    ctx.save();
     ctx.strokeStyle = highlight.color || this.highlightColor;
     ctx.lineWidth = Math.max(2, Math.round(this.tileSize * 0.06));
     ctx.strokeRect(px + 2, py + 2, this.tileSize - 4, this.tileSize - 4);
+    ctx.restore();
   }
 
   drawPlayer(ctx) {
-    if (!this.player || !this.playerSprite) return;
-    const px = this.offsetX + this.player.position.x * this.tileSize;
-    const py = this.offsetY + this.player.position.y * this.tileSize;
+    if (!this.player || !this.atlas) return;
+    const position = this.player.position;
+    if (!position) return;
+    const px = this.offsetX + position.x * this.tileSize;
+    const py = this.offsetY + position.y * this.tileSize;
     const direction = this.player.facing || this.currentDirection;
-    drawPlayerSprite(ctx, this.playerSprite, px, py, direction, this.playerFrame, this.tileSize);
+    const frameKey = playerFrameName(direction, this.playerFrame);
+    const drawn = drawSprite(ctx, this.atlas, frameKey, px, py, this.tileSize, this.tileSize);
+    if (!drawn) {
+      drawSprite(ctx, this.atlas, 'player_south_1', px, py, this.tileSize, this.tileSize);
+    }
   }
 
   drawHUD(ctx) {
     if (!this.player) return;
     const padding = 12;
     const barHeight = 44;
-    const availableWidth = Math.max(this.canvas.width - padding * 2, 0);
-    const barWidth = Math.min(Math.max(220, availableWidth), this.canvas.width);
-    const x = (this.canvas.width - barWidth) / 2;
+    const availableWidth = Math.max(this.viewportWidth - padding * 2, 0);
+    const barWidth = Math.min(Math.max(220, availableWidth), this.viewportWidth);
+    const x = (this.viewportWidth - barWidth) / 2;
     const y = padding;
 
     ctx.save();
@@ -654,7 +376,7 @@ export default class RenderEngine {
     if (player) {
       this.player = player;
       if (!this.isMoving && player.facing) {
-        this.currentDirection = player.facing;
+        this.currentDirection = normaliseDirection(player.facing);
       }
     } else {
       this.player = null;
@@ -679,8 +401,8 @@ export default class RenderEngine {
 
   setPlayerMovement(direction, active) {
     if (!direction) return;
-    const normalized = direction.toLowerCase();
-    if (!DIRECTION_TO_ROW[normalized]) return;
+    const normalized = normaliseDirection(direction);
+    if (!DIRECTION_KEYS[normalized]) return;
 
     if (active) {
       if (!this.activeDirections.has(normalized)) {
