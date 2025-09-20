@@ -24,14 +24,12 @@
   <div id="notice" class="notice" style="display:none"></div>
 
   <div class="toolbar" style="opacity:0.95">
-    <label>Sprite URL: <input id="spriteUrl" type="text" placeholder="Male 02.2.png or https://..." /></label>
+    <label>Sprite URL: <input id="spriteUrl" type="text" placeholder="sprite.png or https://..." /></label>
     <button id="btnLoad">Load</button>
     <input id="fileInput" type="file" accept="image/png,image/jpeg" style="display:none" />
     <button id="btnFile">Choose File…</button>
     <select id="spriteSelect" style="margin-left:8px">
-      <option value="Male 02-2.png">Male 02-2</option>
-      <option value="Male 17-3.png">Male 17-3</option>
-      <option value="Male 18-1.png">Male 18-1</option>
+      <option value="__placeholder__">Placeholder (no bundled sprite)</option>
     </select>
   </div>
   <div id="drop" class="drop">Drop a PNG/JPG sprite sheet here (3 frames × 4 rows)</div>
@@ -244,7 +242,8 @@
   // Layout is permanently locked: 4 rows (down,left,right,up) × 3 columns (frames)
   const SHEET_COLS = 3, SHEET_ROWS = 4;
   const DIR_ROW={ down:0, left:1, right:2, up:3 };
-  const DEFAULT_SPRITE_NAME='Male 02-2.png';
+  const PLACEHOLDER_PRESET={ canonicalName:'__placeholder__', displayName:'Placeholder Sprite' };
+  const DEFAULT_SPRITE_NAME=PLACEHOLDER_PRESET.canonicalName;
   // Sprite sheets are typically placed in public/assets/; the resolver also
   // supports servers that expose the directory as /assets/ directly.
 
@@ -454,11 +453,12 @@
     const probes=[];
     const addProbe=name=>{
       if(!name || typeof name!=='string') return;
+      if(name===PLACEHOLDER_PRESET.canonicalName) return;
       if(!probes.includes(name)) probes.push(name);
     };
     addProbe(preferredName);
     addProbe(DEFAULT_SPRITE_NAME);
-    if(!probes.length){
+    if(!probes.length && DEFAULT_SPRITE_NAME && DEFAULT_SPRITE_NAME!==PLACEHOLDER_PRESET.canonicalName){
       probes.push(DEFAULT_SPRITE_NAME);
     }
     const candidates=[...SPRITE_PATH_STATE.candidates];
@@ -496,16 +496,31 @@
     })();
     return SPRITE_PATH_STATE.detectionPromise;
   }
-  const LEGACY_SPRITE_ALIASES=new Map([
-    ['sprite-0002.png','Male 02-2.png'],
-    ['sprite-0002','Male 02-2.png'],
-    ['sprite_0002.png','Male 02-2.png'],
-    ['sprite_0002','Male 02-2.png'],
-    ['sprite0002.png','Male 02-2.png'],
-    ['sprite0002','Male 02-2.png'],
-    ['sprite 0002.png','Male 02-2.png'],
-    ['male 02-2.png','Male 02-2.png'],
-    ['male 02-2','Male 02-2.png']
+  const REMOVED_PRESET_IDENTIFIERS=new Map([
+    ['male 02-2.png','Male 02-2'],
+    ['male 02-2','Male 02-2'],
+    ['male 02.2.png','Male 02-2'],
+    ['male 02.2','Male 02-2'],
+    ['sprite-0002.png','Male 02-2'],
+    ['sprite-0002','Male 02-2'],
+    ['sprite_0002.png','Male 02-2'],
+    ['sprite_0002','Male 02-2'],
+    ['sprite0002.png','Male 02-2'],
+    ['sprite0002','Male 02-2'],
+    ['sprite 0002.png','Male 02-2'],
+    ['sprite 0002','Male 02-2'],
+    ['male 18-1.png','Male 18-1'],
+    ['male 18-1','Male 18-1'],
+    ['soldier 01-1.png','Soldier 01-1'],
+    ['soldier 01-1','Soldier 01-1'],
+    ['heroa.png','Hero A'],
+    ['heroa','Hero A'],
+    ['hero a.png','Hero A'],
+    ['hero a','Hero A'],
+    ['herob.png','Hero B'],
+    ['herob','Hero B'],
+    ['hero b.png','Hero B'],
+    ['hero b','Hero B']
   ]);
   const SPRITES=Object.create(null);
   window.SPRITES=SPRITES;
@@ -574,13 +589,18 @@
   }
 
   function canonicalizeSpriteName(raw){
-    if(!raw) return { canonical:raw, alias:null };
+    if(!raw) return { canonical:raw, alias:null, removedPreset:false, removedLabel:null };
     const trimmed=raw.trim();
     const normalized=trimmed.toLowerCase();
-    if(LEGACY_SPRITE_ALIASES.has(normalized)){
-      return { canonical:LEGACY_SPRITE_ALIASES.get(normalized), alias:trimmed };
+    if(REMOVED_PRESET_IDENTIFIERS.has(normalized)){
+      return {
+        canonical:PLACEHOLDER_PRESET.canonicalName,
+        alias:trimmed,
+        removedPreset:true,
+        removedLabel:REMOVED_PRESET_IDENTIFIERS.get(normalized)
+      };
     }
-    return { canonical:trimmed, alias:null };
+    return { canonical:trimmed, alias:null, removedPreset:false, removedLabel:null };
   }
 
   async function getSpriteSource(name,url){
@@ -604,8 +624,10 @@
     const height=image.naturalHeight || image.height || (SHEET_ROWS*32);
     const frameWidth=Math.max(1,Math.floor(width/SHEET_COLS));
     const frameHeight=Math.max(1,Math.floor(height/SHEET_ROWS));
+    const displayName=(options.displayName && String(options.displayName).trim()) || name;
     const entry={
       name,
+      displayName,
       image,
       width,
       height,
@@ -625,9 +647,9 @@
         catch(err){ console.error('updatePlayerCollider failed', err); }
       }
       if(entry.placeholder){
-        showNotice(`Placeholder active for ${name}. Check console for details.`);
+        showNotice(`Placeholder active for ${entry.displayName}. Check console for details.`);
       } else {
-        showNotice(`Loaded sprite: ${name}`);
+        showNotice(`Loaded sprite: ${entry.displayName}`);
       }
     }
     return entry;
@@ -654,9 +676,20 @@
   }
   window.loadSprite=loadSprite;
 
-  async function setActiveSprite(name,url){
+  function activatePlaceholder(label){
+    const friendly=(label && String(label).trim()) || PLACEHOLDER_PRESET.displayName;
+    activeSpriteName=PLACEHOLDER_PRESET.canonicalName;
+    spriteReady=false;
+    const placeholder=createPlaceholderSheet(friendly);
+    return finalizeSpriteLoad(PLACEHOLDER_PRESET.canonicalName, placeholder.image,{ placeholder:true, color:placeholder.color, displayName:friendly });
+  }
+
+  async function setActiveSprite(name,url,options={}){
     if(currentObjectUrl && currentObjectUrl!==url){ URL.revokeObjectURL(currentObjectUrl); currentObjectUrl=null; }
     if(url && url.startsWith('blob:')){ currentObjectUrl=url; }
+    if(name===PLACEHOLDER_PRESET.canonicalName && (!url || options.forcePlaceholder)){
+      return activatePlaceholder(options.placeholderLabel);
+    }
     const isExplicitProtocol=url && /^(https?:|data:|blob:|file:|\/\/)/i.test(url);
     const relativeInfo=url ? analyzeSpriteUrl(url) : null;
     const isRelativeAsset=!!(relativeInfo && relativeInfo.matched);
@@ -664,8 +697,16 @@
     let finalName=name;
 
     if(!url || isRelativeAsset){
-      const { canonical, alias }=canonicalizeSpriteName(name);
+      const { canonical, alias, removedPreset, removedLabel }=canonicalizeSpriteName(name);
       finalName=canonical;
+      if(removedPreset && (!url || isRelativeAsset)){
+        const labelRaw=options.placeholderLabel || removedLabel || alias || name;
+        const label=(labelRaw && String(labelRaw).trim()) || 'Legacy preset';
+        if(!options.suppressRemovalNotice){
+          showNotice(`${label} is no longer bundled. Using a placeholder sprite instead.`);
+        }
+        return activatePlaceholder(label);
+      }
       let basePath=null;
       const ensureBase=async()=>{
         if(basePath) return basePath;
@@ -693,7 +734,7 @@
 
       if(alias && alias!==canonical && (!url || isRelativeAsset)){
         const displayValue=!url ? canonical : (resolvedUrl ?? canonical);
-        showNotice(`${alias} is deprecated. Using ${canonical} instead.`);
+        showNotice(`${alias} is deprecated. Using ${displayValue} instead.`);
         if(urlInput){
           urlInput.value=displayValue;
         }
@@ -725,43 +766,60 @@
       const namePart=trimmed.split(/[\\/]/).pop() || trimmed;
       const cleanName=(namePart.split('?')[0] || namePart).trim();
       if(!isProtocol){
-        const { canonical, alias }=canonicalizeSpriteName(cleanName);
-        if(alias && alias!==canonical){
+        const info=canonicalizeSpriteName(cleanName);
+        if(info.removedPreset){
+          return { name:info.canonical, url:null, aliasOf:info.alias, removedPreset:true, removedLabel:info.removedLabel };
+        }
+        if(info.alias && info.alias!==info.canonical){
           const parts=trimmed.split('?');
           const pathPart=parts.shift() || '';
           const querySuffix=parts.length?`?${parts.join('?')}`:'';
           const segments=pathPart.split(/[/\\]/);
-          segments[segments.length-1]=canonical;
+          segments[segments.length-1]=info.canonical;
           const canonicalUrl=segments.join('/')+querySuffix;
-          return { name:canonical, url:canonicalUrl, aliasOf:alias };
+          return { name:info.canonical, url:canonicalUrl, aliasOf:info.alias, removedPreset:false, removedLabel:null };
         }
       }
-      return { name:cleanName, url:trimmed, aliasOf:null };
+      return { name:cleanName, url:trimmed, aliasOf:null, removedPreset:false, removedLabel:null };
     }
-    const { canonical, alias }=canonicalizeSpriteName(trimmed);
-    return { name:canonical, url:null, aliasOf:alias };
+    const info=canonicalizeSpriteName(trimmed);
+    return { name:info.canonical, url:null, aliasOf:info.alias, removedPreset:info.removedPreset, removedLabel:info.removedLabel };
   }
 
   function setActiveSpriteFromValue(raw,{ save=false }={}){
     const parsed=parseSpriteInput(raw);
     if(!parsed) return;
-    const { name, url, aliasOf }=parsed;
+    const { name, url, aliasOf, removedPreset, removedLabel }=parsed;
     const isBlob=url && url.startsWith('blob:');
     if(save){
       if(isBlob){
+        localStorage.removeItem('spriteURL');
+      } else if(removedPreset){
         localStorage.removeItem('spriteURL');
       } else {
         const valueToPersist=aliasOf ? (url ? url : name) : raw;
         localStorage.setItem('spriteURL', valueToPersist);
       }
     }
+    if(removedPreset){
+      const labelRaw=removedLabel || aliasOf || raw;
+      const label=(labelRaw && String(labelRaw).trim()) || 'Legacy preset';
+      showNotice(`${label} is no longer bundled. Using a placeholder sprite instead.`);
+      if(urlInput){
+        urlInput.value='';
+      }
+      if(spriteSelect){
+        spriteSelect.value=PLACEHOLDER_PRESET.canonicalName;
+      }
+      return setActiveSprite(PLACEHOLDER_PRESET.canonicalName, null, { placeholderLabel:label });
+    }
     if(aliasOf && aliasOf!==name){
       const displayValue=!url || isBlob ? name : url;
-      showNotice(`${aliasOf} is deprecated. Using ${name} instead.`);
+      showNotice(`${aliasOf} is deprecated. Using ${displayValue} instead.`);
       if(urlInput){
         urlInput.value=displayValue;
       }
-      if(spriteSelect){
+      if(!url && spriteSelect){
         for(const opt of spriteSelect.options){
           if(opt.value===name){
             spriteSelect.value=opt.value;
@@ -777,10 +835,20 @@
   const saved=localStorage.getItem('spriteURL');
   const initialValue=qp || saved || DEFAULT_SPRITE_NAME;
   const initialParsed=parseSpriteInput(initialValue);
-  const initialDisplayValue=initialParsed && initialParsed.aliasOf ? (initialParsed.url || initialParsed.name) : initialValue;
-  if(saved && initialValue===saved && initialParsed && initialParsed.aliasOf){
-    const canonicalStored=initialParsed.url || initialParsed.name;
-    localStorage.setItem('spriteURL', canonicalStored);
+  const initialDisplayValue=(()=>{
+    if(!initialParsed) return initialValue ?? '';
+    if(initialParsed.removedPreset) return '';
+    if(initialParsed.aliasOf) return initialParsed.url || initialParsed.name;
+    if(initialParsed.name===PLACEHOLDER_PRESET.canonicalName && !initialParsed.url) return '';
+    return initialParsed.url ?? initialValue ?? '';
+  })();
+  if(saved && initialValue===saved && initialParsed){
+    if(initialParsed.removedPreset){
+      localStorage.removeItem('spriteURL');
+    } else if(initialParsed.aliasOf){
+      const canonicalStored=initialParsed.url || initialParsed.name;
+      localStorage.setItem('spriteURL', canonicalStored);
+    }
   }
 
   urlInput=document.getElementById('spriteUrl');
@@ -802,7 +870,7 @@
     spriteSelect.addEventListener('change',()=>{
       const choice=spriteSelect.value;
       if(urlInput){
-        urlInput.value=choice;
+        urlInput.value=choice===PLACEHOLDER_PRESET.canonicalName?'':choice;
       }
       setActiveSpriteFromValue(choice,{ save:true });
     });
@@ -917,16 +985,43 @@
 
   // ===== World data & loading =====
   const propSpriteCache=new Map();
-  function requestPropSprite(url){
-    if(!propSpriteCache.has(url)){
+  function requestPropSprite(url,labelHint){
+    const raw=String(url ?? '').trim();
+    const baseKey=raw || PLACEHOLDER_PRESET.canonicalName;
+    const segment=(baseKey.split(/[\\/]/).pop() || '').split('?')[0];
+    const normalized=segment.toLowerCase();
+    const labelCandidate=typeof labelHint==='string'?labelHint.trim():'';
+    const needsPlaceholder=!segment || normalized===PLACEHOLDER_PRESET.canonicalName || REMOVED_PRESET_IDENTIFIERS.has(normalized);
+    if(needsPlaceholder){
+      const friendly=REMOVED_PRESET_IDENTIFIERS.get(normalized) || labelCandidate || PLACEHOLDER_PRESET.displayName;
+      const placeholderKey=`${PLACEHOLDER_PRESET.canonicalName}:${friendly}`;
+      if(propSpriteCache.has(placeholderKey)){
+        const existing=propSpriteCache.get(placeholderKey);
+        if(baseKey!==placeholderKey && raw && raw!==PLACEHOLDER_PRESET.canonicalName){
+          propSpriteCache.set(baseKey,existing);
+        }
+        return existing;
+      }
+      if(propSpriteCache.has(baseKey) && raw && raw!==PLACEHOLDER_PRESET.canonicalName){
+        return propSpriteCache.get(baseKey);
+      }
+      const placeholder=createPlaceholderSheet(friendly);
+      const entry={ img:placeholder.image, ready:true, error:false, placeholder:true };
+      propSpriteCache.set(placeholderKey,entry);
+      if(baseKey!==placeholderKey && raw && raw!==PLACEHOLDER_PRESET.canonicalName){
+        propSpriteCache.set(baseKey,entry);
+      }
+      return entry;
+    }
+    if(!propSpriteCache.has(baseKey)){
       const img=new Image();
       const entry={ img, ready:false, error:false };
       img.onload=()=>{ entry.ready=true; };
       img.onerror=()=>{ entry.error=true; };
-      img.src=url;
-      propSpriteCache.set(url,entry);
+      img.src=raw;
+      propSpriteCache.set(baseKey,entry);
     }
-    return propSpriteCache.get(url);
+    return propSpriteCache.get(baseKey);
   }
 
   function createDefaultParallaxLayers(){
@@ -956,6 +1051,7 @@
       h:Number(p.h)||32,
       color:p.color||'#94a3b8',
       spriteURL:p.spriteURL||null,
+      placeholderLabel:typeof p.placeholderLabel==='string'?p.placeholderLabel:null,
       sprite:null,
       shadow:typeof p.shadow==='boolean'?p.shadow:undefined,
       height:Number(p.height)||0,
@@ -1006,7 +1102,7 @@
         { x:520, y:620, w:260, h:56, type:'rock' }
       ],
       props:[
-        { x:520, y:260, w:48, h:48, spriteURL:'assets/Male 18-1.png', shadow:true, height:24 },
+        { x:520, y:260, w:48, h:48, spriteURL:'__placeholder__', placeholderLabel:'Legacy NPC', shadow:true, height:24 },
         { x:860, y:480, w:40, h:40, color:'#64748b', shadow:true },
         // Example wall torches with automatic lighting
         { type:'torch', x:340, y:260, w:18, h:62, shadow:false, handleColor:'#6b3f1d', sconceColor:'#3f4d63', flameColor:'#fb923c', flameHighlight:'#fef3c7', glowColor:'rgba(253,224,171,0.4)', lightRadius:240, lightIntensity:0.9, lightOffsetY:24 },
@@ -1026,7 +1122,7 @@
       ],
       props:[
         { x:600, y:520, w:60, h:60, color:'#475569', shadow:true },
-        { x:1040, y:360, w:96, h:96, spriteURL:'assets/Male 18-1.png', shadow:true, height:36 },
+        { x:1040, y:360, w:96, h:96, spriteURL:'__placeholder__', placeholderLabel:'Legacy NPC', shadow:true, height:36 },
         // Torches flank the entrance in this room as well
         { type:'torch', x:520, y:320, w:18, h:60, shadow:false, handleColor:'#6b3f1d', sconceColor:'#3f4d63', flameColor:'#fb923c', flameHighlight:'#fef3c7', glowColor:'rgba(253,224,171,0.38)', lightRadius:220, lightIntensity:0.88, lightOffsetY:22 },
         { type:'torch', x:980, y:320, w:18, h:60, shadow:false, handleColor:'#6b3f1d', sconceColor:'#3f4d63', flameColor:'#f97316', flameHighlight:'#fde68a', glowColor:'rgba(253,224,171,0.34)', lightRadius:220, lightIntensity:0.9, lightOffsetY:22 }
@@ -1059,7 +1155,7 @@
     const props=cloneProps(roomData.props);
     for(const prop of props){
       if(prop.spriteURL){
-        prop.sprite=requestPropSprite(prop.spriteURL);
+        prop.sprite=requestPropSprite(prop.spriteURL, prop.placeholderLabel);
       }
       currentProps.push(prop);
     }
