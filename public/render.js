@@ -1,6 +1,7 @@
 import { TileInfo } from './GameMap.js';
 import { DPR } from './renderer/canvas.js';
 import { drawSprite } from './renderer/atlas.js';
+import { drawTile, tileLoader } from './renderer/tileloader.js';
 import { vignette, colorGrade } from './renderer/postfx.js';
 import { createCamera } from './renderer/camera.js';
 import { createFlashLayer } from './renderer/flash.js';
@@ -132,6 +133,19 @@ export default class RenderEngine {
   setAtlas(atlas) {
     this.atlas = atlas || null;
     this.assetsLoaded = Boolean(atlas?.img && atlas?.meta);
+    
+    // Preload individual castle tiles for better graphics
+    if (this.assetsLoaded) {
+      const castleTiles = [
+        'castle_wall', 'castle_floor', 'red_carpet', 'throne', 
+        'banner', 'torch_wall', 'castle_door', 'castle_window',
+        'fountain', 'garden', 'courtyard'
+      ];
+      
+      tileLoader.preloadTiles(castleTiles).catch(err => {
+        console.warn('Failed to preload individual tiles:', err);
+      });
+    }
   }
 
   setParticles(emitter) {
@@ -185,7 +199,10 @@ export default class RenderEngine {
   }
 
   draw() {
-    if (!this.assetsLoaded) return;
+    if (!this.assetsLoaded) {
+      console.log('Assets not loaded, skipping draw');
+      return;
+    }
 
     this.updateCanvasMetrics();
     const ctx = this.ctx;
@@ -197,6 +214,7 @@ export default class RenderEngine {
     ctx.fillRect(0, 0, this.viewportWidth, this.viewportHeight);
 
     const grid = this.getMapGrid();
+    console.log('Draw called - Grid exists:', !!grid, 'Viewport:', this.viewportWidth, 'x', this.viewportHeight);
     if (grid) {
       this.camera.apply(ctx);
       this.drawMap(ctx, grid);
@@ -321,15 +339,15 @@ export default class RenderEngine {
   drawAtlasTile(ctx, sprite, tileX, tileY, fallbackColor) {
     const px = this.offsetX + tileX * this.tileSize;
     const py = this.offsetY + tileY * this.tileSize;
-    const drawn = drawSprite(ctx, this.atlas, sprite, px, py, this.tileSize, this.tileSize);
-    if (!drawn && fallbackColor) {
-      ctx.fillStyle = fallbackColor;
-      ctx.fillRect(px, py, this.tileSize, this.tileSize);
-    }
+    
+    // Try individual tile first, then atlas, then fallback color
+    const drawn = drawTile(ctx, this.atlas, sprite, px, py, this.tileSize, this.tileSize, fallbackColor);
+    
     return drawn;
   }
 
   drawMap(ctx, grid) {
+    console.log('Drawing map with grid:', grid.width, 'x', grid.height);
     const tiles = grid.tiles;
     for (let y = 0; y < grid.height; y += 1) {
       const row = tiles[y];
@@ -337,7 +355,10 @@ export default class RenderEngine {
       for (let x = 0; x < grid.width; x += 1) {
         const tileType = row[x];
         const fallback = TileInfo[tileType]?.color;
-        this.drawAtlasTile(ctx, tileType, x, y, fallback);
+        const drawn = this.drawAtlasTile(ctx, tileType, x, y, fallback);
+        if (x === 0 && y === 0) {
+          console.log('First tile draw:', tileType, 'drawn:', drawn, 'fallback:', fallback);
+        }
       }
     }
 
