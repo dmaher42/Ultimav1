@@ -185,7 +185,10 @@ export default class RenderEngine {
   }
 
   draw() {
-    if (!this.assetsLoaded) return;
+    if (!this.assetsLoaded) {
+      console.log('Assets not loaded, skipping draw');
+      return;
+    }
 
     this.updateCanvasMetrics();
     const ctx = this.ctx;
@@ -197,6 +200,7 @@ export default class RenderEngine {
     ctx.fillRect(0, 0, this.viewportWidth, this.viewportHeight);
 
     const grid = this.getMapGrid();
+    console.log('Draw called - Grid exists:', !!grid, 'Viewport:', this.viewportWidth, 'x', this.viewportHeight);
     if (grid) {
       this.camera.apply(ctx);
       this.drawMap(ctx, grid);
@@ -330,6 +334,7 @@ export default class RenderEngine {
   }
 
   drawMap(ctx, grid) {
+    console.log('Drawing map with grid:', grid.width, 'x', grid.height);
     const tiles = grid.tiles;
     for (let y = 0; y < grid.height; y += 1) {
       const row = tiles[y];
@@ -337,7 +342,10 @@ export default class RenderEngine {
       for (let x = 0; x < grid.width; x += 1) {
         const tileType = row[x];
         const fallback = TileInfo[tileType]?.color;
-        this.drawAtlasTile(ctx, tileType, x, y, fallback);
+        const drawn = this.drawAtlasTile(ctx, tileType, x, y, fallback);
+        if (x === 0 && y === 0) {
+          console.log('First tile draw:', tileType, 'drawn:', drawn, 'fallback:', fallback);
+        }
       }
     }
 

@@ -720,6 +720,11 @@ function giveStarterGear(character) {
 }
 
 async function bootstrap() {
+  console.log('Bootstrap starting...');
+  
+  // Expose renderer for debugging
+  window.renderer = renderer;
+  
   try {
     const atlasCandidates = [];
     try {
@@ -728,12 +733,16 @@ async function bootstrap() {
       console.warn('Failed to resolve atlas relative to module.', error);
     }
     atlasCandidates.push('./assets/atlas.json');
+    console.log('Atlas candidates:', atlasCandidates);
+    
     let atlas = null;
     let lastError = null;
     for (const candidate of atlasCandidates) {
       if (!candidate || lastError?.metadataUrl === candidate) continue;
       try {
+        console.log(`Attempting to load atlas from: ${candidate}`);
         atlas = await loadAtlas(null, candidate);
+        console.log('Atlas loaded successfully:', !!atlas.img, !!atlas.meta);
         break;
       } catch (error) {
         lastError = Object.assign(error, { metadataUrl: candidate });
@@ -744,11 +753,16 @@ async function bootstrap() {
       throw lastError || new Error('Failed to load atlas metadata.');
     }
     renderer.setAtlas(atlas);
+    console.log('Atlas set on renderer. Assets loaded:', renderer.assetsLoaded);
   } catch (error) {
     console.error('Failed to load texture atlas.', error);
     return;
   }
+  
+  console.log('Starting renderer...');
   renderer.start();
+  console.log('Renderer started. Running:', renderer.running);
+  
   setupEventListeners();
   if (loadGame(false)) {
     return;
@@ -770,6 +784,7 @@ async function bootstrap() {
   celebrateCastle();
   saveGame('new-adventurer', true);
   log('Use WASD or arrows to explore.');
+  console.log('Bootstrap completed successfully');
 }
 
 bootstrap();
