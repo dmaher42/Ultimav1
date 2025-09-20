@@ -2,7 +2,7 @@ import { TileInfo } from './GameMap.js';
 
 const TILE_SIZE = 48;
 const TILE_BASE_PATH = '/assets/tiles';
-const DEFAULT_PLAYER_SPRITE = '/assets/player.png';
+const DEFAULT_PLAYER_SPRITE = '/assets/sprites/player.png';
 const BACKGROUND_COLOR = '#05070d';
 const DIRECTION_TO_ROW = {
   south: 0,
@@ -117,7 +117,7 @@ export function drawTile(ctx, assets, x, y, type, tileSize, fallbackColor, offse
   }
 }
 
-export function drawPlayer(ctx, spriteSheet, x, y, direction, frameIndex, tileSize) {
+export function drawPlayerSprite(ctx, spriteSheet, x, y, direction, frameIndex, tileSize) {
   if (!spriteSheet) return;
   const frameWidth = Math.floor(spriteSheet.width / 3);
   const frameHeight = Math.floor(spriteSheet.height / 4);
@@ -146,20 +146,10 @@ export default class RenderEngine {
     this.npcs = [];
     this.objectSignature = '';
 
-    this.mapBuffer = document.createElement('canvas');
-    this.mapBufferCtx = this.mapBuffer.getContext('2d');
-    this.mapBufferCtx.imageSmoothingEnabled = false;
-    this.objectBuffer = document.createElement('canvas');
-    this.objectBufferCtx = this.objectBuffer.getContext('2d');
-    this.objectBufferCtx.imageSmoothingEnabled = false;
-
     this.mapPixelWidth = 0;
     this.mapPixelHeight = 0;
     this.offsetX = 0;
     this.offsetY = 0;
-
-    this.backgroundDirty = true;
-    this.objectsDirty = true;
 
     this.playerSprite = null;
     this.playerFrame = 1;
@@ -253,6 +243,7 @@ export default class RenderEngine {
     const ctx = this.ctx;
     ctx.save();
     ctx.imageSmoothingEnabled = false;
+    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     ctx.fillStyle = BACKGROUND_COLOR;
     ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
@@ -261,34 +252,16 @@ export default class RenderEngine {
       return;
     }
 
-    if (this.backgroundDirty) {
-      this.redrawBackground();
-    }
-
-    if (this.objectsDirty) {
-      this.redrawObjects();
-    }
-
-    ctx.drawImage(this.mapBuffer, this.offsetX, this.offsetY);
-
-    if (this.objectBuffer.width && this.objectBuffer.height) {
-      ctx.drawImage(this.objectBuffer, this.offsetX, this.offsetY);
-    }
-
-    if (this.npcs.length) {
-      this.drawNPCs(ctx);
-    }
+    this.drawMap(ctx);
+    this.drawObjects(ctx);
+    this.drawNPCs(ctx);
 
     if (this.highlight) {
       this.drawHighlight(ctx, this.highlight);
     }
 
-    if (this.player && this.playerSprite) {
-      const px = this.offsetX + this.player.position.x * this.tileSize;
-      const py = this.offsetY + this.player.position.y * this.tileSize;
-      const direction = this.player.facing || this.currentDirection;
-      drawPlayer(ctx, this.playerSprite, px, py, direction, this.playerFrame, this.tileSize);
-    }
+    this.drawPlayer(ctx);
+    this.drawHUD(ctx);
 
     ctx.restore();
   }
@@ -300,8 +273,6 @@ export default class RenderEngine {
       this.canvas.width = width;
       this.canvas.height = height;
       this.ctx.imageSmoothingEnabled = false;
-      this.backgroundDirty = true;
-      this.objectsDirty = true;
     }
 
     if (!this.map) return;
@@ -312,61 +283,45 @@ export default class RenderEngine {
     this.offsetY = Math.floor((this.canvas.height - this.mapPixelHeight) / 2);
   }
 
-  redrawBackground() {
+  drawMap(ctx) {
     if (!this.map) return;
-    const width = this.map.width * this.tileSize;
-    const height = this.map.height * this.tileSize;
-    if (this.mapBuffer.width !== width || this.mapBuffer.height !== height) {
-      this.mapBuffer.width = width;
-      this.mapBuffer.height = height;
-    }
-    this.mapBufferCtx.imageSmoothingEnabled = false;
-    this.mapBufferCtx.clearRect(0, 0, width, height);
-
     for (let y = 0; y < this.map.height; y += 1) {
+      const row = this.map.tiles[y];
       for (let x = 0; x < this.map.width; x += 1) {
-        const tileType = this.map.tiles[y][x];
+        const tileType = row[x];
         const fallback = TileInfo[tileType]?.color;
-        drawTile(this.mapBufferCtx, this.assets, x, y, tileType, this.tileSize, fallback);
+        drawTile(ctx, this.assets, x, y, tileType, this.tileSize, fallback, this.offsetX, this.offsetY);
       }
     }
 
     if (this.map.safe) {
-      this.mapBufferCtx.fillStyle = 'rgba(255, 255, 255, 0.06)';
-      this.mapBufferCtx.fillRect(0, 0, width, height);
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.06)';
+      ctx.fillRect(this.offsetX, this.offsetY, this.mapPixelWidth, this.mapPixelHeight);
     }
-
-    this.backgroundDirty = false;
   }
 
-  redrawObjects() {
-    const width = this.map.width * this.tileSize;
-    const height = this.map.height * this.tileSize;
-    if (this.objectBuffer.width !== width || this.objectBuffer.height !== height) {
-      this.objectBuffer.width = width;
-      this.objectBuffer.height = height;
-    }
-    this.objectBufferCtx.imageSmoothingEnabled = false;
-    this.objectBufferCtx.clearRect(0, 0, width, height);
-
+  drawObjects(ctx) {
+    if (!this.objects.length) return;
     this.objects.forEach((object) => {
       const sprite = object?.sprite || object?.type || 'default';
       const color = object?.color || '#8c7853';
       if (typeof object?.draw === 'function') {
-        object.draw(this.objectBufferCtx, {
+        ctx.save();
+        ctx.translate(this.offsetX, this.offsetY);
+        object.draw(ctx, {
           tileSize: this.tileSize,
           assets: this.assets,
-          drawTile: (x, y, type) => drawTile(this.objectBufferCtx, this.assets, x, y, type, this.tileSize, color)
+          drawTile: (x, y, type) => drawTile(ctx, this.assets, x, y, type, this.tileSize, color)
         });
+        ctx.restore();
       } else if (typeof object?.x === 'number' && typeof object?.y === 'number') {
-        drawTile(this.objectBufferCtx, this.assets, object.x, object.y, sprite, this.tileSize, color);
+        drawTile(ctx, this.assets, object.x, object.y, sprite, this.tileSize, color, this.offsetX, this.offsetY);
       }
     });
-
-    this.objectsDirty = false;
   }
 
   drawNPCs(ctx) {
+    if (!this.npcs.length) return;
     this.npcs.forEach((npc) => {
       if (typeof npc?.x !== 'number' || typeof npc?.y !== 'number') return;
       const sprite = npc?.sprite || npc?.type || 'npc';
@@ -381,6 +336,48 @@ export default class RenderEngine {
     ctx.strokeStyle = highlight.color || this.highlightColor;
     ctx.lineWidth = Math.max(2, Math.round(this.tileSize * 0.06));
     ctx.strokeRect(px + 2, py + 2, this.tileSize - 4, this.tileSize - 4);
+  }
+
+  drawPlayer(ctx) {
+    if (!this.player || !this.playerSprite) return;
+    const px = this.offsetX + this.player.position.x * this.tileSize;
+    const py = this.offsetY + this.player.position.y * this.tileSize;
+    const direction = this.player.facing || this.currentDirection;
+    drawPlayerSprite(ctx, this.playerSprite, px, py, direction, this.playerFrame, this.tileSize);
+  }
+
+  drawHUD(ctx) {
+    if (!this.player) return;
+    const padding = 12;
+    const barHeight = 44;
+    const availableWidth = Math.max(this.canvas.width - padding * 2, 0);
+    const barWidth = Math.min(Math.max(220, availableWidth), this.canvas.width);
+    const x = (this.canvas.width - barWidth) / 2;
+    const y = padding;
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(12, 12, 24, 0.75)';
+    ctx.fillRect(x, y, barWidth, barHeight);
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x + 0.5, y + 0.5, barWidth - 1, barHeight - 1);
+
+    ctx.fillStyle = '#f8f9ff';
+    ctx.font = '16px "Press Start 2P", monospace';
+    ctx.textBaseline = 'middle';
+
+    const character = this.player.character;
+    const currentHealth = Math.round(character?.currentHP ?? 0);
+    const hasMax = Number.isFinite(character?.maxHP);
+    const maxHealth = hasMax ? Math.round(character.maxHP) : currentHealth;
+    const healthText = hasMax ? `Health: ${currentHealth}/${maxHealth}` : `Health: ${currentHealth}`;
+    const coordsText = `x: ${this.player.position.x}, y: ${this.player.position.y}`;
+
+    const textY = y + barHeight / 2;
+    ctx.fillText(healthText, x + 16, textY);
+    const coordsWidth = ctx.measureText(coordsText).width;
+    ctx.fillText(coordsText, x + barWidth - 16 - coordsWidth, textY);
+    ctx.restore();
   }
 
   tileAtScreen(x, y) {
@@ -398,22 +395,14 @@ export default class RenderEngine {
 
     if (map !== this.map) {
       this.map = map || null;
-      this.backgroundDirty = true;
-      this.objectsDirty = true;
       if (!map) {
         this.stopAllMovement();
       }
     }
 
     if (map) {
-      const expectedWidth = map.width * this.tileSize;
-      const expectedHeight = map.height * this.tileSize;
-      if (expectedWidth !== this.mapPixelWidth || expectedHeight !== this.mapPixelHeight) {
-        this.mapPixelWidth = expectedWidth;
-        this.mapPixelHeight = expectedHeight;
-        this.backgroundDirty = true;
-        this.objectsDirty = true;
-      }
+      this.mapPixelWidth = map.width * this.tileSize;
+      this.mapPixelHeight = map.height * this.tileSize;
     }
 
     if (player) {
@@ -436,16 +425,10 @@ export default class RenderEngine {
     if (signature !== this.objectSignature) {
       this.objects = Array.isArray(objects) ? objects.slice() : [];
       this.objectSignature = signature;
-      this.objectsDirty = true;
     }
 
     const npcs = options.npcs ?? map?.npcs ?? [];
     this.npcs = Array.isArray(npcs) ? npcs.slice() : [];
-
-    if (options.forceRedraw) {
-      this.backgroundDirty = true;
-      this.objectsDirty = true;
-    }
   }
 
   setPlayerMovement(direction, active) {
