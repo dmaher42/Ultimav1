@@ -22,6 +22,7 @@
   </div>
 
   <div id="notice" class="notice" style="display:none"></div>
+  <div id="spriteStatus" class="notice" style="display:none;top:50px;background:#7f1d1dcc;border-color:#dc2626"></div>
 
   <div class="toolbar" style="opacity:0.95">
     <label>Sprite URL: <input id="spriteUrl" type="text" placeholder="sprite.png or https://..." /></label>
@@ -235,7 +236,17 @@
 
   // ===== UI notice helper =====
   const noticeEl = document.getElementById('notice');
+  const spriteStatusEl = document.getElementById('spriteStatus');
   function showNotice(msg){ noticeEl.textContent=msg; noticeEl.style.display='block'; clearTimeout(showNotice._t); showNotice._t=setTimeout(()=>noticeEl.style.display='none',7000); }
+  function updateSpriteStatus(isRealSprite, spriteName) {
+    if (!spriteStatusEl) return;
+    if (isRealSprite) {
+      spriteStatusEl.style.display = 'none';
+    } else {
+      spriteStatusEl.textContent = `⚠️ No sprite loaded - using placeholder. Try uploading a sprite or check /assets/sprites/`;
+      spriteStatusEl.style.display = 'block';
+    }
+  }
   function getParam(name){ const u=new URL(location.href); return u.searchParams.get(name); }
 
   // ===== Sprite loading (robust) =====
@@ -243,7 +254,7 @@
   const SHEET_COLS = 3, SHEET_ROWS = 4;
   const DIR_ROW={ down:0, left:1, right:2, up:3 };
   const PLACEHOLDER_PRESET={ canonicalName:'__placeholder__', displayName:'Placeholder Sprite' };
-  const DEFAULT_SPRITE_NAME=PLACEHOLDER_PRESET.canonicalName;
+  const DEFAULT_SPRITE_NAME='heroa.png';
   // Sprite sheets are typically placed in public/assets/; the resolver also
   // supports servers that expose the directory as /assets/ directly.
 
@@ -527,6 +538,15 @@
 
   let activeSpriteName='';
   let spriteReady=false;    // ready flag for the active sprite
+  // Expose on window for external access
+  Object.defineProperty(window, 'activeSpriteName', {
+    get: () => activeSpriteName,
+    enumerable: true
+  });
+  Object.defineProperty(window, 'spriteReady', {
+    get: () => spriteReady,
+    enumerable: true
+  });
   let frameW=32, frameH=32; // computed on load
   let currentObjectUrl=null;// revoke blob URLs when replaced
   let urlInput=null;
@@ -648,8 +668,10 @@
       }
       if(entry.placeholder){
         showNotice(`Placeholder active for ${entry.displayName}. Check console for details.`);
+        updateSpriteStatus(false, name);
       } else {
         showNotice(`Loaded sprite: ${entry.displayName}`);
+        updateSpriteStatus(true, name);
       }
     }
     return entry;
@@ -657,7 +679,7 @@
 
   async function loadSprite(name,url){
     const source=await getSpriteSource(name,url);
-    return new Promise(resolve=>{
+    return new Promise(async resolve=>{
       const img=new Image();
       img.decoding='async';
       img.crossOrigin='anonymous';
@@ -665,8 +687,37 @@
         const entry=finalizeSpriteLoad(name,img,{ placeholder:false });
         resolve(entry);
       };
-      img.onerror=(err)=>{
-        console.error(`Sprite "${name}" failed to load from ${source}. Using placeholder rectangle instead.`, err);
+      img.onerror=async (err)=>{
+        console.error(`Sprite "${name}" failed to load from ${source}. Attempting fallback to default sprite.`, err);
+        
+        // Try fallback to default sprite if we're not already loading it
+        if(name !== 'heroa.png' && name !== PLACEHOLDER_PRESET.canonicalName) {
+          try {
+            const defaultSource = await getSpriteSource('heroa.png', null);
+            const fallbackImg = new Image();
+            fallbackImg.decoding = 'async';
+            fallbackImg.crossOrigin = 'anonymous';
+            fallbackImg.onload = () => {
+              console.log(`Using default sprite 'heroa.png' as fallback for "${name}"`);
+              const entry = finalizeSpriteLoad(name, fallbackImg, { placeholder: false, displayName: `${name} (using heroa.png)` });
+              resolve(entry);
+            };
+            fallbackImg.onerror = () => {
+              // If even default sprite fails, use placeholder
+              console.error(`Default sprite 'heroa.png' also failed to load. Using placeholder for "${name}".`);
+              const placeholder=createPlaceholderSheet(name);
+              const entry=finalizeSpriteLoad(name,placeholder.image,{ placeholder:true, color:placeholder.color });
+              resolve(entry);
+            };
+            fallbackImg.src = defaultSource;
+            return;
+          } catch (fallbackErr) {
+            console.error(`Error attempting fallback sprite:`, fallbackErr);
+          }
+        }
+        
+        // Fallback to placeholder
+        console.error(`Using placeholder rectangle instead for "${name}".`);
         const placeholder=createPlaceholderSheet(name);
         const entry=finalizeSpriteLoad(name,placeholder.image,{ placeholder:true, color:placeholder.color });
         resolve(entry);
@@ -856,8 +907,51 @@
     urlInput.value=initialDisplayValue;
   }
 
+  // Auto-discover available sprites and populate dropdown
+  async function discoverAndPopulateSprites() {
+    if (!spriteSelect) return;
+    
+    const commonSprites = ['heroa.png', 'herob.png', 'player.png', 'character.png'];
+    const discovered = new Set();
+    
+    // Try to detect available sprites
+    for (const spriteName of commonSprites) {
+      try {
+        const testUrl = await getSpriteSource(spriteName, null);
+        const response = await fetch(testUrl, { method: 'HEAD' });
+        if (response.ok) {
+          discovered.add(spriteName);
+        }
+      } catch (err) {
+        // Sprite not available, skip
+      }
+    }
+    
+    // Add discovered sprites to dropdown
+    for (const spriteName of discovered) {
+      // Check if option already exists
+      let exists = false;
+      for (const opt of spriteSelect.options) {
+        if (opt.value === spriteName) {
+          exists = true;
+          break;
+        }
+      }
+      
+      if (!exists) {
+        const option = document.createElement('option');
+        option.value = spriteName;
+        option.textContent = spriteName.replace('.png', '').replace(/[_-]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        spriteSelect.appendChild(option);
+      }
+    }
+  }
+
   spriteSelect=document.getElementById('spriteSelect');
   if(spriteSelect){
+    // Auto-discover sprites first
+    discoverAndPopulateSprites().catch(err => console.log('Sprite discovery failed:', err));
+    
     const initialName=initialParsed?.name;
     if(initialName){
       for(const opt of spriteSelect.options){
