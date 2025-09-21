@@ -1,3 +1,4 @@
+// Feature: Village area + transitions (Castle↔Village↔Forest)
 export const LORD_BRITISH_SPRITE_SHEET = 'assets/sprites/Soldier-01-2-1758429653885-76805eae.png';
 export const LORD_BRITISH_SPRITE_FRAME = 'player_south_1';
 
@@ -180,6 +181,25 @@ const TILE_DEFINITIONS = {
   }
 };
 
+const VILLAGE_LAYOUT = [
+  'TTTTTTTTTTTTTTTTTTTT',
+  'TGGGGGGGGPCGGGGGGGGT',
+  'TGGGGGGGGPAGGGGGGGGT',
+  'TGGGGGGGGPPGGGGGGGGT',
+  'TGGGGGGGGPPGGGGGGGGT',
+  'TGGGGGPPPPPPPPGGGGGT',
+  'TGGGGGPPPPPPPPGGGGGT',
+  'TPPPPPPPPPWPPPPPPPPT',
+  'TPPPPPPPPPPPPPPBPFPT',
+  'TGGGGGPPNPPPPPGGGGGT',
+  'TGPPPPPPPPPPPPPPPPGT',
+  'TGGHHHGGGPPGGGHHHGGT',
+  'TGGHHHGGGPPGGGHHHGGT',
+  'TGGHHHGGGPPGGGHHHGGT',
+  'TGGGGGGGGPPGGGGGGGGT',
+  'TTTTTTTTTTTTTTTTTTTT'
+];
+
 const FOREST_LAYOUT = [
   'TTTTTTTTTTTTTTTTTTTT',
   'TGGGGGGGGGGGGGGGGGTT',
@@ -188,7 +208,7 @@ const FOREST_LAYOUT = [
   'TGGWWGGGGGGGGGGGGGTT',
   'TGGGGGGGGGGGGGGGGGTT',
   'TGGGGGGGGGGGGGGGGGTT',
-  'TGGGGGSSGGGGGGGGGGTT',
+  'TGGGGGSSVGGGGGGGGGTT',
   'TGGGGGGGGGGGGGGGGGTT',
   'TGGGGGGGGGGGGGGGGGTT',
   'TGGGGGGGGGGGGGGGGGTT',
@@ -257,16 +277,30 @@ const CASTLE_LAYOUT = [
   'WGGGGGGGGGGGGGGGGGGGGGGGGGW',
   'WGFGFGGGGGGGGGGGGGGGGGFGFGW',
   'WGFFFGGGSGGGGGGGGGGGGGFFFGW',
-  'WGGGGGGGGGGGGGGGGGGGGGGGGGW',
+  'WGGGGGGGVGGGGGGGGGGGGGGGGGW',
   'WWWWWWWWWWWDDWWWWWWWWWWWWWW'
 ];
 
 const FOREST_CHAR_MAP = {
   G: { tile: 'grass' },
-  S: { tile: 'grass', spawn: 'village' },
+  S: { tile: 'grass', spawn: ['village', 'forest_path'] },
   T: { tile: 'trees' },
   W: { tile: 'water' },
+  V: { tile: 'grass', transition: { map: 'village', spawn: 'forest_path' } },
   E: { tile: 'cave_entrance', transition: { map: 'cave', spawn: 'mouth' }, spawn: 'mouth' }
+};
+
+const VILLAGE_CHAR_MAP = {
+  T: { tile: 'trees' },
+  G: { tile: 'grass' },
+  P: { tile: 'path' },
+  C: { tile: 'path', transition: { map: 'castle', spawn: 'castle_gate' } },
+  A: { tile: 'path', spawn: 'castle_gate' },
+  F: { tile: 'path', transition: { map: 'forest', spawn: 'forest_path' } },
+  B: { tile: 'path', spawn: 'forest_path' },
+  W: { tile: 'fountain' },
+  H: { tile: 'castle_wall' },
+  N: { tile: 'path' }
 };
 
 const CAVE_CHAR_MAP = {
@@ -290,7 +324,8 @@ const CASTLE_CHAR_MAP = {
   K: { tile: 'kitchen_table' },     // Castle kitchen tables
   O: { tile: 'study_desk' },        // Royal study desks
   A: { tile: 'chapel_altar' },      // Chapel altar
-  S: { tile: 'castle_floor', spawn: 'entrance' }  // Spawn point (entrance)
+  S: { tile: 'castle_floor', spawn: ['entrance', 'village', 'castle_gate'] },  // Spawn points (entrance & exterior)
+  V: { tile: 'garden', transition: { map: 'village', spawn: 'castle_gate' } }  // Transition to the village hub
 };
 
 function parseLayout(layout, charMap) {
@@ -307,7 +342,13 @@ function parseLayout(layout, charMap) {
       if (mapping.transition) {
         meta.set(`${x},${y}`, { transition: { ...mapping.transition } });
       }
-      if (mapping.spawn) {
+      if (Array.isArray(mapping.spawn)) {
+        mapping.spawn.forEach((tag) => {
+          if (tag) {
+            spawns[tag] = { x, y };
+          }
+        });
+      } else if (mapping.spawn) {
         spawns[mapping.spawn] = { x, y };
       }
     }
@@ -487,6 +528,35 @@ export function createWorld() {
       }
     ]
   });
+  const village = new GameMap({
+    id: 'village',
+    name: 'Britannian Village',
+    layout: VILLAGE_LAYOUT,
+    charMap: VILLAGE_CHAR_MAP,
+    areaLevel: 1,
+    encounterRate: 0,
+    safe: true,
+    npcs: [
+      {
+        id: 'village_greeter',
+        name: 'Village Greeter',
+        x: 10,
+        y: 6,
+        sprite: 'npc',
+        color: '#d2b48c',
+        dialogue: 'Welcome to our humble village! The castle gates stand just to the north.'
+      },
+      {
+        id: 'market_keeper',
+        name: 'Stall Keeper',
+        x: 8,
+        y: 9,
+        sprite: 'npc',
+        color: '#9acd32',
+        dialogue: 'I am preparing a stall—soon travelers will be able to stock up before their journeys.'
+      }
+    ]
+  });
   const forest = new GameMap({
     id: 'forest',
     name: 'Silvan Glade',
@@ -508,6 +578,7 @@ export function createWorld() {
   return {
     maps: {
       castle,
+      village,
       forest,
       cave
     },
