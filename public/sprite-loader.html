@@ -1,0 +1,1911 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Canvas RPG — Robust Sprite Loading (3×4 locked)</title>
+  <style>
+    html,body{margin:0;height:100%;background:#0a0f1f;color:#e5e7eb;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;overflow:hidden}
+    #root{height:100%;position:relative}
+    canvas{position:absolute;inset:0;display:block}
+    .notice{position:fixed;top:10px;left:50%;transform:translateX(-50%);background:#111827cc;border:1px solid #243b55;border-radius:10px;padding:8px 12px;font:12px/1.4 ui-monospace,monospace;z-index:9999}
+    .toolbar{position:fixed;right:10px;bottom:10px;background:#111827cc;border:1px solid #243b55;border-radius:10px;padding:8px 12px;font:12px/1.4 ui-monospace,monospace;z-index:9999;display:flex;gap:8px;align-items:center}
+    .toolbar input[type="text"]{width:260px}
+    .drop{position:fixed;inset:0;border:2px dashed #47556955;border-radius:12px;display:none;place-items:center;background:#0a0f1faa;color:#cbd5e1;font:14px/1.4 ui-monospace,monospace;z-index:9998}
+    .drop.show{display:grid}
+  </style>
+</head>
+<body>
+  <div id="root">
+    <canvas id="bg"></canvas>
+    <canvas id="game" tabindex="0"></canvas>
+  </div>
+
+  <div id="notice" class="notice" style="display:none"></div>
+  <div id="spriteStatus" class="notice" style="display:none;top:50px;background:#7f1d1dcc;border-color:#dc2626"></div>
+
+  <div class="toolbar" style="opacity:0.95">
+    <label>Sprite URL: <input id="spriteUrl" type="text" placeholder="sprite.png or https://..." /></label>
+    <button id="btnLoad">Load</button>
+    <input id="fileInput" type="file" accept="image/png,image/jpeg" style="display:none" />
+    <button id="btnFile">Choose File…</button>
+    <select id="spriteSelect" style="margin-left:8px">
+      <option value="__placeholder__">Placeholder (no bundled sprite)</option>
+    </select>
+  </div>
+  <div id="drop" class="drop">Drop a PNG/JPG sprite sheet here (3 frames × 4 rows)</div>
+
+  <script>
+  const DEFAULT_WORLD={ width:1600, height:1200 };
+  let currentWorld=null;
+  function getActiveWorld(){ return currentWorld ?? DEFAULT_WORLD; }
+
+  // ===== Canvas setup =====
+  const dpr = Math.min(devicePixelRatio||1,2);
+  const bgC = document.getElementById('bg');
+  const gameC = document.getElementById('game');
+  const bg = bgC.getContext('2d');
+  const ctx = gameC.getContext('2d');
+
+  // Global graphics configuration used by the toon pipeline.
+  const DEFAULT_TONE_LEVELS=[0.0,0.55,1.0];
+  const Graphics={
+    pixelArtMode:false,
+    renderScale:1,
+    ambientDarkness:0.35,
+    outlineColor:'#111',
+    outlineThickness:1,
+    toneLevels:[...DEFAULT_TONE_LEVELS],
+    lights:[],
+    playerLightEnabled:true,
+    playerLightRadius:220,
+    playerLightIntensity:0.85,
+    sceneCanvas:document.createElement('canvas'),
+    lightingCanvas:document.createElement('canvas'),
+    _outlineBuffer:document.createElement('canvas')
+  };
+  Graphics.sceneCtx=Graphics.sceneCanvas.getContext('2d');
+  Graphics.lightingCtx=Graphics.lightingCanvas.getContext('2d');
+  Graphics._outlineCtx=Graphics._outlineBuffer.getContext('2d');
+
+  function applyPixelArtSettings(){
+    const smoothing=!Graphics.pixelArtMode;
+    [ctx,bg,Graphics.sceneCtx,Graphics.lightingCtx,Graphics._outlineCtx].forEach(g=>{
+      if(g) g.imageSmoothingEnabled=smoothing;
+    });
+  }
+
+  function setLights(list){
+    Graphics.lights=Array.isArray(list)?list.map(l=>({
+      x:Number(l.x)||0,
+      y:Number(l.y)||0,
+      radius:Math.max(1,Number(l.radius)||0),
+      intensity:Math.max(0,Math.min(1,Number(l.intensity ?? 1)))
+    })) : [];
+  }
+  function setPixelArtMode(flag){
+    Graphics.pixelArtMode=!!flag;
+    applyPixelArtSettings();
+  }
+  function setAmbientDarkness(v){
+    Graphics.ambientDarkness=Math.max(0,Math.min(1,Number(v)||0));
+  }
+  function setToneLevels(levels){
+    if(!Array.isArray(levels)){
+      Graphics.toneLevels=[...DEFAULT_TONE_LEVELS];
+      return Graphics.toneLevels;
+    }
+    const sanitized=levels
+      .map(value=>Number(value))
+      .filter(value=>Number.isFinite(value))
+      .map(value=>Math.max(0,Math.min(1,value)));
+    Graphics.toneLevels=sanitized.length?sanitized:[...DEFAULT_TONE_LEVELS];
+    return Graphics.toneLevels;
+  }
+
+  window.Graphics=Graphics;
+  window.setLights=setLights;
+  window.setPixelArtMode=setPixelArtMode;
+  window.setAmbientDarkness=setAmbientDarkness;
+  window.setToneLevels=setToneLevels;
+
+  setToneLevels(Graphics.toneLevels);
+
+  applyPixelArtSettings();
+
+  // ===== Outline helpers =====
+  const OUTLINE_OFFSETS_BASE=[[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[1,-1],[-1,1],[1,1]];
+  function snapPixel(v){ return Graphics.pixelArtMode?Math.round(v):v; }
+  function getEffectiveOutlineThickness(thickness){
+    const base=Math.max(0.5,Number(thickness)||0);
+    const darknessBoost=Graphics.ambientDarkness>0.5?1:0;
+    return base+darknessBoost;
+  }
+
+  function ensureOutlineBufferSize(width,height){
+    const canvas=Graphics._outlineBuffer;
+    const targetW=Math.max(width,1);
+    const targetH=Math.max(height,1);
+    if(canvas.width<targetW) canvas.width=targetW;
+    if(canvas.height<targetH) canvas.height=targetH;
+    Graphics._outlineCtx.setTransform(1,0,0,1,0,0);
+  }
+
+  function drawOutlinedSprite(targetCtx,image,sx,sy,sw,sh,dx,dy,dw=sw,dh=sh,outlineColor=Graphics.outlineColor,thickness=Graphics.outlineThickness){
+    if(!image) return;
+    const color=outlineColor ?? Graphics.outlineColor;
+    const t=getEffectiveOutlineThickness(thickness);
+    const offset=Graphics.pixelArtMode?Math.max(1,Math.round(t)):t;
+    const pad=offset+2;
+    const offW=Math.ceil(dw+pad*2);
+    const offH=Math.ceil(dh+pad*2);
+    ensureOutlineBufferSize(offW,offH);
+    const octx=Graphics._outlineCtx;
+    octx.save();
+    octx.clearRect(0,0,offW,offH);
+    octx.imageSmoothingEnabled=!Graphics.pixelArtMode;
+    octx.drawImage(image,sx,sy,sw,sh,pad,pad,dw,dh);
+    octx.globalCompositeOperation='source-in';
+    octx.fillStyle=color;
+    octx.fillRect(0,0,offW,offH);
+    octx.globalCompositeOperation='source-over';
+    octx.restore();
+
+    const baseX=snapPixel(dx-pad);
+    const baseY=snapPixel(dy-pad);
+    for(const [ox,oy] of OUTLINE_OFFSETS_BASE){
+      const px=Graphics.pixelArtMode?snapPixel(baseX+ox*offset):baseX+ox*offset;
+      const py=Graphics.pixelArtMode?snapPixel(baseY+oy*offset):baseY+oy*offset;
+      targetCtx.drawImage(Graphics._outlineBuffer,0,0,offW,offH,px,py,offW,offH);
+    }
+    targetCtx.drawImage(image,sx,sy,sw,sh,snapPixel(dx),snapPixel(dy),dw,dh);
+  }
+
+  function drawOutlinedRect(targetCtx,x,y,w,h,color,outlineColor=Graphics.outlineColor,thickness=Graphics.outlineThickness){
+    const t=getEffectiveOutlineThickness(thickness);
+    const offset=Graphics.pixelArtMode?Math.max(1,Math.round(t)):t;
+    const pad=offset+2;
+    const offW=Math.ceil(w+pad*2);
+    const offH=Math.ceil(h+pad*2);
+    ensureOutlineBufferSize(offW,offH);
+    const octx=Graphics._outlineCtx;
+    const outline=outlineColor ?? Graphics.outlineColor;
+    octx.save();
+    octx.clearRect(0,0,offW,offH);
+    octx.fillStyle='#fff';
+    octx.fillRect(pad,pad,w,h);
+    octx.globalCompositeOperation='source-in';
+    octx.fillStyle=outline;
+    octx.fillRect(0,0,offW,offH);
+    octx.globalCompositeOperation='source-over';
+    octx.restore();
+
+    const baseX=snapPixel(x-pad);
+    const baseY=snapPixel(y-pad);
+    for(const [ox,oy] of OUTLINE_OFFSETS_BASE){
+      const px=Graphics.pixelArtMode?snapPixel(baseX+ox*offset):baseX+ox*offset;
+      const py=Graphics.pixelArtMode?snapPixel(baseY+oy*offset):baseY+oy*offset;
+      targetCtx.drawImage(Graphics._outlineBuffer,0,0,offW,offH,px,py,offW,offH);
+    }
+    targetCtx.fillStyle=color;
+    targetCtx.fillRect(snapPixel(x),snapPixel(y),w,h);
+  }
+
+  let currentRoom=null;          // currently active room definition
+  const currentObstacles=[];     // obstacles for collision/rendering
+  const currentProps=[];         // decorative props for the current room
+  let currentParallaxLayers=[];  // parallax layers per room (defaults later)
+  let camera=null;
+  function resize(){
+    const scale=Math.max(0.25, Number(Graphics.renderScale)||1);
+    const screenW=innerWidth*dpr;
+    const screenH=innerHeight*dpr;
+
+    bgC.width=screenW;
+    bgC.height=screenH;
+    bg.setTransform(dpr,0,0,dpr,0,0);
+
+    gameC.width=screenW;
+    gameC.height=screenH;
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+
+    const offW=Math.max(1,Math.round(screenW*scale));
+    const offH=Math.max(1,Math.round(screenH*scale));
+    if(Graphics.sceneCanvas.width!==offW || Graphics.sceneCanvas.height!==offH){
+      Graphics.sceneCanvas.width=offW;
+      Graphics.sceneCanvas.height=offH;
+    }
+    if(Graphics.lightingCanvas.width!==offW || Graphics.lightingCanvas.height!==offH){
+      Graphics.lightingCanvas.width=offW;
+      Graphics.lightingCanvas.height=offH;
+    }
+    Graphics.sceneCtx.setTransform(dpr*scale,0,0,dpr*scale,0,0);
+    Graphics.lightingCtx.setTransform(dpr*scale,0,0,dpr*scale,0,0);
+
+    applyPixelArtSettings();
+
+    drawBackground();
+
+    if(camera){
+      resizeCamera();
+      clampCameraToWorld(camera, camera.width, camera.height, getActiveWorld());
+    }
+  }
+  addEventListener('resize',resize);
+  function drawBackground(){ const g=bg.createLinearGradient(0,0,0,innerHeight); g.addColorStop(0,'#1a2b45'); g.addColorStop(1,'#0b1326'); bg.fillStyle=g; bg.fillRect(0,0,innerWidth,innerHeight); }
+
+  // ===== UI notice helper =====
+  const noticeEl = document.getElementById('notice');
+  const spriteStatusEl = document.getElementById('spriteStatus');
+  function showNotice(msg){ noticeEl.textContent=msg; noticeEl.style.display='block'; clearTimeout(showNotice._t); showNotice._t=setTimeout(()=>noticeEl.style.display='none',7000); }
+  function updateSpriteStatus(isRealSprite, spriteName) {
+    if (!spriteStatusEl) return;
+    if (isRealSprite) {
+      spriteStatusEl.style.display = 'none';
+    } else {
+      spriteStatusEl.textContent = `⚠️ No sprite loaded - using placeholder. Try uploading a sprite or check /assets/ and /assets/sprites/ directories`;
+      spriteStatusEl.style.display = 'block';
+    }
+  }
+  function getParam(name){ const u=new URL(location.href); return u.searchParams.get(name); }
+
+  // ===== Sprite loading (robust) =====
+  // Layout is permanently locked: 4 rows (down,left,right,up) × 3 columns (frames)
+  const SHEET_COLS = 3, SHEET_ROWS = 4;
+  const DIR_ROW={ down:0, left:1, right:2, up:3 };
+  const PLACEHOLDER_PRESET={ canonicalName:'__placeholder__', displayName:'Placeholder Sprite' };
+  const DEFAULT_SPRITE_NAME='heroa.png';
+  // Sprite sheets are typically placed in public/assets/; the resolver also
+  // supports servers that expose the directory as /assets/ directly.
+
+  function ensureTrailingSlash(path){
+    if(!path) return '';
+    return path.endsWith('/')?path:`${path}/`;
+  }
+
+  function normalizeBasePathCandidate(value){
+    if(!value && value!==0) return null;
+    let text=String(value).trim();
+    if(!text) return null;
+    text=text.replace(/\\/g,'/');
+    if(/^(https?:|file:|data:|blob:|\/\/)/i.test(text)){
+      return ensureTrailingSlash(text);
+    }
+    text=text.replace(/^\.\/+/,'');
+    while(text.startsWith('../')) text=text.slice(3);
+    if(text.startsWith('/')){
+      text='/' + text.replace(/^\/+/, '');
+      return ensureTrailingSlash(text);
+    }
+    return ensureTrailingSlash(text);
+  }
+
+  function relativePrefixFor(candidate){
+    if(!candidate) return null;
+    if(/^(https?:|file:|data:|blob:|\/\/)/i.test(candidate)){
+      try{
+        const baseUrl=new URL(candidate, document.baseURI);
+        let path=baseUrl.pathname||'';
+        if(!path) return null;
+        path=path.replace(/^\/+/, '');
+        if(!path.endsWith('/')) path+='/';
+        return path;
+      }
+      catch(err){
+        return null;
+      }
+    }
+    if(candidate.startsWith('/')){
+      let trimmed=candidate.replace(/^\/+/, '');
+      if(!trimmed.endsWith('/')) trimmed+='/';
+      return trimmed;
+    }
+    return candidate;
+  }
+
+  function buildSpritePrefixMatchers(candidates){
+    const seen=new Set();
+    const list=[];
+    for(const raw of candidates){
+      const prefix=relativePrefixFor(raw);
+      if(!prefix) continue;
+      const actual=ensureTrailingSlash(prefix);
+      const lower=actual.toLowerCase();
+      if(seen.has(lower)) continue;
+      seen.add(lower);
+      list.push({ actual, lower });
+    }
+    list.sort((a,b)=>b.actual.length-a.actual.length);
+    return list;
+  }
+
+  function splitUrlAndSuffix(raw){
+    const text=String(raw ?? '');
+    let end=text.length;
+    const q=text.indexOf('?');
+    if(q!==-1) end=Math.min(end,q);
+    const h=text.indexOf('#');
+    if(h!==-1) end=Math.min(end,h);
+    return { path:text.slice(0,end), suffix:text.slice(end) };
+  }
+
+  function parseSuffix(suffix){
+    if(!suffix) return { search:'', hash:'' };
+    let rest=suffix;
+    let hash='';
+    const hashIndex=rest.indexOf('#');
+    if(hashIndex!==-1){
+      hash=rest.slice(hashIndex+1);
+      rest=rest.slice(0,hashIndex);
+    }
+    let search='';
+    if(rest.startsWith('?')){
+      search=rest.slice(1);
+    }
+    return { search, hash };
+  }
+
+  function normalizeRelativeSpritePath(path){
+    if(!path) return '';
+    let text=String(path).trim();
+    text=text.replace(/\\/g,'/');
+    while(text.startsWith('./')) text=text.slice(2);
+    while(text.startsWith('../')) text=text.slice(3);
+    while(text.startsWith('/')) text=text.slice(1);
+    return text;
+  }
+
+  function analyzeSpriteUrl(raw){
+    const { path, suffix }=splitUrlAndSuffix(raw ?? '');
+    const normalized=normalizeRelativeSpritePath(path);
+    const lower=normalized.toLowerCase();
+    for(const prefix of SPRITE_PATH_STATE.prefixMatchers){
+      if(lower.startsWith(prefix.lower)){
+        return {
+          matched:true,
+          remainder:normalized.slice(prefix.actual.length),
+          suffix,
+          prefix:prefix.actual
+        };
+      }
+    }
+    return { matched:false, remainder:normalized, suffix, prefix:null };
+  }
+
+  function joinSpritePath(base, relativePath, suffix=''){
+    const cleanRelative=normalizeRelativeSpritePath(relativePath);
+    const normalizedBase=normalizeBasePathCandidate(base);
+    if(!normalizedBase){
+      return cleanRelative + suffix;
+    }
+    if(/^(https?:|file:|data:|blob:|\/\/)/i.test(normalizedBase)){
+      try{
+        const baseUrl=new URL(normalizedBase, document.baseURI);
+        const finalUrl=new URL(cleanRelative || '', baseUrl);
+        const { search, hash }=parseSuffix(suffix);
+        finalUrl.search=search;
+        finalUrl.hash=hash;
+        return finalUrl.href;
+      }
+      catch(err){
+        // fall through to string join
+      }
+    }
+    const prefix=normalizedBase;
+    if(!cleanRelative){
+      return `${prefix}${suffix}`;
+    }
+    return `${prefix}${cleanRelative}${suffix}`;
+  }
+
+  const SPRITE_PATH_STATE=(()=>{
+    const manualHints=[];
+    if(typeof window!=='undefined' && window.__SPRITE_BASE_PATH__){
+      manualHints.push(window.__SPRITE_BASE_PATH__);
+    }
+    const htmlHint=document?.documentElement?.getAttribute?.('data-sprite-base');
+    if(htmlHint) manualHints.push(htmlHint);
+    const metaHint=document?.querySelector?.('meta[name="sprite-base"]');
+    if(metaHint?.content) manualHints.push(metaHint.content);
+
+    const manualNormalized=manualHints.map(normalizeBasePathCandidate).filter(Boolean);
+    const seen=new Set();
+    const candidates=[];
+    const addCandidate=(value,{ front=false }={})=>{
+      const normalized=normalizeBasePathCandidate(value);
+      if(!normalized || seen.has(normalized)) return;
+      if(front){
+        candidates.unshift(normalized);
+      } else {
+        candidates.push(normalized);
+      }
+      seen.add(normalized);
+    };
+
+    for(const hint of manualNormalized){
+      addCandidate(hint,{ front:true });
+    }
+
+    const preferPublicFirst=(typeof location!=='undefined' && location.protocol==='file:');
+    // Enhanced path detection: try both base directories and sprites subdirectories
+    const defaults=preferPublicFirst?
+      ['public/assets/sprites/','public/assets/','assets/sprites/','assets/']:
+      ['assets/sprites/','assets/','public/assets/sprites/','public/assets/'];
+    for(const def of defaults){
+      addCandidate(def);
+    }
+
+    if(!candidates.length){
+      candidates.push('assets/');
+    }
+
+    const prefixMatchers=buildSpritePrefixMatchers(candidates);
+    const manualOverride=manualNormalized.length?manualNormalized[0]:null;
+
+    return {
+      basePath:manualOverride,
+      manualOverride,
+      detectionPromise:null,
+      candidates,
+      prefixMatchers
+    };
+  })();
+
+  async function detectSpriteBasePath(preferredName=DEFAULT_SPRITE_NAME){
+    if(SPRITE_PATH_STATE.basePath) return SPRITE_PATH_STATE.basePath;
+    if(SPRITE_PATH_STATE.detectionPromise) return SPRITE_PATH_STATE.detectionPromise;
+    const fallback=SPRITE_PATH_STATE.candidates[0] || 'assets/';
+    if(SPRITE_PATH_STATE.manualOverride){
+      SPRITE_PATH_STATE.basePath=SPRITE_PATH_STATE.manualOverride;
+      return SPRITE_PATH_STATE.basePath;
+    }
+    const protocol=(typeof location!=='undefined' && location.protocol)||'';
+    if(!/^https?:$/i.test(protocol)){
+      SPRITE_PATH_STATE.basePath=fallback;
+      return SPRITE_PATH_STATE.basePath;
+    }
+    const probes=[];
+    const addProbe=name=>{
+      if(!name || typeof name!=='string') return;
+      if(name===PLACEHOLDER_PRESET.canonicalName) return;
+      if(!probes.includes(name)) probes.push(name);
+    };
+    addProbe(preferredName);
+    addProbe(DEFAULT_SPRITE_NAME);
+    if(!probes.length && DEFAULT_SPRITE_NAME && DEFAULT_SPRITE_NAME!==PLACEHOLDER_PRESET.canonicalName){
+      probes.push(DEFAULT_SPRITE_NAME);
+    }
+    const candidates=[...SPRITE_PATH_STATE.candidates];
+    SPRITE_PATH_STATE.detectionPromise=(async()=>{
+      for(const candidate of candidates){
+        try{
+          const baseUrl=new URL(candidate, document.baseURI);
+          for(const probe of probes){
+            try{
+              const testUrl=new URL(probe, baseUrl);
+              const response=await fetch(testUrl.href,{ method:'HEAD', cache:'no-store' });
+              if(response.ok){
+                SPRITE_PATH_STATE.basePath=candidate;
+                return candidate;
+              }
+              if(response.status===405){
+                const retry=await fetch(testUrl.href,{ method:'GET', cache:'no-store' });
+                if(retry.ok){
+                  SPRITE_PATH_STATE.basePath=candidate;
+                  return candidate;
+                }
+              }
+            }
+            catch(err){
+              // Ignore individual probe errors and continue to the next option.
+            }
+          }
+        }
+        catch(err){
+          // Ignore network errors; try next candidate.
+        }
+      }
+      SPRITE_PATH_STATE.basePath=fallback;
+      return fallback;
+    })();
+    return SPRITE_PATH_STATE.detectionPromise;
+  }
+  const REMOVED_PRESET_IDENTIFIERS=new Map([
+    ['male 02-2.png','Male 02-2'],
+    ['male 02-2','Male 02-2'],
+    ['male 02.2.png','Male 02-2'],
+    ['male 02.2','Male 02-2'],
+    ['sprite-0002.png','Male 02-2'],
+    ['sprite-0002','Male 02-2'],
+    ['sprite_0002.png','Male 02-2'],
+    ['sprite_0002','Male 02-2'],
+    ['sprite0002.png','Male 02-2'],
+    ['sprite0002','Male 02-2'],
+    ['sprite 0002.png','Male 02-2'],
+    ['sprite 0002','Male 02-2'],
+    ['male 18-1.png','Male 18-1'],
+    ['male 18-1','Male 18-1'],
+    ['soldier 01-1.png','Soldier 01-1'],
+    ['soldier 01-1','Soldier 01-1'],
+    ['heroa.png','Hero A'],
+    ['heroa','Hero A'],
+    ['hero a.png','Hero A'],
+    ['hero a','Hero A'],
+    ['herob.png','Hero B'],
+    ['herob','Hero B'],
+    ['hero b.png','Hero B'],
+    ['hero b','Hero B']
+  ]);
+  const SPRITES=Object.create(null);
+  window.SPRITES=SPRITES;
+
+  let activeSpriteName='';
+  let spriteReady=false;    // ready flag for the active sprite
+  // Expose on window for external access
+  Object.defineProperty(window, 'activeSpriteName', {
+    get: () => activeSpriteName,
+    enumerable: true
+  });
+  Object.defineProperty(window, 'spriteReady', {
+    get: () => spriteReady,
+    enumerable: true
+  });
+  let frameW=32, frameH=32; // computed on load
+  let currentObjectUrl=null;// revoke blob URLs when replaced
+  let urlInput=null;
+  let spriteSelect=null;
+
+  const spriteReadyResolvers=[];
+  function resolveSpriteWaiters(){
+    while(spriteReadyResolvers.length){
+      const resolve=spriteReadyResolvers.shift();
+      try{ resolve(SPRITES[activeSpriteName] ?? null); }
+      catch(err){ console.error('Sprite ready callback failed', err); }
+    }
+  }
+  function waitForSpriteReady(){
+    if(spriteReady) return Promise.resolve(SPRITES[activeSpriteName] ?? null);
+    return new Promise(resolve=>spriteReadyResolvers.push(resolve));
+  }
+
+  function placeholderColorFor(name){
+    const palette=['#38bdf8','#f97316','#f472b6','#facc15','#34d399','#a855f7'];
+    let hash=0;
+    for(let i=0;i<name.length;i++){
+      hash=(hash*31 + name.charCodeAt(i))|0;
+    }
+    const index=Math.abs(hash)%palette.length;
+    return palette[index];
+  }
+
+  function createPlaceholderSheet(name){
+    const cellSize=48;
+    const width=SHEET_COLS*cellSize;
+    const height=SHEET_ROWS*cellSize;
+    const canvas=document.createElement('canvas');
+    canvas.width=width;
+    canvas.height=height;
+    const g=canvas.getContext('2d');
+    const color=placeholderColorFor(name);
+    g.fillStyle=color;
+    g.fillRect(0,0,width,height);
+    g.strokeStyle='#0f172a';
+    g.lineWidth=4;
+    g.strokeRect(2,2,width-4,height-4);
+    g.strokeStyle='#1e293b';
+    g.lineWidth=1;
+    for(let c=1;c<SHEET_COLS;c++){
+      const x=c*cellSize;
+      g.beginPath();
+      g.moveTo(x,2);
+      g.lineTo(x,height-2);
+      g.stroke();
+    }
+    for(let r=1;r<SHEET_ROWS;r++){
+      const y=r*cellSize;
+      g.beginPath();
+      g.moveTo(2,y);
+      g.lineTo(width-2,y);
+      g.stroke();
+    }
+    return { image:canvas, color, cellSize };
+  }
+
+  function canonicalizeSpriteName(raw){
+    if(!raw) return { canonical:raw, alias:null, removedPreset:false, removedLabel:null };
+    const trimmed=raw.trim();
+    const normalized=trimmed.toLowerCase();
+    if(REMOVED_PRESET_IDENTIFIERS.has(normalized)){
+      return {
+        canonical:PLACEHOLDER_PRESET.canonicalName,
+        alias:trimmed,
+        removedPreset:true,
+        removedLabel:REMOVED_PRESET_IDENTIFIERS.get(normalized)
+      };
+    }
+    return { canonical:trimmed, alias:null, removedPreset:false, removedLabel:null };
+  }
+
+  async function getSpriteSource(name,url){
+    if(url){
+      if(/^(https?:|data:|blob:|file:|\/\/)/i.test(url)){
+        return url;
+      }
+      const info=analyzeSpriteUrl(url);
+      if(!info.matched){
+        return url.replace(/\\/g,'/');
+      }
+      const base=await detectSpriteBasePath(name);
+      return joinSpritePath(base, info.remainder, info.suffix);
+    }
+    const base=await detectSpriteBasePath(name);
+    return joinSpritePath(base, name);
+  }
+
+  // Enhanced sprite source resolution with multiple path attempts
+  async function tryMultipleSpriteSources(name) {
+    const candidates = [];
+    
+    // Try the detected base path first
+    const basePath = await detectSpriteBasePath(name);
+    candidates.push(joinSpritePath(basePath, name));
+    
+    // If base path doesn't end with 'sprites/', also try with sprites subdirectory
+    if (!basePath.endsWith('sprites/')) {
+      candidates.push(joinSpritePath(basePath + 'sprites/', name));
+    }
+    
+    // Also try alternative base paths from our candidates list
+    for (const altBase of SPRITE_PATH_STATE.candidates) {
+      if (altBase !== basePath) {
+        candidates.push(joinSpritePath(altBase, name));
+        if (!altBase.endsWith('sprites/')) {
+          candidates.push(joinSpritePath(altBase + 'sprites/', name));
+        }
+      }
+    }
+    
+    return candidates;
+  }
+
+  function finalizeSpriteLoad(name,image,options={}){
+    const width=image.naturalWidth || image.width || (SHEET_COLS*32);
+    const height=image.naturalHeight || image.height || (SHEET_ROWS*32);
+    const frameWidth=Math.max(1,Math.floor(width/SHEET_COLS));
+    const frameHeight=Math.max(1,Math.floor(height/SHEET_ROWS));
+    const displayName=(options.displayName && String(options.displayName).trim()) || name;
+    const entry={
+      name,
+      displayName,
+      image,
+      width,
+      height,
+      frameWidth,
+      frameHeight,
+      placeholder:!!options.placeholder,
+      placeholderColor:options.color ?? null
+    };
+    SPRITES[name]=entry;
+    if(name===activeSpriteName){
+      frameW=frameWidth;
+      frameH=frameHeight;
+      spriteReady=true;
+      resolveSpriteWaiters();
+      if(typeof updatePlayerCollider==='function'){
+        try{ updatePlayerCollider(); }
+        catch(err){ console.error('updatePlayerCollider failed', err); }
+      }
+      if(entry.placeholder){
+        showNotice(`Placeholder active for ${entry.displayName}. Check console for details.`);
+        updateSpriteStatus(false, name);
+      } else {
+        showNotice(`Loaded sprite: ${entry.displayName}`);
+        updateSpriteStatus(true, name);
+      }
+    }
+    return entry;
+  }
+
+  async function loadSprite(name,url){
+    // For explicit URLs, use the original logic
+    if (url) {
+      const source=await getSpriteSource(name,url);
+      return new Promise(async resolve=>{
+        const img=new Image();
+        img.decoding='async';
+        img.crossOrigin='anonymous';
+        img.onload=()=>{
+          console.log(`✓ Successfully loaded sprite "${name}" from ${source}`);
+          const entry=finalizeSpriteLoad(name,img,{ placeholder:false });
+          resolve(entry);
+        };
+        img.onerror=async (err)=>{
+          console.error(`✗ Sprite "${name}" failed to load from ${source}. Attempting fallback strategies.`, err);
+          // Continue with fallback logic below
+          await attemptSpriteFallbacks(name, resolve);
+        };
+        img.src=source;
+      });
+    }
+    
+    // For name-only requests, try multiple sources
+    return new Promise(async resolve=>{
+      const candidates = await tryMultipleSpriteSources(name);
+      console.log(`Attempting to load sprite "${name}" from ${candidates.length} possible locations:`, candidates);
+      
+      let lastError = null;
+      
+      // Try each candidate source
+      for (let i = 0; i < candidates.length; i++) {
+        const source = candidates[i];
+        try {
+          const success = await new Promise((srcResolve) => {
+            const img = new Image();
+            img.decoding = 'async';
+            img.crossOrigin = 'anonymous';
+            img.onload = () => {
+              console.log(`✓ Successfully loaded sprite "${name}" from ${source} (attempt ${i + 1}/${candidates.length})`);
+              const entry = finalizeSpriteLoad(name, img, { placeholder: false });
+              resolve(entry);
+              srcResolve(true);
+            };
+            img.onerror = (err) => {
+              console.warn(`✗ Failed to load sprite "${name}" from ${source} (attempt ${i + 1}/${candidates.length})`);
+              lastError = err;
+              srcResolve(false);
+            };
+            img.src = source;
+          });
+          
+          if (success) return; // Successfully loaded
+        } catch (err) {
+          lastError = err;
+          console.warn(`Error trying to load "${name}" from ${source}:`, err);
+        }
+      }
+      
+      // All candidates failed, try fallback strategies
+      console.error(`All ${candidates.length} paths failed for sprite "${name}". Attempting fallback strategies.`);
+      await attemptSpriteFallbacks(name, resolve, lastError);
+    });
+  }
+  
+  async function attemptSpriteFallbacks(name, resolve, originalError = null) {
+    // Try fallback to default sprite if we're not already loading it
+    if (name !== 'heroa.png' && name !== PLACEHOLDER_PRESET.canonicalName) {
+      console.log(`Attempting fallback to default sprite 'heroa.png' for "${name}"`);
+      try {
+        const defaultCandidates = await tryMultipleSpriteSources('heroa.png');
+        
+        for (const defaultSource of defaultCandidates) {
+          const success = await new Promise((fallbackResolve) => {
+            const fallbackImg = new Image();
+            fallbackImg.decoding = 'async';
+            fallbackImg.crossOrigin = 'anonymous';
+            fallbackImg.onload = () => {
+              console.log(`✓ Using default sprite 'heroa.png' from ${defaultSource} as fallback for "${name}"`);
+              const entry = finalizeSpriteLoad(name, fallbackImg, { 
+                placeholder: false, 
+                displayName: `${name} (using heroa.png)` 
+              });
+              resolve(entry);
+              fallbackResolve(true);
+            };
+            fallbackImg.onerror = (err) => {
+              console.warn(`✗ Default sprite 'heroa.png' failed to load from ${defaultSource}`);
+              fallbackResolve(false);
+            };
+            fallbackImg.src = defaultSource;
+          });
+          
+          if (success) return; // Successfully loaded default
+        }
+        
+        console.error(`Default sprite 'heroa.png' failed to load from all ${defaultCandidates.length} possible locations.`);
+      } catch (fallbackErr) {
+        console.error(`Error attempting fallback sprite:`, fallbackErr);
+      }
+    }
+    
+    // Final fallback to placeholder
+    console.error(`Using placeholder sprite for "${name}". All loading strategies failed.`);
+    if (originalError) {
+      console.error(`Original error:`, originalError);
+    }
+    const placeholder=createPlaceholderSheet(name);
+    const entry=finalizeSpriteLoad(name,placeholder.image,{ placeholder:true, color:placeholder.color });
+    resolve(entry);
+  }
+  window.loadSprite=loadSprite;
+
+  function activatePlaceholder(label){
+    const friendly=(label && String(label).trim()) || PLACEHOLDER_PRESET.displayName;
+    activeSpriteName=PLACEHOLDER_PRESET.canonicalName;
+    spriteReady=false;
+    const placeholder=createPlaceholderSheet(friendly);
+    return finalizeSpriteLoad(PLACEHOLDER_PRESET.canonicalName, placeholder.image,{ placeholder:true, color:placeholder.color, displayName:friendly });
+  }
+
+  async function setActiveSprite(name,url,options={}){
+    if(currentObjectUrl && currentObjectUrl!==url){ URL.revokeObjectURL(currentObjectUrl); currentObjectUrl=null; }
+    if(url && url.startsWith('blob:')){ currentObjectUrl=url; }
+    if(name===PLACEHOLDER_PRESET.canonicalName && (!url || options.forcePlaceholder)){
+      return activatePlaceholder(options.placeholderLabel);
+    }
+    const isExplicitProtocol=url && /^(https?:|data:|blob:|file:|\/\/)/i.test(url);
+    const relativeInfo=url ? analyzeSpriteUrl(url) : null;
+    const isRelativeAsset=!!(relativeInfo && relativeInfo.matched);
+    let resolvedUrl=url;
+    let finalName=name;
+
+    if(!url || isRelativeAsset){
+      const { canonical, alias, removedPreset, removedLabel }=canonicalizeSpriteName(name);
+      finalName=canonical;
+      if(removedPreset && (!url || isRelativeAsset)){
+        const labelRaw=options.placeholderLabel || removedLabel || alias || name;
+        const label=(labelRaw && String(labelRaw).trim()) || 'Legacy preset';
+        if(!options.suppressRemovalNotice){
+          showNotice(`${label} is no longer bundled. Using a placeholder sprite instead.`);
+        }
+        return activatePlaceholder(label);
+      }
+      let basePath=null;
+      const ensureBase=async()=>{
+        if(basePath) return basePath;
+        basePath=await detectSpriteBasePath(canonical);
+        return basePath;
+      };
+
+      if(isRelativeAsset && relativeInfo){
+        const base=await ensureBase();
+        let remainder=relativeInfo.remainder;
+        if(alias && alias!==canonical){
+          const segments=remainder?remainder.split('/'):[];
+          if(segments.length){
+            segments[segments.length-1]=canonical;
+          } else {
+            segments.push(canonical);
+          }
+          remainder=segments.join('/');
+        }
+        resolvedUrl=joinSpritePath(base, remainder || canonical, relativeInfo.suffix);
+      } else if(!url){
+        await ensureBase();
+        resolvedUrl=null;
+      }
+
+      if(alias && alias!==canonical && (!url || isRelativeAsset)){
+        const displayValue=!url ? canonical : (resolvedUrl ?? canonical);
+        showNotice(`${alias} is deprecated. Using ${displayValue} instead.`);
+        if(urlInput){
+          urlInput.value=displayValue;
+        }
+        if(!url && spriteSelect){
+          for(const opt of spriteSelect.options){
+            if(opt.value===canonical){
+              spriteSelect.value=opt.value;
+              break;
+            }
+          }
+        }
+      }
+    } else if(resolvedUrl && !isExplicitProtocol){
+      resolvedUrl=resolvedUrl.replace(/\\/g,'/');
+    }
+
+    activeSpriteName=finalName;
+    spriteReady=false;
+    return loadSprite(finalName,resolvedUrl);
+  }
+
+  function parseSpriteInput(value){
+    if(!value) return null;
+    const trimmed=value.trim();
+    if(!trimmed) return null;
+    const isProtocol=/^(https?:|data:|blob:)/i.test(trimmed);
+    const looksLikePath=trimmed.startsWith('/') || trimmed.startsWith('./') || trimmed.startsWith('../') || trimmed.includes('/');
+    if(isProtocol || looksLikePath){
+      const namePart=trimmed.split(/[\\/]/).pop() || trimmed;
+      const cleanName=(namePart.split('?')[0] || namePart).trim();
+      if(!isProtocol){
+        const info=canonicalizeSpriteName(cleanName);
+        if(info.removedPreset){
+          return { name:info.canonical, url:null, aliasOf:info.alias, removedPreset:true, removedLabel:info.removedLabel };
+        }
+        if(info.alias && info.alias!==info.canonical){
+          const parts=trimmed.split('?');
+          const pathPart=parts.shift() || '';
+          const querySuffix=parts.length?`?${parts.join('?')}`:'';
+          const segments=pathPart.split(/[/\\]/);
+          segments[segments.length-1]=info.canonical;
+          const canonicalUrl=segments.join('/')+querySuffix;
+          return { name:info.canonical, url:canonicalUrl, aliasOf:info.alias, removedPreset:false, removedLabel:null };
+        }
+      }
+      return { name:cleanName, url:trimmed, aliasOf:null, removedPreset:false, removedLabel:null };
+    }
+    const info=canonicalizeSpriteName(trimmed);
+    return { name:info.canonical, url:null, aliasOf:info.alias, removedPreset:info.removedPreset, removedLabel:info.removedLabel };
+  }
+
+  function setActiveSpriteFromValue(raw,{ save=false }={}){
+    const parsed=parseSpriteInput(raw);
+    if(!parsed) return;
+    const { name, url, aliasOf, removedPreset, removedLabel }=parsed;
+    const isBlob=url && url.startsWith('blob:');
+    if(save){
+      if(isBlob){
+        localStorage.removeItem('spriteURL');
+      } else if(removedPreset){
+        localStorage.removeItem('spriteURL');
+      } else {
+        const valueToPersist=aliasOf ? (url ? url : name) : raw;
+        localStorage.setItem('spriteURL', valueToPersist);
+      }
+    }
+    if(removedPreset){
+      const labelRaw=removedLabel || aliasOf || raw;
+      const label=(labelRaw && String(labelRaw).trim()) || 'Legacy preset';
+      showNotice(`${label} is no longer bundled. Using a placeholder sprite instead.`);
+      if(urlInput){
+        urlInput.value='';
+      }
+      if(spriteSelect){
+        spriteSelect.value=PLACEHOLDER_PRESET.canonicalName;
+      }
+      return setActiveSprite(PLACEHOLDER_PRESET.canonicalName, null, { placeholderLabel:label });
+    }
+    if(aliasOf && aliasOf!==name){
+      const displayValue=!url || isBlob ? name : url;
+      showNotice(`${aliasOf} is deprecated. Using ${displayValue} instead.`);
+      if(urlInput){
+        urlInput.value=displayValue;
+      }
+      if(!url && spriteSelect){
+        for(const opt of spriteSelect.options){
+          if(opt.value===name){
+            spriteSelect.value=opt.value;
+            break;
+          }
+        }
+      }
+    }
+    return setActiveSprite(name, url);
+  }
+
+  const qp=getParam('sprite');
+  const saved=localStorage.getItem('spriteURL');
+  const initialValue=qp || saved || DEFAULT_SPRITE_NAME;
+  const initialParsed=parseSpriteInput(initialValue);
+  const initialDisplayValue=(()=>{
+    if(!initialParsed) return initialValue ?? '';
+    if(initialParsed.removedPreset) return '';
+    if(initialParsed.aliasOf) return initialParsed.url || initialParsed.name;
+    if(initialParsed.name===PLACEHOLDER_PRESET.canonicalName && !initialParsed.url) return '';
+    return initialParsed.url ?? initialValue ?? '';
+  })();
+  if(saved && initialValue===saved && initialParsed){
+    if(initialParsed.removedPreset){
+      localStorage.removeItem('spriteURL');
+    } else if(initialParsed.aliasOf){
+      const canonicalStored=initialParsed.url || initialParsed.name;
+      localStorage.setItem('spriteURL', canonicalStored);
+    }
+  }
+
+  urlInput=document.getElementById('spriteUrl');
+  if(urlInput){
+    urlInput.value=initialDisplayValue;
+  }
+
+  // Auto-discover available sprites and populate dropdown
+  async function discoverAndPopulateSprites() {
+    if (!spriteSelect) return;
+    
+    const commonSprites = ['heroa.png', 'herob.png', 'player.png', 'character.png'];
+    const discovered = new Set();
+    
+    // Try to detect available sprites
+    for (const spriteName of commonSprites) {
+      try {
+        const testUrl = await getSpriteSource(spriteName, null);
+        const response = await fetch(testUrl, { method: 'HEAD' });
+        if (response.ok) {
+          discovered.add(spriteName);
+        }
+      } catch (err) {
+        // Sprite not available, skip
+      }
+    }
+    
+    // Add discovered sprites to dropdown
+    for (const spriteName of discovered) {
+      // Check if option already exists
+      let exists = false;
+      for (const opt of spriteSelect.options) {
+        if (opt.value === spriteName) {
+          exists = true;
+          break;
+        }
+      }
+      
+      if (!exists) {
+        const option = document.createElement('option');
+        option.value = spriteName;
+        option.textContent = spriteName.replace('.png', '').replace(/[_-]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        spriteSelect.appendChild(option);
+      }
+    }
+  }
+
+  spriteSelect=document.getElementById('spriteSelect');
+  if(spriteSelect){
+    // Auto-discover sprites first
+    discoverAndPopulateSprites().catch(err => console.log('Sprite discovery failed:', err));
+    
+    const initialName=initialParsed?.name;
+    if(initialName){
+      for(const opt of spriteSelect.options){
+        if(opt.value===initialName){
+          spriteSelect.value=opt.value;
+          break;
+        }
+      }
+    }
+    spriteSelect.addEventListener('change',()=>{
+      const choice=spriteSelect.value;
+      if(urlInput){
+        urlInput.value=choice===PLACEHOLDER_PRESET.canonicalName?'':choice;
+      }
+      setActiveSpriteFromValue(choice,{ save:true });
+    });
+  }
+
+  const initialSpritePromise=waitForSpriteReady();
+  setActiveSpriteFromValue(initialValue);
+
+  const btnLoad=document.getElementById('btnLoad');
+  if(btnLoad){
+    btnLoad.onclick=()=>{
+      const raw=urlInput ? urlInput.value.trim() : '';
+      if(!raw) return;
+      setActiveSpriteFromValue(raw,{ save:true });
+    };
+  }
+
+  const fileInput=document.getElementById('fileInput');
+  const btnFile=document.getElementById('btnFile');
+  if(btnFile && fileInput){
+    btnFile.onclick=()=>fileInput.click();
+    fileInput.onchange=()=>{
+      const f=fileInput.files && fileInput.files[0];
+      if(!f) return;
+      const objectUrl=URL.createObjectURL(f);
+      if(urlInput){
+        urlInput.value=f.name;
+      }
+      // Reminder: copy sprites into public/assets/ for persistent loads instead of blob URLs.
+      setActiveSprite(f.name, objectUrl);
+    };
+  }
+
+  const drop=document.getElementById('drop');
+  ['dragenter','dragover'].forEach(ev=>addEventListener(ev,e=>{e.preventDefault(); drop.classList.add('show');}));
+  ['dragleave','drop'].forEach(ev=>addEventListener(ev,e=>{
+    e.preventDefault();
+    if(ev==='drop'){
+      const f=e.dataTransfer.files && e.dataTransfer.files[0];
+      if(f){
+        const objectUrl=URL.createObjectURL(f);
+        if(urlInput){
+          urlInput.value=f.name;
+        }
+        // Reminder: copy sprites into public/assets/ for persistent loads instead of blob URLs.
+        setActiveSprite(f.name, objectUrl);
+      }
+    }
+    drop.classList.remove('show');
+  }));
+
+  // ===== Player, input, animation (3×4 locked) =====
+  const player={
+    x:200,
+    y:200,
+    speed:200,
+    frame:1,
+    dir:'down',
+    tick:0,
+    collider:{ w:24, h:28 },
+    state:'idle',
+    wasMoving:false,
+    outlineColor:'#070b16',
+    outlineThickness:1.5
+  };
+  const particles=[];
+  const pressed=new Set();
+  function normKey(k){ const map={Left:'ArrowLeft',Right:'ArrowRight',Up:'ArrowUp',Down:'ArrowDown'}; return map[k] || (k.length===1?k.toLowerCase():k); }
+  // Global keybinds: WASD/arrow for movement, 'N' jumps to the next room.
+  addEventListener('keydown',e=>{
+    const k=normKey(e.key);
+    if(k==='n'){
+      if(!e.repeat){
+        e.preventDefault();
+        goToNextRoom();
+      }
+      return;
+    }
+    if(k.startsWith('Arrow')) e.preventDefault();
+    pressed.add(k);
+  });
+  addEventListener('keyup',e=>{ const k=normKey(e.key); if(k.startsWith('Arrow')) e.preventDefault(); pressed.delete(k); });
+
+  function frameRect(dir,frame){
+    const row={down:0,left:1,right:2,up:3}[dir];
+    const col=Math.max(0,Math.min(SHEET_COLS-1, frame));
+    return { sx:col*frameW, sy:row*frameH, sw:frameW, sh:frameH };
+  }
+
+  function updatePlayerCollider(){
+    // Shrink the collision box so the player feels responsive.
+    player.collider.w=Math.max(18,Math.min(frameW*0.6, frameW));
+    player.collider.h=Math.max(20,Math.min(frameH*0.7, frameH));
+  }
+  waitForSpriteReady().then(updatePlayerCollider);
+
+  // ===== Camera setup =====
+  camera={
+    x:0,
+    y:0,
+    width:innerWidth,
+    height:innerHeight,
+    deadzone:{ width:360, height:220 }
+  };
+
+  function resizeCamera(){
+    if(!camera) return;
+    camera.width=innerWidth;
+    camera.height=innerHeight;
+  }
+  resize();
+
+  // ===== World data & loading =====
+  const propSpriteCache=new Map();
+  function requestPropSprite(url,labelHint){
+    const raw=String(url ?? '').trim();
+    const baseKey=raw || PLACEHOLDER_PRESET.canonicalName;
+    const segment=(baseKey.split(/[\\/]/).pop() || '').split('?')[0];
+    const normalized=segment.toLowerCase();
+    const labelCandidate=typeof labelHint==='string'?labelHint.trim():'';
+    const needsPlaceholder=!segment || normalized===PLACEHOLDER_PRESET.canonicalName || REMOVED_PRESET_IDENTIFIERS.has(normalized);
+    if(needsPlaceholder){
+      const friendly=REMOVED_PRESET_IDENTIFIERS.get(normalized) || labelCandidate || PLACEHOLDER_PRESET.displayName;
+      const placeholderKey=`${PLACEHOLDER_PRESET.canonicalName}:${friendly}`;
+      if(propSpriteCache.has(placeholderKey)){
+        const existing=propSpriteCache.get(placeholderKey);
+        if(baseKey!==placeholderKey && raw && raw!==PLACEHOLDER_PRESET.canonicalName){
+          propSpriteCache.set(baseKey,existing);
+        }
+        return existing;
+      }
+      if(propSpriteCache.has(baseKey) && raw && raw!==PLACEHOLDER_PRESET.canonicalName){
+        return propSpriteCache.get(baseKey);
+      }
+      const placeholder=createPlaceholderSheet(friendly);
+      const entry={ img:placeholder.image, ready:true, error:false, placeholder:true };
+      propSpriteCache.set(placeholderKey,entry);
+      if(baseKey!==placeholderKey && raw && raw!==PLACEHOLDER_PRESET.canonicalName){
+        propSpriteCache.set(baseKey,entry);
+      }
+      return entry;
+    }
+    if(!propSpriteCache.has(baseKey)){
+      const img=new Image();
+      const entry={ img, ready:false, error:false };
+      img.onload=()=>{ entry.ready=true; };
+      img.onerror=()=>{ entry.error=true; };
+      img.src=raw;
+      propSpriteCache.set(baseKey,entry);
+    }
+    return propSpriteCache.get(baseKey);
+  }
+
+  function createDefaultParallaxLayers(){
+    return [
+      { factor:0.1, type:'gradient', colors:['#0b1326','#0f172a'] },
+      { factor:0.3, type:'hills', color:'#10203a', base:260, amplitude:90, spacing:420 },
+      { factor:0.55, type:'hills', color:'#1a2f4f', base:320, amplitude:60, spacing:260 },
+      { factor:0.85, type:'foreground', color:'#1f3b5f', height:160 }
+    ];
+  }
+
+  function cloneObstacles(list){
+    return (list||[]).map(o=>({
+      x:Number(o.x)||0,
+      y:Number(o.y)||0,
+      w:Number(o.w)||0,
+      h:Number(o.h)||0,
+      type:o.type||'wall'
+    }));
+  }
+
+  function cloneProps(list){
+    return (list||[]).map(p=>({
+      x:Number(p.x)||0,
+      y:Number(p.y)||0,
+      w:Number(p.w)||32,
+      h:Number(p.h)||32,
+      color:p.color||'#94a3b8',
+      spriteURL:p.spriteURL||null,
+      placeholderLabel:typeof p.placeholderLabel==='string'?p.placeholderLabel:null,
+      sprite:null,
+      shadow:typeof p.shadow==='boolean'?p.shadow:undefined,
+      height:Number(p.height)||0,
+      outlineColor:p.outlineColor||null,
+      outlineThickness:typeof p.outlineThickness==='number'?p.outlineThickness:null,
+      type:p.type||null,
+      handleColor:p.handleColor||null,
+      flameColor:p.flameColor||null,
+      flameHighlight:p.flameHighlight||null,
+      glowColor:p.glowColor||null,
+      sconceColor:p.sconceColor||null,
+      lightRadius:Number.isFinite(Number(p.lightRadius))?Number(p.lightRadius):null,
+      lightIntensity:Number.isFinite(Number(p.lightIntensity))?Number(p.lightIntensity):null,
+      lightOffsetY:Number.isFinite(Number(p.lightOffsetY))?Number(p.lightOffsetY):null
+    }));
+  }
+
+  function deriveTorchLights(list){
+    if(!Array.isArray(list)) return [];
+    const lights=[];
+    for(const prop of list){
+      if(!prop || prop.type!=='torch') continue;
+      const width=Math.max(0,Number(prop.w)||0);
+      const height=Math.max(0,Number(prop.h)||0);
+      const rawRadius=Number(prop.lightRadius);
+      const rawIntensity=Number(prop.lightIntensity);
+      const rawOffset=Number(prop.lightOffsetY);
+      const radius=Number.isFinite(rawRadius)?Math.max(1,rawRadius):Math.max(160,height*3);
+      const intensity=Number.isFinite(rawIntensity)?Math.max(0,Math.min(1,rawIntensity)):0.88;
+      const offset=Math.max(0,Number.isFinite(rawOffset)?rawOffset:height*0.3);
+      lights.push({
+        x:prop.x+width/2,
+        y:prop.y+offset,
+        radius,
+        intensity
+      });
+    }
+    return lights;
+  }
+
+  // ----- Room definitions (edit/add rooms here) -----
+  const rooms={
+    room1:{
+      spawn:{ x:320, y:360 },
+      obstacles:[
+        { x:180, y:200, w:420, h:48, type:'wall' },
+        { x:680, y:420, w:96, h:180, type:'tree' },
+        { x:520, y:620, w:260, h:56, type:'rock' }
+      ],
+      props:[
+        { x:520, y:260, w:48, h:48, spriteURL:'__placeholder__', placeholderLabel:'Legacy NPC', shadow:true, height:24 },
+        { x:860, y:480, w:40, h:40, color:'#64748b', shadow:true },
+        // Example wall torches with automatic lighting
+        { type:'torch', x:340, y:260, w:18, h:62, shadow:false, handleColor:'#6b3f1d', sconceColor:'#3f4d63', flameColor:'#fb923c', flameHighlight:'#fef3c7', glowColor:'rgba(253,224,171,0.4)', lightRadius:240, lightIntensity:0.9, lightOffsetY:24 },
+        { type:'torch', x:820, y:260, w:18, h:62, shadow:false, handleColor:'#6b3f1d', sconceColor:'#3f4d63', flameColor:'#f97316', flameHighlight:'#fde68a', glowColor:'rgba(253,224,171,0.35)', lightRadius:240, lightIntensity:0.92, lightOffsetY:24 }
+      ],
+      lights:[
+        { x:420, y:340, radius:280, intensity:0.85 },
+        { x:760, y:500, radius:240, intensity:0.8 }
+      ]
+    },
+    room2:{
+      spawn:{ x:720, y:420 },
+      obstacles:[
+        { x:260, y:340, w:520, h:60, type:'wall' },
+        { x:940, y:360, w:140, h:220, type:'tree' },
+        { x:540, y:740, w:360, h:70, type:'rock' }
+      ],
+      props:[
+        { x:600, y:520, w:60, h:60, color:'#475569', shadow:true },
+        { x:1040, y:360, w:96, h:96, spriteURL:'__placeholder__', placeholderLabel:'Legacy NPC', shadow:true, height:36 },
+        // Torches flank the entrance in this room as well
+        { type:'torch', x:520, y:320, w:18, h:60, shadow:false, handleColor:'#6b3f1d', sconceColor:'#3f4d63', flameColor:'#fb923c', flameHighlight:'#fef3c7', glowColor:'rgba(253,224,171,0.38)', lightRadius:220, lightIntensity:0.88, lightOffsetY:22 },
+        { type:'torch', x:980, y:320, w:18, h:60, shadow:false, handleColor:'#6b3f1d', sconceColor:'#3f4d63', flameColor:'#f97316', flameHighlight:'#fde68a', glowColor:'rgba(253,224,171,0.34)', lightRadius:220, lightIntensity:0.9, lightOffsetY:22 }
+      ],
+      lights:[
+        { x:720, y:400, radius:260, intensity:0.9 },
+        { x:1080, y:360, radius:220, intensity:0.7 }
+      ]
+    }
+  };
+
+  const roomNames=Object.keys(rooms);
+  let currentRoomIndex=0;
+
+  // Loader entry point: pass in a plain JS room object (e.g., parsed JSON).
+  function loadRoom(roomData){
+    if(!roomData) return;
+
+    // Cache spawn so we can position the player before starting the loop.
+    const spawn={
+      x:Number(roomData.spawn?.x) || 0,
+      y:Number(roomData.spawn?.y) || 0
+    };
+
+    // Clear old state and copy in the new room geometry.
+    currentObstacles.length=0;
+    currentProps.length=0;
+    currentObstacles.push(...cloneObstacles(roomData.obstacles));
+
+    const props=cloneProps(roomData.props);
+    for(const prop of props){
+      if(prop.spriteURL){
+        prop.sprite=requestPropSprite(prop.spriteURL, prop.placeholderLabel);
+      }
+      currentProps.push(prop);
+    }
+
+    currentParallaxLayers = roomData.parallaxLayers?.length
+      ? roomData.parallaxLayers.map(layer=>({ ...layer }))
+      : createDefaultParallaxLayers();
+
+    const baseLights=Array.isArray(roomData.lights)?roomData.lights:[];
+    const torchLights=deriveTorchLights(currentProps); // auto lights for torches
+    setLights([...baseLights,...torchLights]);
+
+    currentWorld={
+      width:roomData.world?.width ?? DEFAULT_WORLD.width,
+      height:roomData.world?.height ?? DEFAULT_WORLD.height
+    };
+
+    currentRoom={
+      name:roomData.name || '',
+      spawn,
+      obstacles:currentObstacles,
+      props:currentProps,
+      world:currentWorld,
+      parallaxLayers:currentParallaxLayers,
+      lights:Graphics.lights
+    };
+
+    // Move the player to the new spawn and recentre the camera.
+    player.x=spawn.x;
+    player.y=spawn.y;
+    player.frame=1;
+    player.tick=0;
+    clampPlayerToWorld();
+    resetCameraToPlayer();
+  }
+
+  function goToRoom(index){
+    if(!roomNames.length) return;
+    currentRoomIndex=((index%roomNames.length)+roomNames.length)%roomNames.length;
+    const roomName=roomNames[currentRoomIndex];
+    loadRoom(rooms[roomName]);
+    showNotice(`Entered ${roomName}`);
+  }
+
+  function goToNextRoom(){
+    // Keyboard shortcut uses this to advance to the next room in the list.
+    goToRoom(currentRoomIndex+1);
+  }
+  function getObstacles(){ return currentObstacles; }
+  function getProps(){ return currentProps; }
+  function getParallaxLayers(){ return currentParallaxLayers.length ? currentParallaxLayers : createDefaultParallaxLayers(); }
+
+  function clampPlayerToWorld(){
+    const world=getActiveWorld();
+    const halfW=player.collider.w/2;
+    const halfH=player.collider.h/2;
+    player.x=Math.min(Math.max(player.x, halfW), world.width-halfW);
+    player.y=Math.min(Math.max(player.y, halfH), world.height-halfH);
+  }
+
+  function resetCameraToPlayer(){
+    const world=getActiveWorld();
+    camera.x=player.x-camera.width/2;
+    camera.y=player.y-camera.height/2;
+    clampCameraToWorld(camera, camera.width, camera.height, world);
+  }
+
+  // Load the initial room before starting the game loop
+  goToRoom(0);
+
+  // ===== Collision helpers =====
+  function rectsOverlap(a,b){
+    return a.left < b.x + b.w && a.right > b.x && a.top < b.y + b.h && a.bottom > b.y;
+  }
+
+  function isRectVisible(rect){
+    return rect.x + rect.w > camera.x && rect.x < camera.x + camera.width && rect.y + rect.h > camera.y && rect.y < camera.y + camera.height;
+  }
+
+  function clampCameraToWorld(cam, viewW, viewH, world){
+    if(!cam) return;
+    const activeWorld=world ?? getActiveWorld();
+    const camWidth=Number.isFinite(viewW)?viewW:(cam.width ?? 0);
+    const camHeight=Number.isFinite(viewH)?viewH:(cam.height ?? 0);
+    const maxX=Math.max(0, activeWorld.width-camWidth);
+    const maxY=Math.max(0, activeWorld.height-camHeight);
+    cam.x=Math.min(Math.max(cam.x,0), maxX);
+    cam.y=Math.min(Math.max(cam.y,0), maxY);
+  }
+
+  function updateCamera(){
+    // Camera follows the player only when they leave a centered deadzone.
+    // We measure the player's distance from the deadzone edges and shift the
+    // camera just enough to bring them back inside, which prevents jitter.
+    const halfDeadW=camera.deadzone.width/2;
+    const halfDeadH=camera.deadzone.height/2;
+    const deadLeft=camera.x + camera.width/2 - halfDeadW;
+    const deadRight=camera.x + camera.width/2 + halfDeadW;
+    const deadTop=camera.y + camera.height/2 - halfDeadH;
+    const deadBottom=camera.y + camera.height/2 + halfDeadH;
+
+    if(player.x < deadLeft){ camera.x += player.x - deadLeft; }
+    else if(player.x > deadRight){ camera.x += player.x - deadRight; }
+
+    if(player.y < deadTop){ camera.y += player.y - deadTop; }
+    else if(player.y > deadBottom){ camera.y += player.y - deadBottom; }
+
+    clampCameraToWorld(camera, camera.width, camera.height, getActiveWorld());
+  }
+
+  function tryMove(axis, amount, obstacles){
+    // Axis-aligned collision resolution: move along one axis, clamp against
+    // colliders, then move along the other axis. This produces natural
+    // "sliding" when hitting corners because the non-blocked axis still moves.
+    if(amount===0) return;
+    const halfW=player.collider.w/2;
+    const halfH=player.collider.h/2;
+    if(axis==='x'){
+      let newX=player.x+amount;
+      const rect={ left:newX-halfW, right:newX+halfW, top:player.y-halfH, bottom:player.y+halfH };
+      for(const ob of obstacles){
+        if(!rectsOverlap(rect,{ x:ob.x, y:ob.y, w:ob.w, h:ob.h })) continue;
+        if(amount>0){ newX=ob.x-halfW; rect.left=newX-halfW; rect.right=newX+halfW; }
+        else { newX=ob.x+ob.w+halfW; rect.left=newX-halfW; rect.right=newX+halfW; }
+      }
+      player.x=newX;
+    } else if(axis==='y'){
+      let newY=player.y+amount;
+      const rect={ left:player.x-halfW, right:player.x+halfW, top:newY-halfH, bottom:newY+halfH };
+      for(const ob of obstacles){
+        if(!rectsOverlap(rect,{ x:ob.x, y:ob.y, w:ob.w, h:ob.h })) continue;
+        if(amount>0){ newY=ob.y-halfH; rect.top=newY-halfH; rect.bottom=newY+halfH; }
+        else { newY=ob.y+ob.h+halfH; rect.top=newY-halfH; rect.bottom=newY+halfH; }
+      }
+      player.y=newY;
+    }
+  }
+
+  function update(dt){
+    const obstacles=getObstacles();
+    let dx=0,dy=0;
+    if(pressed.has('ArrowUp')||pressed.has('w')){ dy-=1; player.dir='up'; }
+    if(pressed.has('ArrowDown')||pressed.has('s')){ dy+=1; player.dir='down'; }
+    if(pressed.has('ArrowLeft')||pressed.has('a')){ dx-=1; player.dir='left'; }
+    if(pressed.has('ArrowRight')||pressed.has('d')){ dx+=1; player.dir='right'; }
+
+    const len=Math.hypot(dx,dy);
+    if(len>0){ dx/=len; dy/=len; }
+
+    const moveX=dx*player.speed*dt;
+    const moveY=dy*player.speed*dt;
+    const isMoving=Math.abs(moveX)>0.001 || Math.abs(moveY)>0.001;
+    player.state=isMoving?'run':'idle';
+    if(isMoving && !player.wasMoving){
+      spawnDustBurst(4,dx,dy);
+    } else if(!isMoving && player.wasMoving){
+      spawnDustBurst(3,0,0);
+    }
+    player.wasMoving=isMoving;
+
+    tryMove('x',moveX,obstacles);
+    clampPlayerToWorld();
+    tryMove('y',moveY,obstacles);
+    clampPlayerToWorld();
+
+    if(isMoving){
+      player.tick+=dt;
+      if(player.tick>0.18){ player.frame=(player.frame+1)%SHEET_COLS; player.tick=0; }
+    } else {
+      player.frame=1;
+      player.tick=0;
+    }
+
+    updateCamera();
+    updateParticles(dt);
+  }
+
+  function drawParallaxLayers(){
+    const g=Graphics.sceneCtx;
+    const layers=getParallaxLayers();
+
+    g.clearRect(0,0,camera.width,camera.height);
+
+    const sky=g.createLinearGradient(0,0,0,camera.height);
+    sky.addColorStop(0,'#0b1326');
+    sky.addColorStop(1,'#0b1020');
+    g.fillStyle=sky;
+    g.fillRect(0,0,camera.width,camera.height);
+
+    for(const layer of layers){
+      const factor=layer.factor ?? 0.5;
+      const offsetX=(camera.x*factor)% (layer.spacing||camera.width);
+      const offsetY=(camera.y*factor)% (layer.spacing||camera.height);
+      if(layer.type==='gradient'){
+        const grad=g.createLinearGradient(0,0,0,camera.height);
+        grad.addColorStop(0,layer.colors?.[0]||'#0b1326');
+        grad.addColorStop(1,layer.colors?.[1]||'#111827');
+        g.fillStyle=grad;
+        g.fillRect(0,0,camera.width,camera.height);
+        continue;
+      }
+      if(layer.type==='hills'){
+        const spacing=layer.spacing||320;
+        const amplitude=layer.amplitude||60;
+        const base=layer.base||300;
+        const startX=-spacing*2 - offsetX;
+        const endX=camera.width+spacing*2;
+        g.fillStyle=layer.color||'#1e293b';
+        for(let x=startX; x<endX; x+=spacing){
+          const peakX=x+spacing/2;
+          g.beginPath();
+          g.moveTo(x, camera.height - base + offsetY);
+          g.quadraticCurveTo(peakX, camera.height - (base+amplitude) + offsetY, x+spacing, camera.height - base + offsetY);
+          g.lineTo(x+spacing, camera.height+20);
+          g.lineTo(x, camera.height+20);
+          g.closePath();
+          g.fill();
+        }
+        continue;
+      }
+      if(layer.type==='foreground'){
+        g.fillStyle=layer.color||'#1f3b5f';
+        g.fillRect(-offsetX, camera.height-(layer.height||140)+offsetY, camera.width+(layer.spacing||camera.width)*2, (layer.height||140)+40);
+        continue;
+      }
+    }
+  }
+
+  const OBSTACLE_COLORS={
+    rock:'#475569',
+    tree:'#334155',
+    wall:'#64748b',
+    default:'#4b5563'
+  };
+
+  function drawObstacle(ob){
+    const g=Graphics.sceneCtx;
+    const screenX=snapPixel(ob.x-camera.x);
+    const screenY=snapPixel(ob.y-camera.y);
+    g.fillStyle=OBSTACLE_COLORS[ob.type] || OBSTACLE_COLORS.default;
+    g.fillRect(screenX,screenY,ob.w,ob.h);
+    g.strokeStyle='rgba(8,12,20,0.65)';
+    g.lineWidth=1;
+    g.strokeRect(screenX+0.5,screenY+0.5,ob.w-1,ob.h-1);
+  }
+
+  function drawTorchProp(prop,x,y,outlineColor,outlineThickness){
+    const g=Graphics.sceneCtx;
+    const width=Math.max(6,prop.w||16);
+    const height=Math.max(24,prop.h||48);
+    const flameHeight=Math.max(10,height*0.4);
+    const stemHeight=Math.max(8,height-flameHeight);
+    const stemWidth=Math.max(4,Math.min(width*0.4,width-4));
+    const baseHeight=Math.min(stemHeight,Math.max(4,stemHeight*0.25));
+    const baseWidth=Math.min(width,Math.max(stemWidth*1.4,width*0.75));
+    const baseX=x+(width-baseWidth)/2;
+    const baseY=y+flameHeight+stemHeight-baseHeight;
+    const stemX=x+(width-stemWidth)/2;
+    const stemY=y+flameHeight;
+    const handleColor=prop.handleColor||'#5b341b';
+    const sconceColor=prop.sconceColor||'#475569';
+
+    drawOutlinedRect(g,baseX,baseY,baseWidth,baseHeight,sconceColor,outlineColor,outlineThickness);
+    drawOutlinedRect(g,stemX,stemY,stemWidth,stemHeight,handleColor,outlineColor,outlineThickness);
+
+    const flameWidth=Math.min(width,Math.max(stemWidth*1.6,width*0.85));
+    const flameX=x+(width-flameWidth)/2;
+    const flameY=y+Math.max(0,flameHeight*0.05);
+    const flameTopColor=prop.flameHighlight||'#fde68a';
+    const flameBottomColor=prop.flameColor||'#f97316';
+
+    g.save();
+    const gradient=g.createLinearGradient(flameX,flameY,flameX,flameY+flameHeight);
+    gradient.addColorStop(0,flameTopColor);
+    gradient.addColorStop(1,flameBottomColor);
+    g.fillStyle=gradient;
+    g.beginPath();
+    g.moveTo(flameX+flameWidth/2,flameY);
+    g.bezierCurveTo(flameX,flameY+flameHeight*0.55,flameX+flameWidth*0.2,flameY+flameHeight,flameX+flameWidth/2,flameY+flameHeight);
+    g.bezierCurveTo(flameX+flameWidth*0.8,flameY+flameHeight,flameX+flameWidth,flameY+flameHeight*0.55,flameX+flameWidth/2,flameY);
+    g.closePath();
+    g.fill();
+    g.restore();
+
+    g.save();
+    g.fillStyle='rgba(255,255,255,0.45)';
+    g.beginPath();
+    g.ellipse(flameX+flameWidth/2,flameY+flameHeight*0.3,flameWidth*0.22,flameHeight*0.35,0,0,Math.PI*2);
+    g.fill();
+    g.restore();
+
+    g.save();
+    g.globalCompositeOperation='lighter';
+    g.fillStyle=prop.glowColor||'rgba(251,191,36,0.4)';
+    g.beginPath();
+    g.ellipse(flameX+flameWidth/2,flameY+flameHeight*0.45,flameWidth*0.9,flameHeight*1.05,0,0,Math.PI*2);
+    g.fill();
+    g.restore();
+  }
+
+  function drawProp(prop){
+    const g=Graphics.sceneCtx;
+    const x=snapPixel(prop.x-camera.x);
+    const y=snapPixel(prop.y-camera.y);
+    const outlineColor=prop.outlineColor ?? Graphics.outlineColor;
+    const outlineThickness=prop.outlineThickness ?? Graphics.outlineThickness;
+
+    if(prop.type==='torch'){
+      drawTorchProp(prop,x,y,outlineColor,outlineThickness);
+      return;
+    }
+
+    if((prop.shadow ?? prop.height>0)){
+      const baseX=x+prop.w/2;
+      const baseY=y+prop.h;
+      const radiusX=Math.max(6,prop.w*0.45);
+      const radiusY=Math.max(3,(prop.height||prop.h*0.25)*0.25);
+      g.save();
+      g.fillStyle='rgba(10,12,20,0.4)';
+      g.beginPath();
+      g.ellipse(baseX,baseY,radiusX,radiusY,0,0,Math.PI*2);
+      g.fill();
+      g.restore();
+    }
+    const spriteEntry=prop.sprite;
+    if(spriteEntry && spriteEntry.ready){
+      drawOutlinedSprite(g,spriteEntry.img,0,0,spriteEntry.img.width,spriteEntry.img.height,x,y,prop.w,prop.h,outlineColor,outlineThickness);
+    } else {
+      drawOutlinedRect(g,x,y,prop.w,prop.h,prop.color||'#94a3b8',outlineColor,outlineThickness);
+      if(spriteEntry && spriteEntry.error){
+        g.strokeStyle='#ef4444';
+        g.beginPath();
+        g.moveTo(x+4,y+4);
+        g.lineTo(x+prop.w-4,y+prop.h-4);
+        g.moveTo(x+prop.w-4,y+4);
+        g.lineTo(x+4,y+prop.h-4);
+        g.stroke();
+      }
+    }
+  }
+
+  function drawPlayer(){
+    const g=Graphics.sceneCtx;
+    const px=player.x-camera.x;
+    const py=player.y-camera.y;
+    const entry=SPRITES[activeSpriteName];
+    if(spriteReady && entry && entry.image){
+      const {sx,sy,sw,sh}=frameRect(player.dir,player.frame);
+      const destX=px-sw/2;
+      const destY=py-sh/2;
+      drawOutlinedSprite(g,entry.image,sx,sy,sw,sh,destX,destY,sw,sh,player.outlineColor||Graphics.outlineColor,player.outlineThickness||Graphics.outlineThickness);
+    } else {
+      const fallbackW=Math.max(20,frameW||32);
+      const fallbackH=Math.max(20,frameH||32);
+      const color=entry?.placeholderColor || '#e5e7eb';
+      drawOutlinedRect(
+        g,
+        px-fallbackW/2,
+        py-fallbackH/2,
+        fallbackW,
+        fallbackH,
+        color,
+        player.outlineColor||Graphics.outlineColor,
+        player.outlineThickness||Graphics.outlineThickness
+      );
+    }
+  }
+
+  // ===== Particle effects (dust puffs on acceleration/braking) =====
+  function spawnDustBurst(count=3,dirX=0,dirY=0){
+    const originX=player.x;
+    const originY=player.y + (player.collider?.h||24)*0.35;
+    for(let i=0;i<count;i++){
+      const angle=Math.random()*Math.PI*2;
+      const speed=30+Math.random()*50;
+      const vx=Math.cos(angle)*speed + dirX*30;
+      const vy=Math.sin(angle)*speed + dirY*30;
+      particles.push({
+        x:originX+(Math.random()-0.5)*6,
+        y:originY+(Math.random()-0.5)*4,
+        vx,
+        vy,
+        life:0,
+        maxLife:0.35+Math.random()*0.2,
+        size:2.2+Math.random()*1.6
+      });
+    }
+  }
+
+  function updateParticles(dt){
+    for(let i=particles.length-1;i>=0;i--){
+      const p=particles[i];
+      p.life+=dt;
+      if(p.life>=p.maxLife){
+        particles.splice(i,1);
+        continue;
+      }
+      p.x+=p.vx*dt;
+      p.y+=p.vy*dt;
+      p.vx*=0.85;
+      p.vy*=0.85;
+    }
+  }
+
+  function drawParticles(){
+    if(!particles.length) return;
+    const g=Graphics.sceneCtx;
+    g.save();
+    g.globalCompositeOperation='lighter';
+    for(const p of particles){
+      const progress=p.life/p.maxLife;
+      const alpha=Math.max(0,0.55-progress*0.55);
+      if(alpha<=0) continue;
+      const screenX=p.x-camera.x;
+      const screenY=p.y-camera.y;
+      if(screenX<-20 || screenX>camera.width+20 || screenY<-20 || screenY>camera.height+20) continue;
+      const size=p.size*(1+progress*0.4);
+      g.fillStyle=`rgba(205,214,230,${alpha})`;
+      g.beginPath();
+      g.ellipse(screenX,screenY,size,size*0.6,0,0,Math.PI*2);
+      g.fill();
+    }
+    g.restore();
+  }
+
+  function drawWorld(){
+    const drawList=[];
+    for(const ob of getObstacles()){
+      if(!isRectVisible(ob)) continue;
+      drawList.push({ type:'obstacle', y:ob.y+ob.h, data:ob });
+    }
+    for(const prop of getProps()){
+      if(!isRectVisible(prop)) continue;
+      drawList.push({ type:'prop', y:prop.y+prop.h, data:prop });
+    }
+    drawList.sort((a,b)=>a.y-b.y);
+    for(const item of drawList){
+      if(item.type==='obstacle') drawObstacle(item.data);
+      else drawProp(item.data);
+    }
+    drawPlayer();
+  }
+
+  // ===== Toon lighting pass =====
+  function celLighting(){
+    const g=Graphics.sceneCtx;
+    const lctx=Graphics.lightingCtx;
+    const width=camera.width;
+    const height=camera.height;
+    const ambient=Math.max(0,Math.min(1,Graphics.ambientDarkness));
+    const ambientBrightness=1-ambient;
+    const baseChannel=Math.round(ambientBrightness*255);
+    const toneSource=(Array.isArray(Graphics.toneLevels) && Graphics.toneLevels.length)
+      ? Graphics.toneLevels
+      : DEFAULT_TONE_LEVELS;
+    const toneLevels=toneSource.slice().sort((a,b)=>a-b);
+    const bandCount=toneLevels.length||1;
+
+    lctx.save();
+    lctx.globalCompositeOperation='source-over';
+    lctx.clearRect(0,0,width,height);
+    lctx.fillStyle=`rgb(${baseChannel},${baseChannel},${baseChannel})`;
+    lctx.fillRect(0,0,width,height);
+
+    const activeLights=[];
+    if(Array.isArray(Graphics.lights)) activeLights.push(...Graphics.lights);
+    if(Graphics.playerLightEnabled){
+      activeLights.push({
+        x:player.x,
+        y:player.y+(player.collider?.h||0)*0.35,
+        radius:Graphics.playerLightRadius,
+        intensity:Graphics.playerLightIntensity
+      });
+    }
+
+    for(const light of activeLights){
+      const radius=Math.max(4,Number(light.radius)||0);
+      const intensity=Math.max(0,Math.min(1,Number(light.intensity ?? 1)));
+      if(intensity<=0 || radius<=0) continue;
+      const cx=light.x-camera.x;
+      const cy=light.y-camera.y;
+      if(cx+radius< -100 || cy+radius< -100 || cx-radius>width+100 || cy-radius>height+100) continue;
+      const centerX=snapPixel(cx);
+      const centerY=snapPixel(cy);
+      for(let i=0;i<toneLevels.length;i++){
+        const level=Math.max(0,Math.min(1,toneLevels[i]));
+        const ratio=(bandCount-i)/bandCount;
+        let bandRadius=radius*ratio;
+        if(Graphics.pixelArtMode) bandRadius=Math.max(1,Math.round(bandRadius));
+        if(bandRadius<=0) continue;
+        const brightness=ambientBrightness + (1-ambientBrightness)*level*intensity;
+        const channel=Math.round(Math.max(ambientBrightness,Math.min(1,brightness))*255);
+        lctx.beginPath();
+        lctx.arc(centerX,centerY,bandRadius,0,Math.PI*2);
+        lctx.closePath();
+        lctx.fillStyle=`rgb(${channel},${channel},${channel})`;
+        lctx.fill();
+      }
+    }
+    lctx.restore();
+
+    g.save();
+    g.globalCompositeOperation='multiply';
+    g.drawImage(Graphics.lightingCanvas,0,0,width,height);
+    g.restore();
+    g.globalCompositeOperation='source-over';
+  }
+
+  function draw(){
+    drawParallaxLayers();
+    drawWorld();
+    drawParticles();
+    celLighting();
+
+    ctx.save();
+    ctx.setTransform(1,0,0,1,0,0);
+    ctx.clearRect(0,0,gameC.width,gameC.height);
+    ctx.drawImage(Graphics.sceneCanvas,0,0,Graphics.sceneCanvas.width,Graphics.sceneCanvas.height,0,0,gameC.width,gameC.height);
+    ctx.restore();
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+  }
+
+  let last=0;
+  function loop(now){
+    const dt=Math.min(0.033,(now-last)/1000);
+    last=now;
+    update(dt);
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  async function startGameLoop(){
+    await initialSpritePromise;
+    updatePlayerCollider();
+    last=performance.now();
+    requestAnimationFrame(loop);
+  }
+  startGameLoop();
+
+  // ===== Tests (keep existing and add a few more) =====
+  const results=[]; function assert(name,cond){ results.push({name,pass:!!cond}); if(!cond) console.error('[TEST FAIL]',name); }
+  function runTests(){
+    assert('frame cell width > 0', frameW>0);
+    assert('frame cell height > 0', frameH>0);
+    const r0=frameRect('down',0); assert('frameRect sx >= 0', r0.sx>=0);
+    const r1=frameRect('up',2); assert('frameRect sy for up row correct', r1.sy===frameH*3);
+    const activeEntry=SPRITES[activeSpriteName];
+    if(spriteReady && activeEntry && activeEntry.image){
+      const width=activeEntry.image.naturalWidth || activeEntry.image.width || 0;
+      const height=activeEntry.image.naturalHeight || activeEntry.image.height || 0;
+      assert('sprite width > 0', width>0);
+      assert('sprite height > 0', height>0);
+      if(!activeEntry.placeholder){
+        assert('3 columns detected', Math.round(width / frameW) === SHEET_COLS);
+        assert('4 rows detected', Math.round(height / frameH) === SHEET_ROWS);
+      }
+    }
+    const rL = frameRect('left',2); assert('left row index', rL.sy===frameH*1);
+    const rR = frameRect('right',2); assert('right row index', rR.sy===frameH*2);
+    const roomAfterLoad=currentRoom;
+    assert('room loaded', !!roomAfterLoad);
+    assert('spawn applied to player', Math.round(player.x)===Math.round(roomAfterLoad.spawn.x));
+    console.log(results);
+  }
+  setTimeout(runTests,2200);
+  </script>
+</body>
+</html>
