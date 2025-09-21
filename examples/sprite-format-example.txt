@@ -1,0 +1,38 @@
+SPRITE SHEET FORMAT EXAMPLE
+==========================
+
+Your sprite sheet should be arranged like this:
+
+Frame Layout (3 columns × 4 rows):
+┌─────────┬─────────┬─────────┐
+│ Down 1  │ Down 2  │ Down 3  │  ← Row 1: Walking DOWN (toward camera)
+├─────────┼─────────┼─────────┤
+│ Left 1  │ Left 2  │ Left 3  │  ← Row 2: Walking LEFT
+├─────────┼─────────┼─────────┤
+│ Right 1 │ Right 2 │ Right 3 │  ← Row 3: Walking RIGHT
+├─────────┼─────────┼─────────┤
+│ Up 1    │ Up 2    │ Up 3    │  ← Row 4: Walking UP (away from camera)
+└─────────┴─────────┴─────────┘
+
+Animation Pattern:
+- Frame 1: First step (e.g., left foot forward)
+- Frame 2: Neutral standing pose (idle frame)
+- Frame 3: Second step (e.g., right foot forward)
+
+The game cycles through: Frame 1 → Frame 2 → Frame 3 → Frame 2 → repeat
+
+Common Sizes:
+- 96×128 pixels total (32×32 per frame)
+- 144×192 pixels total (48×48 per frame)
+
+File Format:
+- PNG with transparency (recommended)
+- JPG also supported
+
+Example filenames:
+- my-character.png
+- knight-warrior.png
+- forest-elf.png
+
+Test your sprite using the sprite loader tool at:
+http://localhost:3000/sprite-loader.html

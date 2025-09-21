@@ -21,3 +21,11 @@ coverage/
 .idea/
 *.swp
 *.swo
+
+# Temporary files
+/tmp/
+*.tmp
+*.temp
+
+# User-uploaded sprites (add specific ones to git if desired)
+user-sprites/
