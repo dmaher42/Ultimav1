@@ -18,31 +18,44 @@ The game includes an interactive sprite testing tool and supports drag-and-drop 
 
 The game now starts in Lord British's magnificent castle, inspired by Ultima 7's iconic throne room and castle architecture. The scene features:
 
-- **Throne Room**: Centered layout with Lord British's golden throne and red carpet approach
-- **Castle Architecture**: Stone walls, floors, doors, and windows creating authentic medieval atmosphere  
-- **Courtyards**: Beautiful gardens with decorative fountains surrounding the castle
-- **Royal NPCs**: Lord British himself sits near his throne, flanked by Royal Guards and attended by Castle Servants
+- **Throne Room**: A grand hall with marble pillars and a red carpet approach to Lord British's golden throne
+- **Royal Wings**: Side corridors lead to a library, guard barracks, royal study, bustling kitchens, and a chapel sanctuary
+- **Castle Architecture**: Stone walls, polished floors, sturdy doors, and tall windows creating authentic medieval atmosphere
+- **Courtyards**: Expansive gardens with decorative fountains surrounding the castle grounds
+- **Royal NPCs**: Lord British, his guards, attendants, scholars, and groundskeepers bring the castle to life
 
 ### Castle Tile Types Added
 
 The following new tile types have been added for the castle scene:
 - `castle_wall` - Sturdy stone castle walls (gray)
-- `castle_floor` - Polished stone floors (light gray) 
+- `castle_floor` - Polished stone floors (light gray)
 - `red_carpet` - Royal carpet leading to the throne (deep red)
 - `throne` - Lord British's magnificent throne (gold)
 - `banner` - Royal heraldic banners (blue)
-- `torch_wall` - Wall-mounted torches (orange)  
+- `torch_wall` - Wall-mounted torches (orange)
 - `castle_door` - Heavy wooden doors (brown)
 - `castle_window` - Tall castle windows (light blue)
 - `fountain` - Decorative courtyard fountains (blue)
 - `garden` - Well-tended castle gardens (green)
 - `courtyard` - Stone-paved courtyard areas (gray)
+- `pillar` - Marble columns lining the great hall (white)
+- `bookshelf` - Packed shelves from the royal library (oak)
+- `barracks_bed` - Guard bunks within the barracks (steel blue)
+- `kitchen_table` - Sturdy tables for the castle kitchens (warm brown)
+- `study_desk` - Desks covered in maps and ledgers (golden brown)
+- `chapel_altar` - Sacred altar at the heart of the chapel (ivory)
 
 ### NPCs in the Castle
 
-- **Lord British**: The ruler of Britannia, positioned near his throne (golden)
-- **Royal Guards**: Elite guards protecting the castle (blue)  
-- **Castle Servant**: Helpful staff maintaining the castle (brown)
+- **Lord British**: The ruler of Britannia welcomes visitors in the great hall (golden)
+- **Royal Guards**: Elite guards flank the throne and patrol the barracks (blue)
+- **Castle Servant**: Greets travelers entering the keep (brown)
+- **Royal Librarian**: Curates the shelves of Britannia's lore (indigo)
+- **Captain of the Guard**: Oversees drills in the new barracks (navy)
+- **Court Scholar**: Studies charts and decrees within the royal study (violet)
+- **Castle Chef**: Keeps the kitchens stocked for every royal feast (copper)
+- **Royal Chaplain**: Tends to the chapel and the Eight Virtues (pale gold)
+- **Groundskeeper**: Maintains the vibrant courtyards and fountains (emerald)
 
 ## Sprite Assets
 

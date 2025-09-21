@@ -135,6 +135,48 @@ const TILE_DEFINITIONS = {
     color: '#778899',
     passable: true,
     encounterChance: 0
+  },
+  pillar: {
+    name: 'Marble Pillar',
+    description: 'A towering marble pillar supporting the grand hall.',
+    color: '#cbb8a9',
+    passable: false,
+    encounterChance: 0
+  },
+  bookshelf: {
+    name: 'Library Shelf',
+    description: 'Shelves of Britannian tomes and dusty histories.',
+    color: '#8b5a2b',
+    passable: false,
+    encounterChance: 0
+  },
+  barracks_bed: {
+    name: 'Barracks Bunk',
+    description: 'A neatly made bunk reserved for Lord British\'s guards.',
+    color: '#5f6a7d',
+    passable: false,
+    encounterChance: 0
+  },
+  kitchen_table: {
+    name: 'Kitchen Table',
+    description: 'Sturdy tables laden with ingredients for the royal feast.',
+    color: '#c68642',
+    passable: false,
+    encounterChance: 0
+  },
+  study_desk: {
+    name: 'Royal Desk',
+    description: 'Charts, ledgers, and quills of the royal study.',
+    color: '#b8860b',
+    passable: false,
+    encounterChance: 0
+  },
+  chapel_altar: {
+    name: 'Chapel Altar',
+    description: 'A sacred altar dedicated to the Eight Virtues.',
+    color: '#f0ead6',
+    passable: false,
+    encounterChance: 0
   }
 };
 
@@ -184,29 +226,39 @@ const CAVE_LAYOUT = [
   '####################'
 ];
 
-// Lord British's Castle Layout - Throne room centered with courtyards
+// Lord British's Castle Layout - Expanded halls, wings, and courtyards
 const CASTLE_LAYOUT = [
-  'WWWWWWWWWDWWWWWWWWWW',
-  'WGGGGGGGGGGGGGGGGGW',
-  'WGFFFGGGGGGGGGFFFGW',
-  'WGFGFGGGGGGGGGFGFGW',
-  'WGGGGGGGGGGGGGGGGGW',
-  'WGGGGGGWWDWWGGGGGGW',
-  'WGGGGGGWCCCWGGGGGGW',
-  'WGGGGGGWCRCWGGGGGGW',
-  'WGGGGGGWCRCWGGGGGGW',
-  'WGGGGGGWCRCWGGGGGGW',
-  'DCCCCCCCCRTCCCCCCCCD',
-  'WGGGGGGWCRCWGGGGGGW',
-  'WGGGGGGWCRCWGGGGGGW',
-  'WGGGGGGWCRCWGGGGGGW',
-  'WGGGGGGWCCCWGGGGGGW',
-  'WGGGGGGWWDWWGGGGGGW',
-  'WGGGGGGGGGGGGGGGGGW',
-  'WGFGFGGGGGGGGGFGFGW',
-  'WGFFFGGGSGGGGGFFFGW',
-  'WGGGGGGGGGGGGGGGGGW',
-  'WWWWWWWWWDWWWWWWWWWW'
+  'WWWWWWWWWWWDDWWWWWWWWWWWWWW',
+  'WGGGGGGGGGGGGGGGGGGGGGGGGGW',
+  'WGFFFGGGGGGGGGGGGGGGGGFFFGW',
+  'WGFGFGGGGGGGGGGGGGGGGGFGFGW',
+  'WGGGGGGGGGGGGGGGGGGGGGGGGGW',
+  'WGGGGGGGGGGGDDGGGGGGGGGGGGW',
+  'WGGGGGGGGGGGCCGGGGGGGGGGGGW',
+  'WGGGGGGWWWWWDDWWWWWGGGGGGGW',
+  'WGGGGGGWCCCCRRRCCCCWGGGGGGW',
+  'WGGGGGGWCCPRRRRPCPCWGGGGGGW',
+  'WGGGGGGWCCPRRRRPCPCWGGGGGGW',
+  'WGGGGGGWCCCCRRRCCCCWGGGGGGW',
+  'WGGGGGGWCCCRTTTRCCCWGGGGGGW',
+  'WGGGGGGWCCCCRRRCCCCWGGGGGGW',
+  'WGGGGGGWCDCCRRRCDCCWGGGGGGW',
+  'WGGGGGGWWCLCRRRCBCWWGGGGGGW',
+  'WGGGGGGWWLLCRRRCBCWGGGGGGGW',
+  'WGGGGGGWCCCCRRRCCCCWGGGGGGW',
+  'WGGGGGGWWOCCRRRCKCWGGGGGGGW',
+  'WGGGGGGWCCCCRDRCCCCWGGGGGGW',
+  'WGGGGGGWCCCCRRRCCCCWGGGGGGW',
+  'WGGGGGGWCCCAAAACCCWGGGGGGGW',
+  'WGGGGGGWCCCCRRRCCCCWGGGGGGW',
+  'WGGGGGGWWWWWDDWWWWWGGGGGGGW',
+  'WGGGGGGGGGGGCCGGGGGGGGGGGGW',
+  'WGGGGGGGGGGGDDGGGGGGGGGGGGW',
+  'WGGGGGGGGGGGGGGGGGGGGGGGGGW',
+  'WGFGFGGGGGGGGGGGGGGGGGFGFGW',
+  'WGFFFGGGSGGGGGGGGGGGGGFFFGW',
+  'WGGGGGGGGGGGGGGGGGGGGGGGGGW',
+  'WWWWWWWWWWWDDWWWWWWWWWWWWWW'
 ];
 
 const FOREST_CHAR_MAP = {
@@ -225,13 +277,19 @@ const CAVE_CHAR_MAP = {
 
 // Lord British's Castle character mapping
 const CASTLE_CHAR_MAP = {
-  W: { tile: 'castle_wall' },     // Castle walls
-  C: { tile: 'castle_floor' },    // Castle floor
-  R: { tile: 'red_carpet' },      // Red carpet leading to throne
-  T: { tile: 'throne' },          // Lord British's throne
-  D: { tile: 'castle_door' },     // Castle doors
-  G: { tile: 'garden' },          // Castle gardens/courtyard
-  F: { tile: 'fountain' },        // Decorative fountains
+  W: { tile: 'castle_wall' },       // Castle walls
+  C: { tile: 'castle_floor' },      // Castle floor
+  R: { tile: 'red_carpet' },        // Red carpet leading to throne
+  T: { tile: 'throne' },            // Lord British's throne
+  D: { tile: 'castle_door' },       // Castle doors
+  G: { tile: 'garden' },            // Castle gardens/courtyard
+  F: { tile: 'fountain' },          // Decorative fountains
+  P: { tile: 'pillar' },            // Marble pillars in the great hall
+  L: { tile: 'bookshelf' },         // Library shelves
+  B: { tile: 'barracks_bed' },      // Guard barracks bunks
+  K: { tile: 'kitchen_table' },     // Castle kitchen tables
+  O: { tile: 'study_desk' },        // Royal study desks
+  A: { tile: 'chapel_altar' },      // Chapel altar
   S: { tile: 'castle_floor', spawn: 'entrance' }  // Spawn point (entrance)
 };
 
@@ -338,40 +396,94 @@ export function createWorld() {
       {
         id: 'lord_british',
         name: 'Lord British',
-        x: 10,
-        y: 10,
+        x: 13,
+        y: 13,
         sprite: 'npc',
         spriteSheet: LORD_BRITISH_SPRITE_SHEET,
         spriteFrame: LORD_BRITISH_SPRITE_FRAME,
         color: '#d4af37',
-        dialogue: 'Welcome to my castle, brave adventurer! I am Lord British, ruler of Britannia.'
+        dialogue: 'Welcome to my castle, brave adventurer! Explore the library, barracks, chapel, and gardens at your leisure.'
       },
       {
         id: 'royal_guard_1',
         name: 'Royal Guard',
-        x: 8,
-        y: 10,
+        x: 11,
+        y: 12,
         sprite: 'npc',
         color: '#4169e1',
-        dialogue: 'I serve to protect Lord British and his castle.'
+        dialogue: 'The expanded barracks keep our blades sharp and ready.'
       },
       {
         id: 'royal_guard_2',
         name: 'Royal Guard',
-        x: 12,
-        y: 10,
+        x: 15,
+        y: 12,
         sprite: 'npc',
         color: '#4169e1',
-        dialogue: 'Stay vigilant, citizen. The realm must be protected.'
+        dialogue: 'Every hall is secured—Lord British will not be caught unaware.'
       },
       {
         id: 'castle_servant',
         name: 'Castle Servant',
-        x: 6,
-        y: 8,
+        x: 8,
+        y: 9,
         sprite: 'npc',
         color: '#8b4513',
-        dialogue: 'The castle is magnificent, is it not? Lord British rules with wisdom and justice.'
+        dialogue: 'Mind the polished floors! The new library and kitchens are bustling with activity.'
+      },
+      {
+        id: 'royal_librarian',
+        name: 'Royal Librarian',
+        x: 9,
+        y: 15,
+        sprite: 'npc',
+        color: '#4b0082',
+        dialogue: 'Centuries of Britannian lore rest upon these shelves—handle them with reverence.'
+      },
+      {
+        id: 'captain_of_guards',
+        name: 'Captain of the Guard',
+        x: 17,
+        y: 15,
+        sprite: 'npc',
+        color: '#2b4c7e',
+        dialogue: 'The guard barracks hum with drills day and night to keep the throne secure.'
+      },
+      {
+        id: 'court_scholar',
+        name: 'Court Scholar',
+        x: 10,
+        y: 18,
+        sprite: 'npc',
+        color: '#9370db',
+        dialogue: 'These ledgers chart trade winds, star paths, and every decree Lord British proclaims.'
+      },
+      {
+        id: 'castle_chef',
+        name: 'Castle Chef',
+        x: 15,
+        y: 18,
+        sprite: 'npc',
+        color: '#d2691e',
+        dialogue: 'The royal kitchens must never rest—there is always another feast to prepare.'
+      },
+      {
+        id: 'royal_chaplain',
+        name: 'Royal Chaplain',
+        x: 13,
+        y: 20,
+        sprite: 'npc',
+        color: '#f0e68c',
+        dialogue: 'May the Eight Virtues guide your path; the chapel welcomes all who seek peace.'
+      },
+      {
+        id: 'groundskeeper',
+        name: 'Groundskeeper',
+        x: 9,
+        y: 27,
+        sprite: 'npc',
+        color: '#2e8b57',
+        dialogue: 'Every blossom in these courtyards is tended with care worthy of a king.'
       }
     ]
   });
