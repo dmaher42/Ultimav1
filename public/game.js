@@ -1,6 +1,6 @@
 import CharacterCreator from './CharacterCreator.js';
 import Character from './Character.js';
-import { createWorld, TileInfo } from './GameMap.js';
+import { createWorld, TileInfo, LORD_BRITISH_SPRITE_SHEET } from './GameMap.js';
 import Renderer from './render.js';
 import Player from './Player.js';
 import CombatEngine from './CombatEngine.js';
@@ -15,6 +15,7 @@ const ctx = initCanvas('game');
 const renderer = new Renderer(ctx);
 const particles = createEmitter();
 renderer.setParticles(particles);
+const DEFAULT_PLAYER_SPRITE_SHEET = 'assets/sprites/Male-17-3-1758428284774-d1ea43dc.png';
 const syncCanvasSize = () => {
   resize();
 };
@@ -754,11 +755,20 @@ async function bootstrap() {
     }
     renderer.setAtlas(atlas);
     console.log('Atlas set on renderer. Assets loaded:', renderer.assetsLoaded);
+    try {
+      await renderer.loadPlayerSprite(DEFAULT_PLAYER_SPRITE_SHEET);
+      console.log('Player sprite sheet loaded:', DEFAULT_PLAYER_SPRITE_SHEET);
+    } catch (spriteError) {
+      console.warn('Failed to load default player sprite sheet:', spriteError);
+    }
+    renderer.ensureSpriteSheet(LORD_BRITISH_SPRITE_SHEET).catch((error) => {
+      console.warn('Failed to preload Lord British sprite sheet:', error);
+    });
   } catch (error) {
     console.error('Failed to load texture atlas.', error);
     return;
   }
-  
+
   console.log('Starting renderer...');
   renderer.start();
   console.log('Renderer started. Running:', renderer.running);
