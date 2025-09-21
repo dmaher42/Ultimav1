@@ -1,5 +1,5 @@
 // Feature: Village area + transitions (Castle↔Village↔Forest)
-export const LORD_BRITISH_SPRITE_SHEET = 'assets/sprites/Soldier-01-2-1758429653885-76805eae.png';
+export const LORD_BRITISH_SPRITE_SHEET = 'assets/sprites/Boss-01-1758429611593-0937cfdf.png';
 export const LORD_BRITISH_SPRITE_FRAME = 'player_south_1';
 
 const TILE_DEFINITIONS = {
@@ -172,6 +172,55 @@ const TILE_DEFINITIONS = {
     passable: false,
     encounterChance: 0
   },
+  kitchen_hearth: {
+    name: 'Kitchen Hearth',
+    description: 'Broad stone hearths that warm the royal kitchens day and night.',
+    color: '#b7410e',
+    passable: false,
+    encounterChance: 0
+  },
+  dining_table: {
+    name: 'Banquet Table',
+    description: 'Long tables prepared for state feasts and visiting dignitaries.',
+    color: '#a9743a',
+    passable: false,
+    encounterChance: 0
+  },
+  armory_rack: {
+    name: 'Armory Rack',
+    description: 'Racks of polished steel awaiting the castle guard.',
+    color: '#6f584b',
+    passable: false,
+    encounterChance: 0
+  },
+  training_dummy: {
+    name: 'Training Dummy',
+    description: 'Practice dummies for honing swordplay.',
+    color: '#c68642',
+    passable: true,
+    encounterChance: 0
+  },
+  stable_hay: {
+    name: 'Stable Hay',
+    description: 'Fresh hay stacked for the royal stables.',
+    color: '#d2b48c',
+    passable: true,
+    encounterChance: 0
+  },
+  royal_bed: {
+    name: 'Royal Bed',
+    description: 'Lavish bedding reserved for the sovereign and honored guests.',
+    color: '#b56576',
+    passable: false,
+    encounterChance: 0
+  },
+  wash_basin: {
+    name: 'Wash Basin',
+    description: 'Basins of scented water to refresh weary travelers.',
+    color: '#87cefa',
+    passable: false,
+    encounterChance: 0
+  },
   chapel_altar: {
     name: 'Chapel Altar',
     description: 'A sacred altar dedicated to the Eight Virtues.',
@@ -248,37 +297,50 @@ const CAVE_LAYOUT = [
 
 // Lord British's Castle Layout - Expanded halls, wings, and courtyards
 const CASTLE_LAYOUT = [
-  'WWWWWWWWWWWDDWWWWWWWWWWWWWW',
-  'WGGGGGGGGGGGGGGGGGGGGGGGGGW',
-  'WGFFFGGGGGGGGGGGGGGGGGFFFGW',
-  'WGFGFGGGGGGGGGGGGGGGGGFGFGW',
-  'WGGGGGGGGGGGGGGGGGGGGGGGGGW',
-  'WGGGGGGGGGGGDDGGGGGGGGGGGGW',
-  'WGGGGGGGGGGGCCGGGGGGGGGGGGW',
-  'WGGGGGGWWWWWDDWWWWWGGGGGGGW',
-  'WGGGGGGWCCCCRRRCCCCWGGGGGGW',
-  'WGGGGGGWCCPRRRRPCPCWGGGGGGW',
-  'WGGGGGGWCCPRRRRPCPCWGGGGGGW',
-  'WGGGGGGWCCCCRRRCCCCWGGGGGGW',
-  'WGGGGGGWCCCRTTTRCCCWGGGGGGW',
-  'WGGGGGGWCCCCRRRCCCCWGGGGGGW',
-  'WGGGGGGWCDCCRRRCDCCWGGGGGGW',
-  'WGGGGGGWWCLCRRRCBCWWGGGGGGW',
-  'WGGGGGGWWLLCRRRCBCWGGGGGGGW',
-  'WGGGGGGWCCCCRRRCCCCWGGGGGGW',
-  'WGGGGGGWWOCCRRRCKCWGGGGGGGW',
-  'WGGGGGGWCCCCRDRCCCCWGGGGGGW',
-  'WGGGGGGWCCCCRRRCCCCWGGGGGGW',
-  'WGGGGGGWCCCAAAACCCWGGGGGGGW',
-  'WGGGGGGWCCCCRRRCCCCWGGGGGGW',
-  'WGGGGGGWWWWWDDWWWWWGGGGGGGW',
-  'WGGGGGGGGGGGCCGGGGGGGGGGGGW',
-  'WGGGGGGGGGGGDDGGGGGGGGGGGGW',
-  'WGGGGGGGGGGGGGGGGGGGGGGGGGW',
-  'WGFGFGGGGGGGGGGGGGGGGGFGFGW',
-  'WGFFFGGGSGGGGGGGGGGGGGFFFGW',
-  'WGGGGGGGVGGGGGGGGGGGGGGGGGW',
-  'WWWWWWWWWWWDDWWWWWWWWWWWWWW'
+  'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+  'WGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGW',
+  'WGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGW',
+  'WGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGW',
+  'WGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGW',
+  'WGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGW',
+  'WGGGGGWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWGGGGGW',
+  'WGGGGGWLLLCLLLLCOOOOOUUUUUUEEEEEECCCCCCCCWGGGGGW',
+  'WGGGGGWLLLCLLLLCOOOOOUOUUUOKKKKKKCCCCCCBCWGGGGGW',
+  'WGGGGGWLLLCLLLLCOOOOOUOUUUOKKKKKKCCCCCCBCWGGGGGW',
+  'WGGGGGWLLLCLLLLCOOOOOUUUUUUKKKKKKCCCCCCBCWGGGGGW',
+  'WGGGGGWLLLCLLLLCOOOOOCCRTRCKKKKKKCCCCCCBCWGGGGGW',
+  'WGGGGGWLLLCLLLLCQQQQQCCRRRMMMMMMCMMMMMMMBCWGGGGGW',
+  'WGGGGGWLLLCLLLLCQQQQQCCRRRMMMMMMCMMMMMMMBCWGGGGGW',
+  'WGGGGGWLLLCLLLLCQQQQQCRRRRMAAAXDCDDAAAABCWGGGGGW',
+  'WGGGGGWLLLCLLLLCQQQQQCRRRRMAAAAACAAAAAABCWGGGGGW',
+  'WGGGGGWBBBDDDDBBBYDDYCRRRRMAAAAACAAAAAACCWGGGGGW',
+  'WGGGGGWBBBBBBBBBBYYYYCRRRRMAAAAACAAAAAACCWGGGGGW',
+  'WGGGGGWBBBBBBBBBBYYYYCRXXXXAAAAACAAAAAACCWGGGGGW',
+  'WGGGGGWBBBBBBBBBBYYYYCRXXXXAAAAACAAAAAACCWGGGGGW',
+  'WGGGGGWBBBBBBBBBBYYYYCRRRRCAAAAACAAAAAACCWGGGGGW',
+  'WGGGGGWBBBBBBBBBBYYYYCRRRRCAAAAACAAAAAACCWGGGGGW',
+  'WGGGGGWBBBBBBBBBBYYYYCRRRRCAAAAACAAAAAACCWGGGGGW',
+  'WGGGGGWBBBBBBBBBBYYYYCRRRRCAAAAACAAAAAACCWGGGGGW',
+  'WGGGYYWCCCCCCCCCCCCCCCCCSCCCCCCCCCCCCCCCCWJJGGGW',
+  'WGGGYYWCCCCCCCCCCCCCCCCHHHCCCCCCCCCCCCCCCWJJGGGW',
+  'WGGGYYWWWWWWWWWWWWWWWWHHHHHWWWWWWWWWWWWWWWJJGGGW',
+  'WGGGYYYYYYYYHHHHHHHHHHHHHHHHHHHHHHHHJJJJJJJJGGGW',
+  'WGGGYYYYYYYYFHHHHHHHHHHHHHHHHHHHHHHHJJJJJJJJGGGW',
+  'WGGGYYYYYYYYHHHHHHHHHHHHHHHHHHHHHHHHJJJJJJJJGGGW',
+  'WGGGGGHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHGGGGGW',
+  'WGGGGGHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHGGGGGW',
+  'WGGGGGGGGGGGGGGGGGGGGGGHHHGGGGGGGGGGGGGGGGGGGGGW',
+  'WGGGGGGGGGGGGGGGGGGGGGHHHHHGGGGGGGGGGGGGGGGGGGGW',
+  'WGGGGGGGGGGGGGGGGGGGGGHHHHHGGGGGGGGGGGGGGGGGGGGW',
+  'WGGGGGGGGGGGGGGGGGGGGGHHHHHGGGGGGGGGGGGGGGGGGGGW',
+  'WGGGGGGGGGGGGGGGGGGGGGHHHHHGGGGGGGGGGGGGGGGGGGGW',
+  'WGGGGGGGGGGGGGGGGGGGGGHHHHHGGGGGGGGGGGGGGGGGGGGW',
+  'WGGGGGGGGGGGGGGGGGGGGGHHHHHGGGGGGGGGGGGGGGGGGGGW',
+  'WGGGGGGGGGGGGGGGGGGGGGHHHHHGGGGGGGGGGGGGGGGGGGGW',
+  'WGGGGGGGGGGGGGGGGGGGGGHHHHHGGGGGGGGGGGGGGGGGGGGW',
+  'WGGGGGGGGGGGGGGGGGGGGGHHHHHGGGGGGGGGGGGGGGGGGGGW',
+  'WGGGGGGGGGGGGGGGGGGGGGGHVHGGGGGGGGGGGGGGGGGGGGGW',
+  'WWWWWWWWWWWWWWWWWWWWWWWDDDWWWWWWWWWWWWWWWWWWWWWW'
 ];
 
 const FOREST_CHAR_MAP = {
@@ -322,7 +384,15 @@ const CASTLE_CHAR_MAP = {
   L: { tile: 'bookshelf' },         // Library shelves
   B: { tile: 'barracks_bed' },      // Guard barracks bunks
   K: { tile: 'kitchen_table' },     // Castle kitchen tables
+  U: { tile: 'kitchen_hearth' },    // Hearths in the bustling kitchens
+  E: { tile: 'wash_basin' },        // Wash basins for servants and soldiers alike
+  Q: { tile: 'dining_table' },      // Banquet hall tables
   O: { tile: 'study_desk' },        // Royal study desks
+  M: { tile: 'armory_rack' },       // Armory storage racks
+  X: { tile: 'training_dummy' },    // Training ground dummies
+  Y: { tile: 'royal_bed' },         // Royal sleeping quarters
+  J: { tile: 'stable_hay' },        // Hay piles in the stables
+  H: { tile: 'courtyard' },         // Stone courtyard paths
   A: { tile: 'chapel_altar' },      // Chapel altar
   S: { tile: 'castle_floor', spawn: ['entrance', 'village', 'castle_gate'] },  // Spawn points (entrance & exterior)
   V: { tile: 'garden', transition: { map: 'village', spawn: 'castle_gate' } }  // Transition to the village hub
@@ -437,94 +507,167 @@ export function createWorld() {
       {
         id: 'lord_british',
         name: 'Lord British',
-        x: 13,
-        y: 13,
+        x: 24,
+        y: 12,
         sprite: 'npc',
         spriteSheet: LORD_BRITISH_SPRITE_SHEET,
         spriteFrame: LORD_BRITISH_SPRITE_FRAME,
         color: '#d4af37',
-        dialogue: 'Welcome to my castle, brave adventurer! Explore the library, barracks, chapel, and gardens at your leisure.'
+        dialogue: 'The keep has never been busier—wander the new wings and speak with my household.'
       },
       {
-        id: 'royal_guard_1',
-        name: 'Royal Guard',
-        x: 11,
-        y: 12,
-        sprite: 'npc',
-        color: '#4169e1',
-        dialogue: 'The expanded barracks keep our blades sharp and ready.'
-      },
-      {
-        id: 'royal_guard_2',
-        name: 'Royal Guard',
-        x: 15,
-        y: 12,
-        sprite: 'npc',
-        color: '#4169e1',
-        dialogue: 'Every hall is secured—Lord British will not be caught unaware.'
-      },
-      {
-        id: 'castle_servant',
-        name: 'Castle Servant',
-        x: 8,
-        y: 9,
-        sprite: 'npc',
-        color: '#8b4513',
-        dialogue: 'Mind the polished floors! The new library and kitchens are bustling with activity.'
-      },
-      {
-        id: 'royal_librarian',
-        name: 'Royal Librarian',
-        x: 9,
+        id: 'royal_guard_captain',
+        name: 'Royal Guard Captain',
+        x: 22,
         y: 15,
         sprite: 'npc',
-        color: '#4b0082',
-        dialogue: 'Centuries of Britannian lore rest upon these shelves—handle them with reverence.'
-      },
-      {
-        id: 'captain_of_guards',
-        name: 'Captain of the Guard',
-        x: 17,
-        y: 15,
-        sprite: 'npc',
+        spriteSheet: 'assets/sprites/Soldier-07-4-1758429632107-f51524ce.png',
+        spriteFrame: 'player_south_1',
         color: '#2b4c7e',
-        dialogue: 'The guard barracks hum with drills day and night to keep the throne secure.'
+        dialogue: 'The garrison drills day and night to keep the throne secure.'
+      },
+      {
+        id: 'hall_guard_west',
+        name: 'Royal Guard',
+        x: 21,
+        y: 21,
+        sprite: 'npc',
+        spriteSheet: 'assets/sprites/Soldier-05-4-1758429645243-83d4c8c6.png',
+        spriteFrame: 'player_south_1',
+        color: '#3a5fcd',
+        dialogue: 'These chambers belong to the royal family; we stand ready at every door.'
+      },
+      {
+        id: 'hall_guard_east',
+        name: 'Royal Guard',
+        x: 26,
+        y: 21,
+        sprite: 'npc',
+        spriteSheet: 'assets/sprites/Soldier-03-2-1758429649266-4ec7b80c.png',
+        spriteFrame: 'player_south_1',
+        color: '#3b4f9f',
+        dialogue: 'The chapel and training yards remain under constant watch.'
+      },
+      {
+        id: 'royal_steward',
+        name: 'Royal Steward',
+        x: 21,
+        y: 14,
+        sprite: 'npc',
+        spriteSheet: 'assets/sprites/Female-24-1-1758429708321-a5ae6e2b.png',
+        spriteFrame: 'player_south_1',
+        color: '#c29f4b',
+        dialogue: 'Banquets are scheduled nightly; every hall must gleam for visiting dignitaries.'
+      },
+      {
+        id: 'head_librarian',
+        name: 'Head Librarian',
+        x: 10,
+        y: 12,
+        sprite: 'npc',
+        spriteSheet: 'assets/sprites/Female-25-1-1758428250234-e8e79abb.png',
+        spriteFrame: 'player_south_1',
+        color: '#4b0082',
+        dialogue: 'Centuries of Britannian lore rest upon these shelves—handle every tome with reverence.'
       },
       {
         id: 'court_scholar',
         name: 'Court Scholar',
-        x: 10,
-        y: 18,
+        x: 15,
+        y: 9,
         sprite: 'npc',
+        spriteSheet: 'assets/sprites/Male-17-3-1758428284774-d1ea43dc.png',
+        spriteFrame: 'player_south_1',
         color: '#9370db',
-        dialogue: 'These ledgers chart trade winds, star paths, and every decree Lord British proclaims.'
+        dialogue: 'Charts of the realm and star maps cover every desk; Lord British expects precise counsel.'
       },
       {
-        id: 'castle_chef',
-        name: 'Castle Chef',
-        x: 15,
+        id: 'royal_chef',
+        name: 'Royal Chef',
+        x: 26,
+        y: 11,
+        sprite: 'npc',
+        spriteSheet: 'assets/sprites/Female-22-4-1758429697306-192e02a2.png',
+        spriteFrame: 'player_south_1',
+        color: '#d2691e',
+        dialogue: 'The furnaces stay hot so that no guest ever waits for a feast.'
+      },
+      {
+        id: 'armory_master',
+        name: 'Armory Master',
+        x: 32,
+        y: 13,
+        sprite: 'npc',
+        spriteSheet: 'assets/sprites/Soldier-06-4-1758429640375-9ed01da2.png',
+        spriteFrame: 'player_south_1',
+        color: '#6b6b73',
+        dialogue: 'Every rack is polished and every blade accounted for before the sun sets.'
+      },
+      {
+        id: 'drill_instructor',
+        name: 'Drill Instructor',
+        x: 24,
         y: 18,
         sprite: 'npc',
-        color: '#d2691e',
-        dialogue: 'The royal kitchens must never rest—there is always another feast to prepare.'
+        spriteSheet: 'assets/sprites/Soldier-07-3-1758429635635-21197350.png',
+        spriteFrame: 'player_south_1',
+        color: '#b22222',
+        dialogue: 'Strike the dummies with purpose—discipline wins battles before steel is drawn.'
       },
       {
         id: 'royal_chaplain',
         name: 'Royal Chaplain',
-        x: 13,
+        x: 32,
         y: 20,
         sprite: 'npc',
+        spriteSheet: 'assets/sprites/Female-06-1-1758429682755-cde250c8.png',
+        spriteFrame: 'player_south_1',
         color: '#f0e68c',
-        dialogue: 'May the Eight Virtues guide your path; the chapel welcomes all who seek peace.'
+        dialogue: 'May the Eight Virtues guide your path; the chapel is open to all who seek peace.'
+      },
+      {
+        id: 'stable_master',
+        name: 'Stable Master',
+        x: 40,
+        y: 27,
+        sprite: 'npc',
+        spriteSheet: 'assets/sprites/Male-11-1-1758429180284-34dd97f7.png',
+        spriteFrame: 'player_south_1',
+        color: '#8b4513',
+        dialogue: 'Fresh hay and oiled tack keep the royal steeds ready for a midnight ride.'
       },
       {
         id: 'groundskeeper',
         name: 'Groundskeeper',
-        x: 9,
-        y: 27,
+        x: 18,
+        y: 30,
         sprite: 'npc',
+        spriteSheet: 'assets/sprites/Female-20-4-1758429686210-8e1c4b7b.png',
+        spriteFrame: 'player_south_1',
         color: '#2e8b57',
-        dialogue: 'Every blossom in these courtyards is tended with care worthy of a king.'
+        dialogue: 'These courtyards are swept and trimmed so the kingdom sees only brilliance.'
+      },
+      {
+        id: 'lady_in_waiting',
+        name: 'Lady-in-Waiting',
+        x: 22,
+        y: 19,
+        sprite: 'npc',
+        spriteSheet: 'assets/sprites/Female-15-3-1758429690018-be2acd33.png',
+        spriteFrame: 'player_south_1',
+        color: '#ffb6c1',
+        dialogue: 'The royal suites shimmer with silks and song awaiting our liege.'
+      },
+      {
+        id: 'castle_page',
+        name: 'Castle Page',
+        x: 24,
+        y: 25,
+        sprite: 'npc',
+        spriteSheet: 'assets/sprites/Female-04-2-1758429713667-ed61eda3.png',
+        spriteFrame: 'player_south_1',
+        color: '#add8e6',
+        dialogue: 'Welcome! The throne room lies just ahead—mind the courtiers at work.'
       }
     ]
   });
