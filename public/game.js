@@ -1,3 +1,4 @@
+// Feature: Village area + transitions (Castle↔Village↔Forest)
 import CharacterCreator from './CharacterCreator.js';
 import Character from './Character.js';
 import { createWorld, TileInfo, LORD_BRITISH_SPRITE_SHEET } from './GameMap.js';
@@ -531,7 +532,7 @@ async function resolveCombat(result, enemy) {
     state.character.applyDeathPenalty();
     state.character.currentHP = Math.max(state.character.currentHP, Math.floor(state.character.maxHP * 0.6));
     state.character.currentMP = Math.max(state.character.currentMP, Math.floor(state.character.maxMP * 0.4));
-    changeMap('forest', 'village');
+    changeMap('forest', 'forest_path');
   } else if (result.outcome === 'fled') {
     log('You fled from battle.');
   }
@@ -786,7 +787,7 @@ async function bootstrap() {
   state.map = state.world.startingMap;
   activeMovementDirections.clear();
   renderer.stopAllMovement();
-  changeMap(state.map.id, 'village');
+  changeMap(state.map.id, 'castle_gate');
   renderInventory();
   renderCharacterSheet();
   updateHUD();
