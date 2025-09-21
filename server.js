@@ -3,6 +3,9 @@ const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const path = require('path');
+const fs = require('fs');
+const multer = require('multer');
+const crypto = require('crypto');
 
 // Node 18 exposes fetch globally; keep a tiny fallback for older runtimes.
 const fetchFn = global.fetch || ((...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args)));
@@ -12,6 +15,20 @@ dotenv.config();
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
 const PUBLIC_DIR = path.join(__dirname, 'public');
+
+const fsPromises = fs.promises;
+
+const SPRITE_UPLOAD_DIR = path.join(__dirname, 'assets', 'sprites');
+const SPRITE_PATHS = [
+  { dir: SPRITE_UPLOAD_DIR, urlBase: '/assets/sprites' },
+  { dir: path.join(__dirname, 'assets'), urlBase: '/assets' },
+  { dir: path.join(__dirname, 'public', 'assets', 'sprites'), urlBase: '/assets/sprites' },
+  { dir: path.join(__dirname, 'public', 'assets'), urlBase: '/assets' }
+];
+const ALLOWED_SPRITE_EXTS = new Set(['.png', '.jpg', '.jpeg']);
+const MAX_SPRITE_SIZE = 5 * 1024 * 1024;
+
+fs.mkdirSync(SPRITE_UPLOAD_DIR, { recursive: true });
 
 const ITEM_CATALOG = [
   { id: 'flour', name: 'Bag of Flour' },
@@ -36,6 +53,88 @@ const QUEST_CATALOG = [
 
 const ALLOWED_ACTIONS = ['set_flag', 'give_item', 'start_quest', 'advance_quest', 'set_waypoint'];
 
+function sanitizeSpriteBasename(raw) {
+  if (!raw) return 'sprite';
+  const normalized = String(raw)
+    .replace(/[^a-z0-9_\-]+/gi, '-')
+    .replace(/-+/g, '-')
+    .replace(/^[-_]+|[-_]+$/g, '');
+  const truncated = normalized.slice(0, 64);
+  return truncated || 'sprite';
+}
+
+function determineSpriteExtension(file) {
+  if (!file) return '.png';
+  const originalExt = path.extname(file.originalname || '').toLowerCase();
+  if (ALLOWED_SPRITE_EXTS.has(originalExt)) {
+    return originalExt;
+  }
+  const mime = (file.mimetype || '').toLowerCase();
+  if (mime === 'image/png') return '.png';
+  if (mime === 'image/jpeg' || mime === 'image/jpg') return '.jpg';
+  return originalExt;
+}
+
+function buildSpriteUrl(base, name) {
+  const normalizedBase = base.endsWith('/') ? base : `${base}/`;
+  return `${normalizedBase}${name}`.replace(/\\/g, '/');
+}
+
+async function listSprites() {
+  const seen = new Map();
+  for (const entry of SPRITE_PATHS) {
+    let dirEntries;
+    try {
+      dirEntries = await fsPromises.readdir(entry.dir, { withFileTypes: true });
+    } catch (err) {
+      if (err && err.code !== 'ENOENT') {
+        console.warn(`Failed to read sprite directory ${entry.dir}:`, err.message);
+      }
+      continue;
+    }
+    for (const dirent of dirEntries) {
+      if (!dirent.isFile()) continue;
+      const ext = path.extname(dirent.name).toLowerCase();
+      if (!ALLOWED_SPRITE_EXTS.has(ext)) continue;
+      if (!seen.has(dirent.name)) {
+        seen.set(dirent.name, {
+          name: dirent.name,
+          url: buildSpriteUrl(entry.urlBase, dirent.name)
+        });
+      }
+    }
+  }
+  return Array.from(seen.values()).sort((a, b) => a.name.localeCompare(b.name));
+}
+
+const spriteStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, SPRITE_UPLOAD_DIR);
+  },
+  filename: (req, file, cb) => {
+    const ext = file._spriteExt || determineSpriteExtension(file) || '.png';
+    const safeExt = ALLOWED_SPRITE_EXTS.has(ext) ? ext : '.png';
+    const originalBase = path.basename(file.originalname || 'sprite', path.extname(file.originalname || ''));
+    const base = sanitizeSpriteBasename(originalBase);
+    const uniqueSuffix = `${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
+    cb(null, `${base}-${uniqueSuffix}${safeExt}`);
+  }
+});
+
+const upload = multer({
+  storage: spriteStorage,
+  limits: { fileSize: MAX_SPRITE_SIZE },
+  fileFilter: (req, file, cb) => {
+    const ext = determineSpriteExtension(file);
+    if (!ALLOWED_SPRITE_EXTS.has(ext)) {
+      cb(new Error('Only PNG or JPG sprite sheets are supported.'));
+      return;
+    }
+    file._spriteExt = ext;
+    cb(null, true);
+  }
+});
+
 app.use(cors());
 app.use(express.json({ limit: '1mb' }));
 
@@ -46,6 +145,48 @@ app.get(['/', '/index.html'], (req, res) => {
 app.use('/public', express.static(PUBLIC_DIR));
 app.use('/assets', express.static(path.join(__dirname, 'assets')));
 app.use(express.static(PUBLIC_DIR));
+
+app.get('/api/sprites', async (req, res) => {
+  try {
+    const sprites = await listSprites();
+    res.json({ sprites });
+  } catch (err) {
+    console.error('Failed to list sprites:', err);
+    res.status(500).json({ error: 'Failed to list sprites.' });
+  }
+});
+
+app.post('/api/upload-sprite', (req, res) => {
+  upload.single('sprite')(req, res, async (err) => {
+    if (err) {
+      console.error('Sprite upload failed:', err);
+      const status = err instanceof multer.MulterError ? 400 : 500;
+      return res.status(status).json({ error: err.message || 'Failed to upload sprite.' });
+    }
+    if (!req.file) {
+      return res.status(400).json({ error: 'No sprite file uploaded.' });
+    }
+
+    try {
+      const sprites = await listSprites();
+      res.json({
+        ok: true,
+        filename: req.file.filename,
+        originalName: req.file.originalname,
+        url: buildSpriteUrl('/assets/sprites', req.file.filename),
+        sprites
+      });
+    } catch (listErr) {
+      console.error('Sprite list refresh failed:', listErr);
+      res.json({
+        ok: true,
+        filename: req.file.filename,
+        originalName: req.file.originalname,
+        url: buildSpriteUrl('/assets/sprites', req.file.filename)
+      });
+    }
+  });
+});
 
 app.post('/npc', async (req, res) => {
   const snapshot = req.body;

@@ -29,6 +29,7 @@
     <button id="btnLoad">Load</button>
     <input id="fileInput" type="file" accept="image/png,image/jpeg" style="display:none" />
     <button id="btnFile">Choose File…</button>
+    <button id="btnUpload" disabled>Upload Sprite</button>
     <select id="spriteSelect" style="margin-left:8px">
       <option value="__placeholder__">Placeholder (no bundled sprite)</option>
     </select>
@@ -554,6 +555,8 @@
   let currentObjectUrl=null;// revoke blob URLs when replaced
   let urlInput=null;
   let spriteSelect=null;
+  let btnUpload=null;
+  let pendingUploadFile=null;
 
   const spriteReadyResolvers=[];
   function resolveSpriteWaiters(){
@@ -998,44 +1001,130 @@
     urlInput.value=initialDisplayValue;
   }
 
-  // Auto-discover available sprites and populate dropdown
-  async function discoverAndPopulateSprites() {
-    if (!spriteSelect) return;
-    
-    const commonSprites = ['heroa.png', 'herob.png', 'player.png', 'character.png'];
-    const discovered = new Set();
-    
-    // Try to detect available sprites
-    for (const spriteName of commonSprites) {
-      try {
-        const testUrl = await getSpriteSource(spriteName, null);
-        const response = await fetch(testUrl, { method: 'HEAD' });
-        if (response.ok) {
-          discovered.add(spriteName);
+  function computeSpriteLabel(name){
+    if(!name) return 'Sprite';
+    return name
+      .replace(/\.(png|jpg|jpeg)$/i,'')
+      .replace(/[_\-]+/g,' ')
+      .replace(/\b\w/g,c=>c.toUpperCase());
+  }
+
+  function spriteOptionExists(name){
+    if(!spriteSelect || !name) return false;
+    for(const opt of spriteSelect.options){
+      if(opt.value===name) return true;
+    }
+    return false;
+  }
+
+  function addSpriteOption(name){
+    if(!spriteSelect || !name || spriteOptionExists(name)) return null;
+    const option=document.createElement('option');
+    option.value=name;
+    option.textContent=computeSpriteLabel(name);
+    spriteSelect.appendChild(option);
+    return option;
+  }
+
+  function applySpriteList(entries){
+    if(!Array.isArray(entries)) return;
+    for(const entry of entries){
+      const name=typeof entry==='string'?entry:entry?.name;
+      if(typeof name==='string' && name){
+        addSpriteOption(name);
+      }
+    }
+  }
+
+  function updateUploadButtonState(){
+    if(btnUpload){
+      btnUpload.disabled=!pendingUploadFile;
+    }
+  }
+
+  function sortSpriteOptions(){
+    if(!spriteSelect) return;
+    const current=spriteSelect.value;
+    const options=Array.from(spriteSelect.options);
+    const placeholders=options.filter(opt=>opt.value===PLACEHOLDER_PRESET.canonicalName);
+    const others=options.filter(opt=>opt.value!==PLACEHOLDER_PRESET.canonicalName);
+    others.sort((a,b)=>a.textContent.localeCompare(b.textContent));
+    spriteSelect.innerHTML='';
+    placeholders.forEach(opt=>spriteSelect.appendChild(opt));
+    others.forEach(opt=>spriteSelect.appendChild(opt));
+    if(current){
+      spriteSelect.value=current;
+    }
+  }
+
+  async function discoverAndPopulateSprites(){
+    if(!spriteSelect) return;
+
+    const commonSprites=['heroa.png','herob.png','player.png','character.png'];
+    const discovered=new Set();
+
+    try{
+      const response=await fetch('/api/sprites');
+      if(response.ok){
+        const payload=await response.json();
+        const list=Array.isArray(payload?.sprites)?payload.sprites:[];
+        applySpriteList(list);
+        for(const entry of list){
+          const name=typeof entry==='string'?entry:entry?.name;
+          if(typeof name==='string'){
+            discovered.add(name);
+          }
         }
-      } catch (err) {
+      }
+    }catch(err){
+      console.warn('Sprite index fetch failed:', err);
+    }
+
+    for(const spriteName of commonSprites){
+      if(discovered.has(spriteName) || spriteOptionExists(spriteName)) continue;
+      try{
+        const testUrl=await getSpriteSource(spriteName,null);
+        const response=await fetch(testUrl,{ method:'HEAD' });
+        if(response.ok){
+          discovered.add(spriteName);
+          addSpriteOption(spriteName);
+        }
+      }catch(err){
         // Sprite not available, skip
       }
     }
-    
-    // Add discovered sprites to dropdown
-    for (const spriteName of discovered) {
-      // Check if option already exists
-      let exists = false;
-      for (const opt of spriteSelect.options) {
-        if (opt.value === spriteName) {
-          exists = true;
-          break;
-        }
-      }
-      
-      if (!exists) {
-        const option = document.createElement('option');
-        option.value = spriteName;
-        option.textContent = spriteName.replace('.png', '').replace(/[_-]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-        spriteSelect.appendChild(option);
-      }
+
+    sortSpriteOptions();
+  }
+
+  async function uploadSpriteFile(file){
+    const formData=new FormData();
+    formData.append('sprite', file, file?.name || 'sprite.png');
+    let response;
+    try{
+      response=await fetch('/api/upload-sprite',{ method:'POST', body:formData });
+    }catch(err){
+      throw new Error('Network error while uploading sprite.');
     }
+
+    let data=null;
+    try{
+      data=await response.json();
+    }catch(err){
+      // Ignore parse errors; handled below
+    }
+
+    if(!response.ok){
+      const message=data && typeof data.error==='string'
+        ? data.error
+        : `Upload failed (${response.status})`;
+      throw new Error(message);
+    }
+
+    if(!data || typeof data!=='object'){
+      return { ok:true };
+    }
+    return data;
   }
 
   spriteSelect=document.getElementById('spriteSelect');
@@ -1075,18 +1164,74 @@
 
   const fileInput=document.getElementById('fileInput');
   const btnFile=document.getElementById('btnFile');
+  btnUpload=document.getElementById('btnUpload');
+
   if(btnFile && fileInput){
     btnFile.onclick=()=>fileInput.click();
     fileInput.onchange=()=>{
       const f=fileInput.files && fileInput.files[0];
-      if(!f) return;
+      if(!f){
+        pendingUploadFile=null;
+        updateUploadButtonState();
+        return;
+      }
+      pendingUploadFile=f;
       const objectUrl=URL.createObjectURL(f);
       if(urlInput){
         urlInput.value=f.name;
       }
+      showNotice('Previewing local sprite. Click "Upload Sprite" to save it to the game.');
       // Reminder: copy sprites into public/assets/ for persistent loads instead of blob URLs.
       setActiveSprite(f.name, objectUrl);
+      updateUploadButtonState();
     };
+  }
+
+  if(btnUpload){
+    const uploadDefaultLabel=btnUpload.textContent || 'Upload Sprite';
+    btnUpload.addEventListener('click', async()=>{
+      if(!pendingUploadFile){
+        showNotice('Choose or drop a sprite before uploading.');
+        return;
+      }
+      const file=pendingUploadFile;
+      btnUpload.disabled=true;
+      btnUpload.textContent='Uploading…';
+      try{
+        const result=await uploadSpriteFile(file);
+        const friendly=result?.originalName || file.name || 'sprite';
+        showNotice(`Uploaded ${friendly} successfully!`);
+        pendingUploadFile=null;
+        if(fileInput){
+          fileInput.value='';
+        }
+        if(Array.isArray(result?.sprites)){
+          applySpriteList(result.sprites);
+        }
+        const finalName=result?.filename || file.name;
+        if(finalName){
+          addSpriteOption(finalName);
+        }
+        sortSpriteOptions();
+        if(finalName){
+          if(spriteSelect){
+            spriteSelect.value=finalName;
+          }
+          if(urlInput){
+            urlInput.value=finalName;
+          }
+          setActiveSpriteFromValue(finalName,{ save:true });
+        }
+      }catch(err){
+        console.error('Sprite upload failed:', err);
+        showNotice(err.message || 'Sprite upload failed.');
+      }finally{
+        btnUpload.textContent=uploadDefaultLabel;
+        btnUpload.disabled=false;
+        updateUploadButtonState();
+      }
+    });
+    updateUploadButtonState();
   }
 
   const drop=document.getElementById('drop');
@@ -1096,13 +1241,18 @@
     if(ev==='drop'){
       const f=e.dataTransfer.files && e.dataTransfer.files[0];
       if(f){
+        pendingUploadFile=f;
         const objectUrl=URL.createObjectURL(f);
         if(urlInput){
           urlInput.value=f.name;
         }
+        showNotice('Previewing local sprite. Click "Upload Sprite" to save it to the game.');
         // Reminder: copy sprites into public/assets/ for persistent loads instead of blob URLs.
         setActiveSprite(f.name, objectUrl);
+      } else {
+        pendingUploadFile=null;
       }
+      updateUploadButtonState();
     }
     drop.classList.remove('show');
   }));

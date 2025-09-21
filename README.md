@@ -7,9 +7,10 @@ This project includes a robust sprite loading system with fallback mechanisms to
 **See the [Complete Sprite Guide](SPRITE_GUIDE.md)** for step-by-step instructions on adding custom character sprites to the game!
 
 **Quick Start:**
-1. Open the **Sprite Loader Tool** at `/sprite-loader.html` 
-2. Drag & drop your PNG sprite sheet (3×4 format required)
-3. Test with arrow keys, then install to `assets/sprites/` directory
+1. Open the **Sprite Loader Tool** at `/sprite-loader.html`
+2. Drag & drop your PNG sprite sheet (3×4 format required) or choose a file
+3. Click **Upload Sprite** to copy it into the game's `assets/sprites/` folder (PNG/JPG up to 5 MB)
+4. Test with arrow keys to make sure the animation looks right
 
 The game includes an interactive sprite testing tool and supports drag-and-drop sprite loading for easy customization.
 
@@ -108,11 +109,14 @@ All character sprites must follow this exact format:
 The easiest way to test and add sprites:
 
 1. **Access the Tool**: Navigate to `/sprite-loader.html` in your browser while the game is running
-2. **Load via URL**: Enter your sprite filename in the "Sprite URL" field and click "Load"
-3. **Drag & Drop**: Simply drag your PNG/JPG sprite file onto the browser window
-4. **Choose File**: Click "Choose File..." to browse and select your sprite
+2. **Preview Your Sprite** using any of these methods:
+   - **Load via URL**: Enter your sprite filename in the "Sprite URL" field and click "Load"
+   - **Drag & Drop**: Simply drag your PNG/JPG sprite file onto the browser window
+   - **Choose File**: Click "Choose File..." to browse and select your sprite
+3. **Upload to Game Assets**: Click **Upload Sprite** to copy the previewed sheet into `assets/sprites/` (PNG/JPG up to 5 MB). The dropdown refreshes automatically with your new sprite.
+4. **Test Animation**: Use arrow keys to verify all four directions animate correctly
 
-The tool provides real-time preview and will show you exactly how your sprite looks in the game.
+The tool provides real-time preview, uploads sprites directly into the game, and shows you exactly how your character looks in context.
 
 ### Method 2: File System Installation
 
@@ -182,12 +186,25 @@ You can find suitable sprite sheets from:
 ### Testing Your Sprite
 
 1. **Load the Sprite Loader Tool**: Navigate to `/sprite-loader.html`
-2. **Upload Your Sprite**: Use drag-and-drop or file selection
-3. **Verify Animation**: Use arrow keys to move the character and check all directions
-4. **Check All Frames**: Each direction should have smooth 3-frame animation
-5. **Install Permanently**: Copy to `assets/sprites/` directory once satisfied
+2. **Preview the Sheet**: Use drag-and-drop or the file picker to see the animation in the scene
+3. **Upload Sprite**: Click **Upload Sprite** to store it in `assets/sprites/` for future sessions
+4. **Verify Animation**: Use arrow keys to move the character and check all directions
+5. **Confirm Availability**: The sprite is now listed in the dropdown and ready to use in the main game
 
 The sprite system is robust and designed to work even if some sprites fail to load, so don't worry about breaking the game while experimenting!
+
+### Sprite Upload API (for tooling)
+
+The server now exposes simple endpoints you can call from custom tools or scripts:
+
+- `POST /api/upload-sprite`
+  - Accepts `multipart/form-data` with a single field named `sprite`
+  - Supports PNG or JPG files up to **5 MB**
+  - Responds with the stored `filename`, `url`, the `originalName`, and the refreshed sprite list
+- `GET /api/sprites`
+  - Returns `{ sprites: [{ name, url }, ...] }` containing every detected sprite across the supported asset directories
+
+Sprites uploaded through the API are immediately available in the loader dropdown and inside the main game.
 
 #### Upgrading Castle Assets
 
