@@ -69,6 +69,9 @@
   Graphics.lightingCtx=Graphics.lightingCanvas.getContext('2d');
   Graphics._outlineCtx=Graphics._outlineBuffer.getContext('2d');
 
+  const NIGHT_VISIBILITY_START=0.45;
+  const NIGHT_VISIBILITY_END=0.75;
+
   function applyPixelArtSettings(){
     const smoothing=!Graphics.pixelArtMode;
     [ctx,bg,Graphics.sceneCtx,Graphics.lightingCtx,Graphics._outlineCtx].forEach(g=>{
@@ -89,7 +92,15 @@
     applyPixelArtSettings();
   }
   function setAmbientDarkness(v){
-    Graphics.ambientDarkness=Math.max(0,Math.min(1,Number(v)||0));
+    Graphics.ambientDarkness=clamp01(v);
+  }
+
+  function clamp01(value){
+    const n=Number(value);
+    if(!Number.isFinite(n)) return 0;
+    if(n<0) return 0;
+    if(n>1) return 1;
+    return n;
   }
   function setToneLevels(levels){
     if(!Array.isArray(levels)){
@@ -1778,11 +1789,28 @@
     return remainder<0?remainder+modulus:remainder;
   }
 
-  function drawParallaxLayers(){
+  function getNightFactor(){
+    const presetRaw=currentRoom?.skyPreset;
+    if(typeof presetRaw==='string'){
+      const preset=presetRaw.trim().toLowerCase();
+      if(preset==='night') return 1;
+      if(preset==='day') return 0;
+      if(preset==='dusk' || preset==='dawn') return 0.5;
+    }
+    const darkness=clamp01(Graphics.ambientDarkness);
+    if(darkness<=NIGHT_VISIBILITY_START) return 0;
+    if(darkness>=NIGHT_VISIBILITY_END) return 1;
+    return (darkness-NIGHT_VISIBILITY_START)/(NIGHT_VISIBILITY_END-NIGHT_VISIBILITY_START);
+  }
+
+  function drawParallaxLayers(timeSeconds){
     const g=Graphics.sceneCtx;
     const layers=getParallaxLayers();
 
     g.clearRect(0,0,camera.width,camera.height);
+
+    const time=Number.isFinite(timeSeconds)?timeSeconds:performance.now()*0.001;
+    const nightFactor=getNightFactor();
 
     const fallback=g.createLinearGradient(0,0,0,camera.height);
     fallback.addColorStop(0,'#0b1326');
@@ -1913,11 +1941,30 @@
             const rng=mulberry32(seed);
             const stars=[];
             for(let i=0;i<count;i+=1){
+              const size=sizeMin + rng()*(sizeMax-sizeMin);
+              const twinkleCenter=0.72 + rng()*0.2;
+              const twinkleRange=0.18 + rng()*0.12;
+              const twinkleSpeed=0.4 + rng()*0.9;
+              const twinkleMin=Math.max(0.35,twinkleCenter - twinkleRange);
+              const twinkleMax=Math.min(1.05,twinkleCenter + twinkleRange);
+              const glowRadius=Math.max(1.6,size * (2.1 + rng()*1.4));
+              const coreRadius=Math.max(0.6,size * (0.55 + rng()*0.35));
+              const crossLength=Math.max(coreRadius*2.2,Math.min(glowRadius*1.2,size * (2.4 + rng()*1.6)));
+              const crossThickness=size>1.6?1.25:1;
               stars.push({
                 x:rng()*tileWidth,
                 y:rng()*tileHeight,
-                size:sizeMin + rng()*(sizeMax-sizeMin),
-                alpha:alphaMin + rng()*(alphaMax-alphaMin)
+                alpha:alphaMin + rng()*(alphaMax-alphaMin),
+                phase:rng()*Math.PI*2,
+                twinkleCenter,
+                twinkleRange,
+                twinkleSpeed,
+                twinkleMin,
+                twinkleMax,
+                glowRadius,
+                coreRadius,
+                crossLength,
+                crossThickness
               });
             }
             layer._cache={
@@ -1932,17 +1979,48 @@
               alphaMax
             };
           }
+          if(nightFactor<=0){
+            break;
+          }
           const startX=-tileWidth*2 + positiveMod(-parallaxX, tileWidth);
           const endX=camera.width+tileWidth*2;
           const startY=-tileHeight*2 + positiveMod(-parallaxY, tileHeight);
           const endY=camera.height+tileHeight*2;
-          g.fillStyle=layer.color||'#dbe9ff';
+          const starColor=layer.color||'#dbe9ff';
           for(let x=startX; x<endX; x+=tileWidth){
             for(let y=startY; y<endY; y+=tileHeight){
               for(const star of layer._cache.stars){
-                g.globalAlpha=baseOpacity*star.alpha;
-                const size=star.size;
-                g.fillRect(x+star.x, y+star.y, size, size);
+                const twinklePhase=time*star.twinkleSpeed + star.phase;
+                const twinkleValue=star.twinkleCenter + Math.sin(twinklePhase)*star.twinkleRange;
+                const twinkleFactor=Math.max(star.twinkleMin,Math.min(star.twinkleMax,twinkleValue));
+                const alpha=Math.max(0,Math.min(1,baseOpacity*star.alpha*nightFactor*twinkleFactor));
+                if(alpha<=0.01) continue;
+
+                const px=x+star.x;
+                const py=y+star.y;
+
+                const glowAlpha=alpha*0.6;
+                if(glowAlpha>0.01){
+                  g.globalAlpha=glowAlpha;
+                  g.fillStyle=starColor;
+                  g.beginPath();
+                  g.arc(px,py,star.glowRadius,0,Math.PI*2);
+                  g.fill();
+                }
+
+                g.globalAlpha=Math.min(1,alpha*1.1);
+                g.fillStyle='#ffffff';
+                g.beginPath();
+                g.arc(px,py,star.coreRadius,0,Math.PI*2);
+                g.fill();
+
+                const half=star.crossLength/2;
+                if(half>0.2){
+                  const thickness=Math.max(0.75,star.crossThickness);
+                  g.globalAlpha=Math.min(1,alpha);
+                  g.fillRect(px-half, py-thickness/2, star.crossLength, thickness);
+                  g.fillRect(px-thickness/2, py-half, thickness, star.crossLength);
+                }
               }
             }
           }
@@ -2317,8 +2395,9 @@
     g.globalCompositeOperation='source-over';
   }
 
-  function draw(){
-    drawParallaxLayers();
+  function draw(nowSeconds){
+    const renderTime=Number.isFinite(nowSeconds)?nowSeconds:performance.now()*0.001;
+    drawParallaxLayers(renderTime);
     drawWorld();
     drawParticles();
     celLighting();
@@ -2336,7 +2415,7 @@
     const dt=Math.min(0.033,(now-last)/1000);
     last=now;
     update(dt);
-    draw();
+    draw(now*0.001);
     requestAnimationFrame(loop);
   }
 
