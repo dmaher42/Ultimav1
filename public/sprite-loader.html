@@ -1359,13 +1359,104 @@
     return propSpriteCache.get(baseKey);
   }
 
+  const SKY_PRESETS={
+    day:{
+      layers:[
+        { factor:0.08, type:'gradient', colors:['#1c4fb8','#7ec9ff'] },
+        {
+          factor:0.16,
+          type:'clouds',
+          spacing:240,
+          base:150,
+          amplitude:18,
+          height:60,
+          puffs:5,
+          color:'rgba(255,255,255,0.95)',
+          secondaryColor:'rgba(224,239,255,0.7)',
+          shadeOpacity:0.6,
+          opacity:0.9,
+          seed:1337
+        },
+        {
+          factor:0.24,
+          type:'clouds',
+          spacing:200,
+          base:230,
+          amplitude:12,
+          height:70,
+          puffs:4,
+          color:'rgba(248,252,255,0.8)',
+          secondaryColor:'rgba(210,230,255,0.5)',
+          shadeOpacity:0.5,
+          opacity:0.72,
+          seed:1499
+        },
+        { factor:0.45, type:'hills', color:'#1b3d6f', base:310, amplitude:70, spacing:300, opacity:0.95 },
+        { factor:0.68, type:'hills', color:'#235188', base:360, amplitude:55, spacing:260, opacity:0.9 },
+        { factor:0.88, type:'foreground', color:'#264e73', height:170 }
+      ]
+    },
+    night:{
+      layers:[
+        { factor:0.05, type:'gradient', colors:['#040612','#15244a'] },
+        {
+          factor:0.08,
+          type:'stars',
+          count:48,
+          tileWidth:640,
+          tileHeight:420,
+          sizeRange:[1,2.2],
+          alphaRange:[0.3,0.75],
+          color:'#eff6ff',
+          opacity:0.7,
+          seed:221
+        },
+        {
+          factor:0.07,
+          type:'galaxy',
+          radius:520,
+          innerRadius:90,
+          anchorX:0.42,
+          anchorY:0.34,
+          color:'rgba(120,170,255,0.22)',
+          highlight:'rgba(255,255,255,0.28)',
+          opacity:0.38,
+          blend:'screen'
+        },
+        {
+          factor:0.09,
+          type:'nebula',
+          count:3,
+          tileWidth:960,
+          tileHeight:540,
+          radiusMin:260,
+          radiusMax:360,
+          colors:['rgba(140,110,220,0.32)','rgba(90,150,220,0.28)'],
+          opacityRange:[0.16,0.3],
+          softnessRange:[0.55,0.75],
+          opacity:0.55,
+          seed:907
+        },
+        { factor:0.42, type:'hills', color:'#0b172d', base:330, amplitude:60, spacing:320, opacity:0.85 },
+        { factor:0.78, type:'foreground', color:'#102139', height:150, opacity:0.8 }
+      ]
+    }
+  };
+
+  function createSkyPresetLayers(name='day'){
+    const key=typeof name==='string'?name.trim().toLowerCase():'day';
+    const preset=SKY_PRESETS[key] || SKY_PRESETS.day;
+    return preset.layers.map((layer,index)=>{
+      const copy={ ...layer };
+      if(copy.seed==null){
+        copy.seed=1000+index*37;
+      }
+      return copy;
+    });
+  }
+
   function createDefaultParallaxLayers(){
-    return [
-      { factor:0.1, type:'gradient', colors:['#0b1326','#0f172a'] },
-      { factor:0.3, type:'hills', color:'#10203a', base:260, amplitude:90, spacing:420 },
-      { factor:0.55, type:'hills', color:'#1a2f4f', base:320, amplitude:60, spacing:260 },
-      { factor:0.85, type:'foreground', color:'#1f3b5f', height:160 }
-    ];
+    return createSkyPresetLayers('day');
   }
 
   function cloneObstacles(list){
@@ -1430,6 +1521,7 @@
   // ----- Room definitions (edit/add rooms here) -----
   const rooms={
     room1:{
+      skyPreset:'day',
       spawn:{ x:320, y:360 },
       obstacles:[
         { x:180, y:200, w:420, h:48, type:'wall' },
@@ -1449,6 +1541,7 @@
       ]
     },
     room2:{
+      skyPreset:'night',
       spawn:{ x:720, y:420 },
       obstacles:[
         { x:260, y:340, w:520, h:60, type:'wall' },
@@ -1497,7 +1590,7 @@
 
     currentParallaxLayers = roomData.parallaxLayers?.length
       ? roomData.parallaxLayers.map(layer=>({ ...layer }))
-      : createDefaultParallaxLayers();
+      : createSkyPresetLayers(roomData.skyPreset);
 
     const baseLights=Array.isArray(roomData.lights)?roomData.lights:[];
     const torchLights=deriveTorchLights(currentProps); // auto lights for torches
@@ -1515,6 +1608,7 @@
       props:currentProps,
       world:currentWorld,
       parallaxLayers:currentParallaxLayers,
+      skyPreset:typeof roomData.skyPreset==='string'?roomData.skyPreset.trim():undefined,
       lights:Graphics.lights
     };
 
@@ -1668,54 +1762,278 @@
     updateParticles(dt);
   }
 
+  function mulberry32(seed){
+    let t=seed>>>0;
+    return function(){
+      t=(t+0x6D2B79F5)>>>0;
+      let r=Math.imul(t ^ (t>>>15), 1 | t);
+      r^=r + Math.imul(r ^ (r>>>7), 61 | r);
+      return ((r ^ (r>>>14))>>>0)/4294967296;
+    };
+  }
+
+  function positiveMod(value,modulus){
+    if(!Number.isFinite(modulus) || modulus===0) return value;
+    const remainder=value%modulus;
+    return remainder<0?remainder+modulus:remainder;
+  }
+
   function drawParallaxLayers(){
     const g=Graphics.sceneCtx;
     const layers=getParallaxLayers();
 
     g.clearRect(0,0,camera.width,camera.height);
 
-    const sky=g.createLinearGradient(0,0,0,camera.height);
-    sky.addColorStop(0,'#0b1326');
-    sky.addColorStop(1,'#0b1020');
-    g.fillStyle=sky;
+    const fallback=g.createLinearGradient(0,0,0,camera.height);
+    fallback.addColorStop(0,'#0b1326');
+    fallback.addColorStop(1,'#0b1020');
+    g.fillStyle=fallback;
     g.fillRect(0,0,camera.width,camera.height);
 
     for(const layer of layers){
-      const factor=layer.factor ?? 0.5;
-      const offsetX=(camera.x*factor)% (layer.spacing||camera.width);
-      const offsetY=(camera.y*factor)% (layer.spacing||camera.height);
-      if(layer.type==='gradient'){
-        const grad=g.createLinearGradient(0,0,0,camera.height);
-        grad.addColorStop(0,layer.colors?.[0]||'#0b1326');
-        grad.addColorStop(1,layer.colors?.[1]||'#111827');
-        g.fillStyle=grad;
-        g.fillRect(0,0,camera.width,camera.height);
-        continue;
+      if(!layer) continue;
+      const factor=Number.isFinite(layer.factor)?layer.factor:0.5;
+      const parallaxX=camera.x*factor;
+      const parallaxY=camera.y*factor;
+      const baseOpacity=typeof layer.opacity==='number'?Math.max(0,layer.opacity):1;
+
+      g.save();
+      if(layer.blend){
+        g.globalCompositeOperation=layer.blend;
       }
-      if(layer.type==='hills'){
-        const spacing=layer.spacing||320;
-        const amplitude=layer.amplitude||60;
-        const base=layer.base||300;
-        const startX=-spacing*2 - offsetX;
-        const endX=camera.width+spacing*2;
-        g.fillStyle=layer.color||'#1e293b';
-        for(let x=startX; x<endX; x+=spacing){
-          const peakX=x+spacing/2;
-          g.beginPath();
-          g.moveTo(x, camera.height - base + offsetY);
-          g.quadraticCurveTo(peakX, camera.height - (base+amplitude) + offsetY, x+spacing, camera.height - base + offsetY);
-          g.lineTo(x+spacing, camera.height+20);
-          g.lineTo(x, camera.height+20);
-          g.closePath();
-          g.fill();
+
+      switch(layer.type){
+        case 'gradient':{
+          const colors=Array.isArray(layer.colors)&&layer.colors.length?layer.colors:['#0b1326','#111827'];
+          const gradient=g.createLinearGradient(0,0,0,camera.height);
+          const last=Math.max(1,colors.length-1);
+          colors.forEach((color,index)=>{
+            gradient.addColorStop(last===0?0:index/last,color);
+          });
+          if(baseOpacity!==1){
+            g.globalAlpha=baseOpacity;
+          }
+          g.fillStyle=gradient;
+          g.fillRect(0,0,camera.width,camera.height);
+          break;
         }
-        continue;
+        case 'hills':{
+          const spacing=Math.max(40,Number(layer.spacing)||320);
+          const offsetX=positiveMod(parallaxX,spacing);
+          const offsetY=positiveMod(parallaxY,layer.verticalSpacing||spacing);
+          const amplitude=Number(layer.amplitude)||60;
+          const baseLevel=Number.isFinite(layer.base)?layer.base:300;
+          const startX=-spacing*2 - offsetX;
+          const endX=camera.width+spacing*2;
+          g.fillStyle=layer.color||'#1e293b';
+          g.globalAlpha=baseOpacity;
+          for(let x=startX; x<endX; x+=spacing){
+            const peakX=x+spacing/2;
+            g.beginPath();
+            g.moveTo(x, camera.height - baseLevel + offsetY);
+            g.quadraticCurveTo(
+              peakX,
+              camera.height - (baseLevel+amplitude) + offsetY,
+              x+spacing,
+              camera.height - baseLevel + offsetY
+            );
+            g.lineTo(x+spacing, camera.height+40);
+            g.lineTo(x, camera.height+40);
+            g.closePath();
+            g.fill();
+          }
+          break;
+        }
+        case 'foreground':{
+          const spacing=Math.max(camera.width,Number(layer.spacing)||camera.width);
+          const offsetX=positiveMod(parallaxX,spacing);
+          const offsetY=positiveMod(parallaxY,layer.verticalSpacing||spacing);
+          const height=Math.max(40,Number(layer.height)||140);
+          g.fillStyle=layer.color||'#1f3b5f';
+          g.globalAlpha=baseOpacity;
+          g.fillRect(-offsetX, camera.height-height+offsetY, camera.width+spacing*2, height+40);
+          break;
+        }
+        case 'clouds':{
+          const spacing=Math.max(60,Number(layer.spacing)||260);
+          const offsetX=positiveMod(parallaxX,spacing);
+          const offsetY=positiveMod(parallaxY,layer.verticalSpacing||spacing);
+          const baseLevel=Number.isFinite(layer.base)?layer.base:camera.height*0.32;
+          const amplitude=Number(layer.amplitude)||0;
+          const heightScale=Math.max(20,Number(layer.height)||70);
+          const puffCount=Math.max(2,Math.round(layer.puffs||4));
+          const puffWidth=Math.max(10,Number(layer.puffWidth)||spacing*0.2);
+          const puffHeight=Math.max(8,Number(layer.puffHeight)||heightScale*0.45);
+          const color=layer.color||'rgba(255,255,255,0.9)';
+          const shade=layer.secondaryColor||null;
+          const shadeOpacity=Number.isFinite(layer.shadeOpacity)?layer.shadeOpacity:0.5;
+          const startX=-spacing*2 - offsetX;
+          const endX=camera.width+spacing*2;
+          for(let x=startX; x<endX; x+=spacing){
+            const centerX=x+spacing/2;
+            const wave=Math.sin((centerX+parallaxX)*0.002);
+            const centerY=baseLevel + wave*amplitude + offsetY;
+            g.fillStyle=color;
+            g.globalAlpha=baseOpacity;
+            for(let i=0;i<puffCount;i+=1){
+              const ratio=puffCount===1?0.5:i/(puffCount-1);
+              const px=centerX + (ratio-0.5)*spacing*0.9;
+              const py=centerY + Math.sin(ratio*Math.PI)*heightScale*0.12;
+              g.beginPath();
+              g.ellipse(px, py, puffWidth, puffHeight, 0, 0, Math.PI*2);
+              g.fill();
+            }
+            if(shade){
+              g.fillStyle=shade;
+              g.globalAlpha=baseOpacity*shadeOpacity;
+              for(let i=0;i<puffCount;i+=1){
+                const ratio=puffCount===1?0.5:i/(puffCount-1);
+                const px=centerX + (ratio-0.5)*spacing*0.9;
+                const py=centerY + heightScale*0.22 + Math.sin(ratio*Math.PI)*heightScale*0.08;
+                g.beginPath();
+                g.ellipse(px, py, puffWidth*0.85, puffHeight*0.75, 0, 0, Math.PI*2);
+                g.fill();
+              }
+            }
+          }
+          break;
+        }
+        case 'stars':{
+          const tileWidth=Math.max(64,Math.floor(Number(layer.tileWidth)||512));
+          const tileHeight=Math.max(64,Math.floor(Number(layer.tileHeight)||384));
+          const count=Math.max(1,Math.floor(Number(layer.count)||60));
+          const seed=layer.seed ?? 1331;
+          const sizeRange=Array.isArray(layer.sizeRange)&&layer.sizeRange.length>=2?layer.sizeRange:[1,2];
+          const alphaRange=Array.isArray(layer.alphaRange)&&layer.alphaRange.length>=2?layer.alphaRange:[0.35,0.85];
+          const sizeMin=Math.max(0.25,sizeRange[0]);
+          const sizeMax=Math.max(sizeMin,sizeRange[1]);
+          const alphaMin=Math.max(0,Math.min(1,alphaRange[0]));
+          const alphaMax=Math.max(alphaMin,Math.min(1,alphaRange[1]));
+          if(!layer._cache || layer._cache.count!==count || layer._cache.tileWidth!==tileWidth || layer._cache.tileHeight!==tileHeight || layer._cache.seed!==seed || layer._cache.sizeMin!==sizeMin || layer._cache.sizeMax!==sizeMax || layer._cache.alphaMin!==alphaMin || layer._cache.alphaMax!==alphaMax){
+            const rng=mulberry32(seed);
+            const stars=[];
+            for(let i=0;i<count;i+=1){
+              stars.push({
+                x:rng()*tileWidth,
+                y:rng()*tileHeight,
+                size:sizeMin + rng()*(sizeMax-sizeMin),
+                alpha:alphaMin + rng()*(alphaMax-alphaMin)
+              });
+            }
+            layer._cache={
+              stars,
+              count,
+              tileWidth,
+              tileHeight,
+              seed,
+              sizeMin,
+              sizeMax,
+              alphaMin,
+              alphaMax
+            };
+          }
+          const startX=-tileWidth*2 + positiveMod(-parallaxX, tileWidth);
+          const endX=camera.width+tileWidth*2;
+          const startY=-tileHeight*2 + positiveMod(-parallaxY, tileHeight);
+          const endY=camera.height+tileHeight*2;
+          g.fillStyle=layer.color||'#dbe9ff';
+          for(let x=startX; x<endX; x+=tileWidth){
+            for(let y=startY; y<endY; y+=tileHeight){
+              for(const star of layer._cache.stars){
+                g.globalAlpha=baseOpacity*star.alpha;
+                const size=star.size;
+                g.fillRect(x+star.x, y+star.y, size, size);
+              }
+            }
+          }
+          break;
+        }
+        case 'galaxy':{
+          const radius=Math.max(120,Number(layer.radius)||480);
+          const innerRadius=Math.max(0,Number(layer.innerRadius)||radius*0.1);
+          const anchorX=Number.isFinite(layer.anchorX)?layer.anchorX:0.5;
+          const anchorY=Number.isFinite(layer.anchorY)?layer.anchorY:0.3;
+          const centerX=anchorX*camera.width - parallaxX*0.4;
+          const centerY=anchorY*camera.height + parallaxY*0.2;
+          const gradient=g.createRadialGradient(centerX,centerY,innerRadius,centerX,centerY,radius);
+          gradient.addColorStop(0,layer.highlight||'rgba(255,255,255,0.35)');
+          gradient.addColorStop(1,layer.color||'rgba(90,130,200,0)');
+          g.fillStyle=gradient;
+          g.globalAlpha=baseOpacity;
+          g.fillRect(centerX-radius, centerY-radius, radius*2, radius*2);
+          break;
+        }
+        case 'nebula':{
+          const tileWidth=Math.max(128,Math.floor(Number(layer.tileWidth)||960));
+          const tileHeight=Math.max(128,Math.floor(Number(layer.tileHeight)||540));
+          const count=Math.max(1,Math.floor(Number(layer.count)||3));
+          const seed=layer.seed ?? 9021;
+          const radiusMin=Math.max(40,Number(layer.radiusMin)||220);
+          const radiusMax=Math.max(radiusMin,Number(layer.radiusMax)||360);
+          const colors=Array.isArray(layer.colors)&&layer.colors.length?layer.colors:['rgba(120,150,255,0.25)'];
+          const opacityRange=Array.isArray(layer.opacityRange)&&layer.opacityRange.length>=2?layer.opacityRange:[0.2,0.45];
+          const softnessRange=Array.isArray(layer.softnessRange)&&layer.softnessRange.length>=2?layer.softnessRange:[0.55,0.75];
+          const opacityMin=Math.max(0,Math.min(1,opacityRange[0]));
+          const opacityMax=Math.max(opacityMin,Math.min(1,opacityRange[1]));
+          const softnessMin=Math.max(0.05,Math.min(0.95,softnessRange[0]));
+          const softnessMax=Math.max(softnessMin,Math.min(0.98,softnessRange[1]));
+          const colorKey=colors.join('|');
+          if(!layer._cache || layer._cache.count!==count || layer._cache.tileWidth!==tileWidth || layer._cache.tileHeight!==tileHeight || layer._cache.seed!==seed || layer._cache.radiusMin!==radiusMin || layer._cache.radiusMax!==radiusMax || layer._cache.opacityMin!==opacityMin || layer._cache.opacityMax!==opacityMax || layer._cache.softnessMin!==softnessMin || layer._cache.softnessMax!==softnessMax || layer._cache.colorKey!==colorKey){
+            const rng=mulberry32(seed);
+            const blobs=[];
+            for(let i=0;i<count;i+=1){
+              blobs.push({
+                x:rng()*tileWidth,
+                y:rng()*tileHeight,
+                radius:radiusMin + rng()*(radiusMax-radiusMin),
+                opacity:opacityMin + rng()*(opacityMax-opacityMin),
+                softness:softnessMin + rng()*(softnessMax-softnessMin),
+                color:colors[i%colors.length]
+              });
+            }
+            layer._cache={
+              blobs,
+              count,
+              tileWidth,
+              tileHeight,
+              seed,
+              radiusMin,
+              radiusMax,
+              opacityMin,
+              opacityMax,
+              softnessMin,
+              softnessMax,
+              colorKey
+            };
+          }
+          const startX=-tileWidth*2 + positiveMod(-parallaxX, tileWidth);
+          const endX=camera.width+tileWidth*2;
+          const startY=-tileHeight*2 + positiveMod(-parallaxY, tileHeight);
+          const endY=camera.height+tileHeight*2;
+          for(let x=startX; x<endX; x+=tileWidth){
+            for(let y=startY; y<endY; y+=tileHeight){
+              for(const blob of layer._cache.blobs){
+                const cx=x+blob.x;
+                const cy=y+blob.y;
+                const inner=blob.radius*blob.softness;
+                const gradient=g.createRadialGradient(cx,cy,inner,cx,cy,blob.radius);
+                gradient.addColorStop(0,blob.color);
+                gradient.addColorStop(1,'rgba(0,0,0,0)');
+                g.fillStyle=gradient;
+                g.globalAlpha=baseOpacity*blob.opacity;
+                g.beginPath();
+                g.arc(cx,cy,blob.radius,0,Math.PI*2);
+                g.fill();
+              }
+            }
+          }
+          break;
+        }
+        default:
+          break;
       }
-      if(layer.type==='foreground'){
-        g.fillStyle=layer.color||'#1f3b5f';
-        g.fillRect(-offsetX, camera.height-(layer.height||140)+offsetY, camera.width+(layer.spacing||camera.width)*2, (layer.height||140)+40);
-        continue;
-      }
+
+      g.restore();
     }
   }
 
