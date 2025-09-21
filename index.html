@@ -3,2639 +3,326 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ancient Athens - Visual Masterpiece</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
-    <!-- Physics and Post-processing libraries -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
-    <!-- NEW: GLTF Loader for 3D models -->
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <title>Britannia Reborn</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Cormorant+Garamond:wght@300;400;600&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Merriweather:wght@300;400&display=swap');
         
+        :root {
+            --gold: #ffd700;
+            --dark-gold: #b8860b;
+            --brown: #8b4513;
+            --dark-brown: #654321;
+            --parchment: #f4e4bc;
+            --dark-parchment: #d4c4a0;
+            --red: #dc143c;
+            --green: #228b22;
+            --blue: #4169e1;
+        }
+
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
-        
+
         body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            font-family: 'Cormorant Garamond', serif;
+            font-family: 'Merriweather', serif;
+            background: linear-gradient(135deg, #2c1810 0%, #1a0f08 100%);
+            color: var(--parchment);
             overflow: hidden;
-            position: relative;
-        }
-        
-        body::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: 
-                radial-gradient(circle at 20% 80%, rgba(255, 215, 0, 0.1) 0%, transparent 50%),
-                radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.08) 0%, transparent 50%);
-            pointer-events: none;
-            z-index: 1;
+            height: 100vh;
         }
 
-        #start-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.7);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 200;
-            backdrop-filter: blur(5px);
-            transition: opacity 1s ease;
-        }
-
-        .overlay-button {
-            background: linear-gradient(135deg, rgba(255, 215, 0, 0.8), rgba(255, 165, 0, 0.8));
-            border: 2px solid rgba(255, 215, 0, 1);
-            color: #ffffff;
-            font-family: 'Cinzel', serif;
-            padding: 15px 30px;
-            border-radius: 15px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-size: 20px;
-            text-shadow: 0 0 15px rgba(255, 255, 255, 0.7);
-            box-shadow: 0 0 20px rgba(255, 215, 0, 0.5), 0 0 40px rgba(255, 215, 0, 0.3);
-            margin-top: 20px;
-        }
-        .overlay-button:hover {
-            transform: scale(1.05);
-            box-shadow: 0 0 30px rgba(255, 215, 0, 0.7), 0 0 60px rgba(255, 215, 0, 0.5);
-        }
-        
-        #fps-counter {
-            position: absolute;
-            top: 30px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.7);
-            color: #00ff00;
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-family: 'Courier New', monospace;
-            font-size: 12px;
-            z-index: 100;
-            border: 1px solid rgba(0, 255, 0, 0.3);
-            display: none; /* Hidden by default */
-        }
-         #fps-counter.show {
+        #game {
             display: block;
+            background: #000;
+            image-rendering: pixelated;
         }
-        
-        canvas {
-            display: block;
-            border-radius: 0;
-        }
-        
-        .golden-text {
-            background: linear-gradient(135deg, #FFD700, #FFA500, #FF8C00);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            font-weight: 600;
-            text-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
-            font-family: 'Cinzel', serif;
-        }
-        
-        .elegant-text {
-            color: rgba(255, 255, 255, 0.9);
-            font-weight: 300;
-            text-shadow: 0 2px 8px rgba(0,0,0,0.5);
-        }
-        
-        .control-key {
-            background: linear-gradient(145deg, rgba(255, 215, 0, 0.2), rgba(255, 215, 0, 0.1));
-            padding: 2px 6px;
-            border-radius: 4px;
-            border: 1px solid rgba(255, 215, 0, 0.3);
-            font-weight: 600;
-            color: #FFD700;
-        }
-        
-        .gemini-button {
-            background: linear-gradient(135deg, rgba(255, 215, 0, 0.3), rgba(255, 215, 0, 0.1));
-            border: 1px solid rgba(255, 215, 0, 0.5);
-            color: #FFD700;
-            font-family: 'Cinzel', serif;
-            padding: 10px 18px;
-            border-radius: 12px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            margin-top: 15px;
-            font-size: 14px;
-            text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
-            width: 100%;
-        }
-
-        .gemini-button:hover:not(:disabled) {
-            background: linear-gradient(135deg, rgba(255, 215, 0, 0.4), rgba(255, 215, 0, 0.2));
-            box-shadow: 0 0 15px rgba(255, 215, 0, 0.4);
-        }
-
-        .gemini-button:disabled {
-            cursor: not-allowed;
-            opacity: 0.6;
-        }
-
-        .fade-out {
-            opacity: 0;
-            pointer-events: none;
-        }
-
-        .prompt {
-            position: absolute;
-            z-index: 150;
-            opacity: 0;
-            transition: opacity 0.5s ease;
-            pointer-events: none;
-            width: 220px;
-            text-align: center;
-            transform: translate(-50%, -100%);
-        }
-        .prompt.show {
-            opacity: 1;
-            pointer-events: all;
-        }
-
-        .info-scroll-overlay, .modal-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.6);
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 190;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.5s ease;
-        }
-        .info-scroll-overlay.show, .modal-overlay.show {
-            opacity: 1;
-            pointer-events: all;
-        }
-        
-        .info-content, .modal-content {
-            background: #fdf6e3;
-            color: #584b3e;
-            padding: 40px 60px;
-            border-radius: 5px;
-            max-width: 600px;
-            max-height: 80vh;
-            overflow-y: auto;
-            font-family: 'Cormorant Garamond', serif;
-            font-size: 20px;
-            line-height: 1.7;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5), inset 0 0 15px rgba(0,0,0,0.2);
-            border: 10px solid #c9b78e;
-            position: relative;
-        }
-        .close-info {
-            position: absolute;
-            top: 15px;
-            right: 15px;
-            background: none;
-            border: none;
-            font-size: 24px;
-            cursor: pointer;
-            color: #8b795e;
-        }
-        
-        .modal-content textarea {
-            width: 100%;
-            height: 80px;
-            margin-top: 15px;
-            background: #ece5d8;
-            border: 1px solid #c9b78e;
-            border-radius: 5px;
-            padding: 10px;
-            font-family: 'Cormorant Garamond', serif;
-            font-size: 18px;
-        }
-         .modal-content .gemini-response {
-            margin-top: 15px;
-            padding: 15px;
-            background: #ece5d8;
-            border-radius: 5px;
-            border-left: 3px solid #c9b78e;
-            font-style: italic;
-            min-height: 50px;
-        }
-
 
         #hud {
             position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            padding: 10px 20px;
-            background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.6) 50%, transparent 100%);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            z-index: 100;
-            color: white;
-            transition: transform 0.4s ease-in-out;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px;
+            border-radius: 5px;
+            border: 2px solid var(--gold);
+            font-family: 'Cinzel', serif;
+            min-width: 250px;
+        }
+
+        #hud div {
+            margin: 2px 0;
             font-size: 14px;
         }
 
-        #hud.hidden {
-            transform: translateY(100%);
-        }
-
-        #hud h3 {
-            margin: 0;
-        }
-
-        #hud-left, #hud-center, #hud-right {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-
-        #hud-center {
-            font-family: 'Helvetica', Arial, sans-serif;
-            font-size: 13px;
-            opacity: 0.8;
-        }
-
-        #hud-right {
-            text-align: right;
-        }
-
-        #toggle-hud {
+        .panel {
             position: absolute;
-            bottom: calc(100% - 1px);
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0,0,0,0.6);
-            backdrop-filter: blur(5px);
-            border: 1px solid rgba(255,255,255,0.2);
-            color: white;
-            padding: 6px 18px;
-            border-radius: 10px 10px 0 0;
-            cursor: pointer;
+            background: rgba(20, 10, 5, 0.95);
+            border: 3px solid var(--gold);
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.7);
             font-family: 'Cinzel', serif;
-            font-size: 12px;
-            transition: background-color 0.3s;
-        }
-        #toggle-hud:hover {
-            background: rgba(0,0,0,0.8);
+            display: none;
         }
 
-        #mini-map-container {
-            position: absolute;
-            bottom: 20px;
-            left: 20px;
-            width: 200px;
-            height: 200px;
-            background: rgba(0, 0, 0, 0.5);
-            border: 2px solid #FFD700;
-            border-radius: 50%;
-            box-shadow: 0 0 15px rgba(255, 215, 0, 0.3);
-            z-index: 101;
+        .panel.open {
+            display: block;
         }
-        #map-player {
-            position: absolute;
-            width: 10px;
-            height: 10px;
-            background: yellow;
-            border-radius: 50%;
-            transform: translate(-50%, -50%);
+
+        .panel h2 {
+            color: var(--gold);
+            margin-bottom: 10px;
+            text-align: center;
+            border-bottom: 2px solid var(--dark-gold);
+            padding-bottom: 5px;
         }
-         #map-player::after {
-            content: '';
-            position: absolute;
+
+        #inventory-panel {
+            top: 50px;
+            right: 10px;
+            width: 300px;
+            max-height: 400px;
+        }
+
+        #character-panel {
+            top: 50px;
+            left: 280px;
+            width: 350px;
+            max-height: 500px;
+        }
+
+        #menu-panel {
+            top: 50%;
             left: 50%;
-            top: -100%;
-            transform: translateX(-50%);
-            width: 0;
-            height: 0;
-            border-left: 5px solid transparent;
-            border-right: 5px solid transparent;
-            border-bottom: 10px solid yellow;
-        }
-        .map-icon {
-            position: absolute;
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
             transform: translate(-50%, -50%);
+            width: 300px;
         }
-        .map-icon-democracy { background-color: #4dabf7; }
-        .map-icon-cultural { background-color: #FFD700; }
-        .map-icon-natural { background-color: #28a745; }
+
+        #character-creator {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(20, 10, 5, 0.98);
+            border: 4px solid var(--gold);
+            border-radius: 10px;
+            padding: 20px;
+            font-family: 'Cinzel', serif;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.8);
+            display: none;
+        }
+
+        #character-creator.open {
+            display: block;
+        }
+
+        #combat-ui {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(20, 10, 5, 0.95);
+            border: 3px solid var(--red);
+            border-radius: 8px;
+            padding: 15px;
+            display: none;
+            font-family: 'Cinzel', serif;
+        }
+
+        #combat-ui.active {
+            display: block;
+        }
+
+        #message-log {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            width: 400px;
+            max-height: 150px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid var(--gold);
+            border-radius: 5px;
+            padding: 10px;
+            overflow-y: auto;
+            font-size: 12px;
+            font-family: 'Merriweather', serif;
+        }
+
+        .message {
+            margin: 2px 0;
+            padding: 2px;
+        }
+
+        button {
+            background: linear-gradient(135deg, var(--gold), var(--dark-gold));
+            color: var(--dark-brown);
+            border: 2px solid var(--dark-gold);
+            border-radius: 4px;
+            padding: 8px 12px;
+            font-family: 'Cinzel', serif;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        button:hover {
+            background: linear-gradient(135deg, var(--dark-gold), var(--gold));
+            transform: translateY(-1px);
+        }
+
+        input, select {
+            background: var(--parchment);
+            color: var(--dark-brown);
+            border: 2px solid var(--dark-gold);
+            border-radius: 4px;
+            padding: 6px 10px;
+            font-family: 'Merriweather', serif;
+            font-size: 14px;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 5px 0;
+            padding: 3px;
+        }
+
+        .inventory-item, .menu-item {
+            padding: 8px;
+            margin: 3px 0;
+            background: rgba(244, 228, 188, 0.1);
+            border: 1px solid var(--dark-gold);
+            border-radius: 3px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .inventory-item:hover, .menu-item:hover {
+            background: rgba(244, 228, 188, 0.2);
+        }
+
+        #tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.9);
+            color: var(--gold);
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid var(--gold);
+            font-size: 12px;
+            pointer-events: none;
+            z-index: 1000;
+            display: none;
+        }
+
+        .controls-help {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            border: 1px solid var(--dark-gold);
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .combat-actions {
+            display: flex;
+            gap: 10px;
+            margin: 10px 0;
+        }
+
+        .combat-actions button {
+            flex: 1;
+        }
+
+        @media (max-width: 768px) {
+            #hud {
+                font-size: 12px;
+                min-width: 200px;
+            }
+            
+            .panel {
+                width: 90% !important;
+                left: 5% !important;
+                right: 5% !important;
+                transform: none !important;
+            }
+            
+            #message-log {
+                width: 90%;
+                left: 5%;
+            }
+        }
     </style>
 </head>
 <body>
-    <div id="start-overlay">
-        <button id="start-button" class="overlay-button">Enter Ancient Athens</button>
-    </div>
-    
-    <div id="fps-counter">FPS: <span id="fps-value">60</span></div>
+    <canvas id="game"></canvas>
     
     <div id="hud">
-        <div id="hud-left">
-            <div id="mini-map-container">
-                 <div id="map-player"></div>
-            </div>
-            <h3 style="margin: 0; font-size: 20px; margin-left: 220px;" class="golden-text">⚱️ Ancient Athens</h3>
-            <div id="current-location"></div>
+        <div>Name: <span id="hud-name">-</span></div>
+        <div>Level: <span id="hud-level">-</span></div>
+        <div>HP: <span id="hud-hp">-</span></div>
+        <div>MP: <span id="hud-mp">-</span></div>
+        <div>XP: <span id="hud-xp">-</span></div>
+        <div>Area: <span id="hud-area">-</span></div>
+    </div>
+
+    <div id="inventory-panel" class="panel">
+        <h2>Inventory</h2>
+        <div id="inventory-capacity">Capacity: 0/0</div>
+        <div id="inventory-list"></div>
+    </div>
+
+    <div id="character-panel" class="panel">
+        <h2>Character</h2>
+        <div id="character-summary"></div>
+        <div id="character-stats"></div>
+        <div id="stat-points"></div>
+        <div id="stat-allocation"></div>
+    </div>
+
+    <div id="menu-panel" class="panel">
+        <h2>Menu</h2>
+        <div class="menu-item" id="menu-save">Save Game</div>
+        <div class="menu-item" id="menu-load">Load Game</div>
+        <div class="menu-item" id="menu-clear">Clear Save</div>
+        <div id="menu-last-save"></div>
+        <div class="menu-item" data-close="menu">Close</div>
+    </div>
+
+    <div id="character-creator">
+        <!-- Character creation form will be inserted here by CharacterCreator.js -->
+    </div>
+
+    <div id="combat-ui">
+        <div id="combat-status"></div>
+        <div id="combat-log"></div>
+        <div class="combat-actions">
+            <button data-action="attack">Attack</button>
+            <button data-action="defend">Defend</button>
+            <button data-action="items">Items</button>
+            <button data-action="flee">Flee</button>
         </div>
-        <div id="hud-center" class="elegant-text">
-            <span class="control-key">WASD</span> Move/Rotate |
-            <span class="control-key">Arrows</span> Orbit Camera |
-            <span class="control-key">E</span> Interact |
-            <span class="control-key">X</span> Toggle Flight |
-            <span class="control-key">Space</span>/<span class="control-key">Shift</span> Fly Up/Down |
-            <span class="control-key">M</span> Sound |
-            <span class="control-key">P</span> FPS
-        </div>
-        <div id="hud-right" class="elegant-text">
-            <div class="golden-text" style="font-weight: 600;">🌅 Time:</div>
-            <span id="current-time">Golden Dawn</span>
-        </div>
-        <button id="toggle-hud">Hide UI</button>
+        <div id="combat-item-list" class="hidden"></div>
     </div>
 
-    <!-- Character Interaction UI -->
-    <div id="pnyx-scribe-prompt" class="prompt">
-        <button class="gemini-button" data-info="pnyx">📜 Learn about the Pnyx</button>
-    </div>
-     <div id="bouleuterion-scribe-prompt" class="prompt">
-        <button class="gemini-button" data-info="bouleuterion">📜 Learn about the Bouleuterion</button>
-    </div>
-     <div id="dikasteria-scribe-prompt" class="prompt">
-        <button class="gemini-button" data-info="dikasteria">📜 Learn about the Dikasteria</button>
+    <div id="message-log">
+        <!-- Game messages will appear here -->
     </div>
 
+    <div id="tooltip"></div>
 
-    <div id="info-scroll-overlay" class="info-scroll-overlay">
-        <div class="info-content">
-            <button id="close-info-scroll" class="close-info">&times;</button>
-            <h4 id="info-title" class="golden-text" style="text-align: center; margin-bottom: 20px;"></h4>
-            <p id="info-text"></p>
-        </div>
-        
+    <div class="controls-help">
+        WASD/Arrows: Move | I: Inventory | C: Character | M: Menu | Space: Interact
     </div>
-    <canvas id="landmarks-canvas"
-        style="position:fixed; right:16px; top:16px; width:420px; height:420px; z-index:150;
-               border:1px solid #FFD700; border-radius:10px; background:rgba(0,0,0,.18);">
-</canvas>
 
-
-    <script>
-        console.log("🏛️ Initializing Enhanced Ancient Athens Experience...");
-
-        // --- GLOBAL VARIABLES ---
-        let scene, camera, renderer, composer, ambientLight, directionalLight, hemisphereLight, player;
-        let world;
-        let controls = { W: false, A: false, S: false, D: false, E: false, ShiftLeft: false, ShiftRight: false, Space: false, ArrowUp: false, ArrowLeft: false, ArrowDown: false, ArrowRight: false };
-        const playerSpeed = 8.0;
-        const playerRotationSpeed = 3.0;
-        const flightSpeed = 10.0;
-        const flightVerticalSpeed = 8.0;
-        const CITY_SCALE = 2;
-        const scaleValue = (value) => value * CITY_SCALE;
-        const scaleLocation = ({ x, y = 0, z }) => new THREE.Vector3(scaleValue(x), y, scaleValue(z));
-        const scaleXZ = (x, z) => ({ x: scaleValue(x), z: scaleValue(z) });
-        const scaledVector3 = (x, y, z) => scaleLocation({ x, y, z });
-        const setScaledPosition = (object, x, y, z) => {
-            object.position.set(scaleValue(x), y, scaleValue(z));
-        };
-
-        // --- GEOJSON LOADER & LANDMARK RENDERING ---
-// Put your file at:  ./data/athens_places.geojson  (folder "data" next to index.html)
-async function loadAthensGeo() {
-    try {
-        // Make sure the projector exists (it’s defined in your <script type="module"> below)
-        const projector = window?.AthensGeo?.projector;
-        if (!projector) {
-            console.warn("Geo projector not ready yet; delaying GeoJSON load by 1s…");
-            setTimeout(loadAthensGeo, 1000);
-            return;
-        }
-
-        // 1) Load the GeoJSON
-        const response = await fetch('./data/athens_places.geojson');
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const geoJson = await response.json();
-
-        // 2) Add simple 3D pins for each Point feature
-        const pinGroup = new THREE.Group();
-        pinGroup.name = "AthensGeoPins";
-        scene.add(pinGroup);
-
-        const pinMaterial = new THREE.MeshStandardMaterial({ color: 0xFFD700, metalness: 0.2, roughness: 0.6 });
-        const labelMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
-
-        // Helper to make a pin (a small cylinder + sphere)
-        function makePin() {
-            const g = new THREE.Group();
-            const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.15 * CITY_SCALE, 0.15 * CITY_SCALE, 1.2, 8), pinMaterial);
-            shaft.castShadow = true;
-            const head  = new THREE.Mesh(new THREE.SphereGeometry(0.32 * CITY_SCALE, 12, 10), pinMaterial);
-            head.position.y = 0.75;
-            head.castShadow = true;
-            g.add(shaft, head);
-            return g;
-        }
-
-        // Helper to add a floating nameplate (simple plane; optional)
-        function addNameplate(text) {
-            const canvas = document.createElement('canvas');
-            canvas.width = 512; canvas.height = 128;
-            const ctx = canvas.getContext('2d');
-            ctx.fillStyle = 'rgba(0,0,0,0.6)';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = '#FFD700';
-            ctx.font = '48px Cinzel, serif';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(text, canvas.width / 2, canvas.height / 2);
-            const tex = new THREE.CanvasTexture(canvas);
-            const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true });
-            const geo = new THREE.PlaneGeometry(3 * CITY_SCALE, 0.75 * CITY_SCALE);
-            const mesh = new THREE.Mesh(geo, mat);
-            mesh.position.y = 1.2;
-            return mesh;
-        }
-
-        // 3) Convert each Point feature’s lon/lat to local x/z and drop a pin
-        const newlyAddedLocations = []; // to show in your mini-map & on-screen location text
-        for (const f of geoJson.features || []) {
-            if (f?.geometry?.type !== 'Point') continue;
-
-            const [lon, lat] = f.geometry.coordinates;
-            const name = f.properties?.title || f.properties?.name || 'Unnamed';
-
-            // Convert lon/lat → local meters using your projector
-            const { x, y } = projector.project({ lat, lon }); // y here is “northing”; we’ll use it as z
-            const localX = x;     // meters east from origin (Parthenon)
-            const localZ = y;     // meters north from origin
-
-            // Scale down to your scene scale (your helpers use CITY_SCALE on top of these numbers)
-            // We’ll treat these as your “design units” and set position via setScaledPosition.
-            const pin = makePin();
-            setScaledPosition(pin, localX, 0, localZ);
-            pinGroup.add(pin);
-
-            // Optional floating label
-            const label = addNameplate(name);
-            pin.add(label);
-
-            // Register in your “locations” list so UI picks it up
-            newlyAddedLocations.push({
-                name,
-                position: new THREE.Vector3(scaleValue(localX), 0, scaleValue(localZ)),
-                radius: scaleValue(12),
-                title: `📍 ${name}`,
-                type: 'cultural'
-            });
-        }
-
-        // 4) Add the new points into your existing systems:
-        //    - locations[] (for on-screen “You are at …”)
-        //    - mini-map icons
-        if (Array.isArray(newlyAddedLocations) && newlyAddedLocations.length) {
-            // Add to locations array the simplest way: push them in
-            if (Array.isArray(locations)) {
-                newlyAddedLocations.forEach(loc => locations.push(loc));
-            }
-
-            // Add icons to mini-map (reusing your createMapIcons() logic: we’ll just add the DOM dots ourselves)
-            const mapContainer = document.getElementById('mini-map-container');
-            const worldWidth = mapBounds.xMax - mapBounds.xMin;
-            const worldDepth = mapBounds.zMax - mapBounds.zMin;
-
-            newlyAddedLocations.forEach(loc => {
-                const icon = document.createElement('div');
-                icon.className = 'map-icon map-icon-cultural';
-                const percentX = THREE.MathUtils.clamp((loc.position.x - mapBounds.xMin) / worldWidth, 0, 1);
-                const percentZ = THREE.MathUtils.clamp((loc.position.z - mapBounds.zMin) / worldDepth, 0, 1);
-                icon.style.left = `${percentX * 200}px`;
-                icon.style.top  = `${percentZ * 200}px`;
-                mapContainer.appendChild(icon);
-            });
-
-            console.log(`Loaded ${newlyAddedLocations.length} Athens landmarks from GeoJSON.`);
-        }
-    } catch (err) {
-        console.error('loadAthensGeo() failed:', err);
-    }
-}
-
-        const scaleBounds = ({ xMin, xMax, zMin, zMax }) => ({
-            xMin: scaleValue(xMin),
-            xMax: scaleValue(xMax),
-            zMin: scaleValue(zMin),
-            zMax: scaleValue(zMax)
-        });
-        let isFlying = false;
-        let clock = new THREE.Clock();
-        let mixer; // Animation Mixer
-
-        let cameraOffset = new THREE.Vector3(0, 3, 7);
-
-        let audioStarted = false;
-        const chickens = [];
-        const citizens = [];
-        const citizenZones = [
-            { name: 'agora', center: scaleLocation({ x: 0, z: 4 }), radius: scaleValue(12), count: 6 },
-            { name: 'pnyx', center: scaleLocation({ x: -28, z: 14 }), radius: scaleValue(8), count: 3 },
-            { name: 'stoa', center: scaleLocation({ x: 40, z: -18 }), radius: scaleValue(10), count: 4 },
-            { name: 'residential', center: scaleLocation({ x: -40, z: 8 }), radius: scaleValue(9), count: 4 }
-        ];
-        const interactables = [];
-        const updatableObjects = [];
-        const pointLights = [];
-        const physicsObjects = []; 
-        let skybox;
-        const skyboxMaterials = {};
-        let sunMoon;
-        const clouds = [];
-        let canChickenCluck = true;
-        let lastCluckTime = 0;
-        
-        let fps = 0;
-        let frameCount = 0;
-        let lastTime = performance.now();
-        
-        let ambientSound, soundEnabled = true;
-        let blacksmithSound, crowdChatter;
-        const blacksmithPosition = scaleLocation({ x: -12, y: 1, z: 10 });
-        
-        let currentTimeOfDay = 0;
-        let enhancedLighting = true;
-        const timeNames = ["Golden Dawn", "Bright Noon", "Crimson Sunset", "Starlit Night", "Blue Hour"];
-
-        // Declare texture and material variables globally
-        let stoneTexture, marbleTexture, redTileTexture, groundTexture, pavedRoadTexture;
-        let stoneMaterial, marbleMaterial, goldMaterial, redTileMaterial, groundMaterial, columnMaterial, waterMaterial, pavedRoadMaterial;
-        
-        const baseMapBounds = { xMin: -80, xMax: 80, zMin: -80, zMax: 80 };
-        const mapBounds = scaleBounds(baseMapBounds);
-        const getRandomWorldXZ = (padding = 0) => ({
-            x: THREE.MathUtils.randFloat(mapBounds.xMin + padding, mapBounds.xMax - padding),
-            z: THREE.MathUtils.randFloat(mapBounds.zMin + padding, mapBounds.zMax - padding)
-        });
-        const getRandomWorldVector3 = (y = 0, padding = 0) => {
-            const { x, z } = getRandomWorldXZ(padding);
-            return new THREE.Vector3(x, y, z);
-        };
-        const CHICKEN_WORLD_PADDING = scaleValue(10);
-        const BARREL_WORLD_PADDING = scaleValue(20);
-        
-        const infoData = {
-            pnyx: {
-                title: "🏛️ The Pnyx",
-                text: "This is the Pnyx Hill. Here, all citizens would gather in the Assembly to debate and vote directly on the laws of Athens. This is a powerful example of **Direct Democracy**, where the people themselves, not representatives, make the rules. Remember, only adult male citizens could vote here. Women, slaves, and foreign-born residents (Metics) had no say at all."
-            },
-            bouleuterion: {
-                title: "🏛️ The Bouleuterion",
-                text: "This was the Council House, where 500 citizens, chosen by lottery for a one-year term, met to prepare the laws that would be voted on at the Pnyx. This shows the importance of **Citizen Participation** in day-to-day governance."
-            },
-            dikasteria: {
-                title: "⚖️ The Dikasteria",
-                text: "These were the Law Courts of Athens. Juries of 201 to 501 citizens, also chosen by lottery, would hear trials and deliver verdicts. Having large juries of ordinary people ensured that justice was in the hands of the citizens, a key part of the **Rule of Law**."
-            }
-        };
-
-
-        // --- INITIALIZATION ---
-        function init() {
-            // Physics World
-            world = new CANNON.World();
-            world.gravity.set(0, -9.82, 0); 
-            world.broadphase = new CANNON.NaiveBroadphase();
-            world.solver.iterations = 10;
-
-            // Scene and Camera
-            scene = new THREE.Scene();
-            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-            
-            // Renderer
-            renderer = new THREE.WebGLRenderer({ 
-                antialias: true, 
-                alpha: true,
-                powerPreference: "high-performance"
-            });
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.shadowMap.enabled = true;
-            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-            renderer.outputEncoding = THREE.sRGBEncoding;
-            renderer.toneMapping = THREE.ACESFilmicToneMapping;
-            renderer.toneMappingExposure = 0.7; // Adjusted for less brightness
-            document.body.appendChild(renderer.domElement);
-
-            // Lighting
-            ambientLight = new THREE.AmbientLight(0xffffff, 0.2); // Reduced intensity
-            scene.add(ambientLight);
-            
-            directionalLight = new THREE.DirectionalLight(0xffffff, 0.8); // Reduced intensity
-            directionalLight.position.set(scaleValue(50), 80, scaleValue(50));
-            directionalLight.castShadow = true;
-            directionalLight.shadow.mapSize.width = 4096;
-            directionalLight.shadow.mapSize.height = 4096;
-            directionalLight.shadow.camera.near = 0.5;
-            directionalLight.shadow.camera.far = 500;
-            directionalLight.shadow.camera.left = -100;
-            directionalLight.shadow.camera.right = 100;
-            directionalLight.shadow.camera.top = 100;
-            directionalLight.shadow.camera.bottom = -100;
-            scene.add(directionalLight);
-
-            hemisphereLight = new THREE.HemisphereLight(0x87CEEB, 0x8B4513, 0.3); // Reduced intensity
-            scene.add(hemisphereLight);
-
-            scene.fog = new THREE.FogExp2(0x1a1a2e, 0.002);
-
-            // Sun/Moon object
-            const sunMoonGeo = new THREE.SphereGeometry(10, 32, 32);
-            const sunMat = new THREE.MeshStandardMaterial({
-                emissive: 0xFFFF00, 
-                emissiveIntensity: 1,
-                color: 0xFFFF00 
-            });
-            sunMoon = new THREE.Mesh(sunMoonGeo, sunMat);
-            scene.add(sunMoon);
-
-            // Post-processing
-            composer = new THREE.EffectComposer(renderer);
-            const renderPass = new THREE.RenderPass(scene, camera);
-            composer.addPass(renderPass);
-            const bloomPass = new THREE.UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
-            bloomPass.threshold = 0.2;
-            bloomPass.strength = 0.25; // Reduced bloom
-            bloomPass.radius = 0.2;
-            composer.addPass(bloomPass);
-
-            // Initialize textures and materials now that renderer exists
-            stoneTexture = generateTexture(256, 256, (ctx, w, h) => {
-                ctx.fillStyle = '#808080';
-                ctx.fillRect(0, 0, w, h);
-                for (let i = 0; i < 5000; i++) {
-                    const x = Math.random() * w;
-                    const y = Math.random() * h;
-                    const radius = Math.random() * 1.5;
-                    const brightness = Math.random() * 0.2 - 0.1;
-                    const gray = 128 + brightness * 100;
-                    ctx.fillStyle = `rgba(${gray}, ${gray}, ${gray}, ${Math.random() * 0.5 + 0.5})`;
-                    ctx.beginPath();
-                    ctx.arc(x, y, radius, 0, Math.PI * 2);
-                    ctx.fill();
-                }
-            });
-            marbleTexture = generateTexture(512, 512, (ctx, w, h) => {
-                ctx.fillStyle = '#F0F0F0';
-                ctx.fillRect(0, 0, w, h);
-                ctx.lineWidth = Math.random() * 2 + 1;
-                ctx.strokeStyle = `rgba(128, 128, 128, 0.3)`;
-                for(let i=0; i<10; i++) {
-                     ctx.beginPath();
-                     ctx.moveTo(Math.random() * w, Math.random() * h);
-                     ctx.bezierCurveTo(Math.random() * w, Math.random() * h, Math.random() * w, Math.random() * h, Math.random() * w, Math.random() * h);
-                     ctx.stroke();
-                }
-            });
-            redTileTexture = generateTexture(256, 256, (ctx, w, h) => {
-                ctx.fillStyle = '#8B4513';
-                ctx.fillRect(0, 0, w, h);
-                ctx.strokeStyle = 'rgba(0,0,0,0.3)';
-                ctx.lineWidth = 2;
-                for(let i = 0; i < w; i += 32) {
-                    ctx.beginPath();
-                    ctx.moveTo(i, 0);
-                    ctx.lineTo(i, h);
-                    ctx.stroke();
-                    ctx.beginPath();
-                    ctx.moveTo(0, i);
-                    ctx.lineTo(w, i);
-                    ctx.stroke();
-                }
-            });
-            groundTexture = generateTexture(512, 512, (ctx, w, h) => {
-                ctx.fillStyle = '#C2B280'; // Base sandy color
-                ctx.fillRect(0, 0, w, h);
-                for (let i = 0; i < 2000; i++) {
-                    const x = Math.random() * w;
-                    const y = Math.random() * h;
-                    const radius = Math.random() * 2;
-                    const brightness = Math.random() * 0.2 - 0.1;
-                    const alpha = Math.random() * 0.5 + 0.5;
-                    const gray = 194 + brightness * 100;
-                    ctx.fillStyle = `rgba(${gray + 20}, ${gray}, ${gray - 40}, ${alpha})`;
-                    ctx.beginPath();
-                    ctx.arc(x, y, radius, 0, Math.PI * 2);
-                    ctx.fill();
-                }
-            });
-             pavedRoadTexture = generateTexture(256, 256, (ctx, w, h) => {
-                ctx.fillStyle = '#A9A9A9';
-                ctx.fillRect(0, 0, w, h);
-                ctx.strokeStyle = 'rgba(0,0,0,0.2)';
-                ctx.lineWidth = 1;
-                for(let i=0; i < 1000; i++){
-                    let x = Math.random() * w;
-                    let y = Math.random() * h;
-                    let size = Math.random() * 20 + 5;
-                    ctx.strokeRect(x,y,size,size);
-                }
-            });
-
-            stoneTexture.wrapS = stoneTexture.wrapT = THREE.RepeatWrapping;
-            marbleTexture.wrapS = marbleTexture.wrapT = THREE.RepeatWrapping; 
-            redTileTexture.wrapS = redTileTexture.wrapT = THREE.RepeatWrapping;
-            groundTexture.wrapS = groundTexture.wrapT = THREE.RepeatWrapping; 
-            pavedRoadTexture.wrapS = pavedRoadTexture.wrapT = THREE.RepeatWrapping;
-            
-            stoneMaterial = new THREE.MeshStandardMaterial({ map: stoneTexture, roughness: 0.85, metalness: 0.05 });
-            marbleMaterial = new THREE.MeshStandardMaterial({ map: marbleTexture, roughness: 0.4, metalness: 0.1 });
-            goldMaterial = createEnhancedMaterial(0xFFD700, 0.2, 0.9);
-            redTileMaterial = new THREE.MeshStandardMaterial({ map: redTileTexture, roughness: 0.7, metalness: 0.0 });
-            groundMaterial = new THREE.MeshStandardMaterial({ map: groundTexture, roughness: 0.95, metalness: 0.0 });
-            columnMaterial = new THREE.MeshStandardMaterial({ map: marbleTexture, roughness: 0.5, metalness: 0.15 });
-            waterMaterial = createEnhancedMaterial(0x5f9ea0, 0.2, 0.1);
-            waterMaterial.transparent = true;
-            waterMaterial.opacity = 0.7;
-            pavedRoadMaterial = new THREE.MeshStandardMaterial({ map: pavedRoadTexture, roughness: 0.8, metalness: 0.1 });
-
-
-            // Build Scene
-            buildWorld();
-            createInteractables();
-            createInteractiveObjects();
-            createMapIcons();
-            loadAthensGeo();
-
-            
-            // Event Listeners
-            addEventListeners();
-            
-            // Set initial environment state and start animation
-            updateEnvironment();
-            animate();
-        }
-
-        function updateFPS() {
-            frameCount++;
-            const currentTime = performance.now();
-            if (currentTime - lastTime >= 1000) {
-                fps = Math.round((frameCount * 1000) / (currentTime - lastTime));
-                document.getElementById('fps-value').textContent = fps;
-                frameCount = 0;
-                lastTime = currentTime;
-            }
-        }
-
-        // --- TEXTURES AND MATERIALS ---
-        const createEnhancedMaterial = (color, roughness = 0.8, metalness = 0.1) => {
-            return new THREE.MeshStandardMaterial({ 
-                color, 
-                roughness, 
-                metalness,
-                envMapIntensity: 0.5
-            });
-        };
-        
-        function generateTexture(width, height, drawFunction) {
-            const canvas = document.createElement('canvas');
-            canvas.width = width;
-            canvas.height = height;
-            const context = canvas.getContext('2d');
-            drawFunction(context, width, height);
-            const texture = new THREE.CanvasTexture(canvas);
-            texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
-            return texture;
-        }
-
-        // --- WORLD BUILDING ---
-        function buildWorld() {
-            // Ground
-            const groundGeometry = new THREE.PlaneGeometry(scaleValue(400), scaleValue(400));
-            const ground = new THREE.Mesh(groundGeometry, groundMaterial);
-            if (ground.material.map) {
-                ground.material.map.repeat.set(16 * CITY_SCALE, 16 * CITY_SCALE);
-            }
-            ground.rotation.x = -Math.PI / 2;
-            ground.receiveShadow = true;
-            scene.add(ground);
-            
-            const groundPhysMat = new CANNON.Material("groundMaterial");
-            const groundBody = new CANNON.Body({ mass: 0, material: groundPhysMat });
-            groundBody.addShape(new CANNON.Plane());
-            groundBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1,0,0), -Math.PI/2);
-            world.addBody(groundBody);
-            
-            if(player && player.body) {
-                const playerPhysMat = new CANNON.Material("playerMaterial");
-                player.body.material = playerPhysMat;
-                const groundPlayerContactMaterial = new CANNON.ContactMaterial(
-                    groundPhysMat,
-                    playerPhysMat,
-                    { friction: 0.1, restitution: 0.3 }
-                );
-                world.addContactMaterial(groundPlayerContactMaterial);
-            }
-
-
-            // Structures
-            createParthenon();
-            createStoa();
-            createHouses();
-            createTrees();
-            createSkybox();
-            createFountain();
-            createCityFortifications();
-            createMarketStalls();
-            createDemocracyMonuments();
-            createPavedRoads();
-        }
-
-        function createEnhancedColumn(height = 8, material = columnMaterial) {
-            const group = new THREE.Group();
-            const baseHeight = 0.5;
-            const capitalHeight = 0.5;
-
-            const columnGeometry = new THREE.CylinderGeometry(0.8 * CITY_SCALE, 1 * CITY_SCALE, height, 16);
-            const column = new THREE.Mesh(columnGeometry, material);
-            column.castShadow = true;
-            if (column.material.map) {
-                column.material.map.repeat.set(CITY_SCALE, 2);
-            }
-            column.position.y = baseHeight + height / 2;
-            group.add(column);
-
-            const capitalGeometry = new THREE.CylinderGeometry(1.2 * CITY_SCALE, 0.9 * CITY_SCALE, capitalHeight, 16);
-            const capital = new THREE.Mesh(capitalGeometry, goldMaterial);
-            capital.position.y = baseHeight + height + capitalHeight / 2;
-            capital.castShadow = true;
-            group.add(capital);
-
-            const baseGeometry = new THREE.CylinderGeometry(1.1 * CITY_SCALE, 1.3 * CITY_SCALE, baseHeight, 16);
-            const base = new THREE.Mesh(baseGeometry, material);
-            base.position.y = baseHeight / 2;
-            base.castShadow = true;
-            group.add(base);
-
-            return group;
-        }
-
-        function createEnhancedBuilding(x, z, width, depth, height, material = stoneMaterial, options = {}) {
-            const { includeDetails = true } = options;
-            const group = new THREE.Group();
-            const scaledWidth = scaleValue(width);
-            const scaledDepth = scaleValue(depth);
-            const scaledX = scaleValue(x);
-            const scaledZ = scaleValue(z);
-            const buildingGeometry = new THREE.BoxGeometry(scaledWidth, height, scaledDepth);
-            const building = new THREE.Mesh(buildingGeometry, material);
-            building.castShadow = true;
-            building.receiveShadow = true;
-            if (building.material.map) {
-                building.material.map.repeat.set(scaledWidth / 4, height / 4);
-            }
-            group.add(building);
-
-            if (includeDetails) {
-                // Add doors and windows
-                const detailMaterial = new THREE.MeshBasicMaterial({ color: 0x222222 });
-                if (width > depth) { // Horizontal building
-                    const door = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 2.5), detailMaterial);
-                    door.position.set(0, -height/2 + 1.25, scaledDepth/2 + 0.01);
-                    group.add(door);
-                } else { // Vertical building
-                    const door = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 2.5), detailMaterial);
-                    door.position.set(scaledWidth/2 + 0.01, -height/2 + 1.25, 0);
-                    door.rotation.y = Math.PI / 2;
-                    group.add(door);
-                }
-
-                if (Math.random() > 0.5) {
-                    const decorGeometry = new THREE.BoxGeometry(scaledWidth * 1.1, 0.5, scaledDepth * 1.1);
-                    const decoration = new THREE.Mesh(decorGeometry, goldMaterial);
-                    decoration.position.y = height / 2 + 0.25;
-                    decoration.castShadow = true;
-                    group.add(decoration);
-                }
-            }
-            group.position.set(scaledX, height/2, scaledZ);
-            return group;
-        }
-        
-        function createParthenon() {
-            const acropolis = new THREE.Group();
-
-            const hillMaterialBase = groundMaterial.clone();
-            let hillTexture = null;
-            if (groundMaterial.map) {
-                hillTexture = groundMaterial.map.clone();
-                hillTexture.wrapS = hillTexture.wrapT = THREE.RepeatWrapping;
-                hillTexture.repeat.set(6 * CITY_SCALE, 3 * CITY_SCALE);
-                hillTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
-                hillTexture.needsUpdate = true;
-                hillMaterialBase.map = hillTexture;
-            }
-            hillMaterialBase.color = new THREE.Color(0xBCA67C);
-            hillMaterialBase.roughness = Math.min(0.98, hillMaterialBase.roughness + 0.03);
-
-            const hillLayers = [
-                { top: scaleValue(70), bottom: scaleValue(85), height: 3 },
-                { top: scaleValue(55), bottom: scaleValue(70), height: 3 },
-                { top: scaleValue(42), bottom: scaleValue(55), height: 2.5 },
-                { top: scaleValue(34), bottom: scaleValue(42), height: 2 }
-            ];
-
-            let plateauHeight = 0;
-            hillLayers.forEach((layer, index) => {
-                const layerMaterial = hillMaterialBase.clone();
-                if (hillTexture) {
-                    layerMaterial.map = hillTexture.clone();
-                    layerMaterial.map.repeat.set((6 + index) * CITY_SCALE, 3 + index * 0.5);
-                    layerMaterial.map.needsUpdate = true;
-                }
-                const terrace = new THREE.Mesh(
-                    new THREE.CylinderGeometry(layer.top, layer.bottom, layer.height, 64, 1, false),
-                    layerMaterial
-                );
-                terrace.position.y = plateauHeight + layer.height / 2;
-                terrace.castShadow = true;
-                terrace.receiveShadow = true;
-                acropolis.add(terrace);
-                plateauHeight += layer.height;
-            });
-
-            const rockMaterial = stoneMaterial.clone();
-            rockMaterial.color = new THREE.Color(0x9f8f78);
-            [
-                { position: scaledVector3(-26, 1.8, 28), scale: 1.3 },
-                { position: scaledVector3(22, 2.6, 24), scale: 1.1 },
-                { position: scaledVector3(-18, 4.2, -8), scale: 1.0 },
-                { position: scaledVector3(16, 3.6, -14), scale: 1.2 }
-            ].forEach(detail => {
-                const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(3 * detail.scale * CITY_SCALE, 0), rockMaterial);
-                rock.position.copy(detail.position);
-                rock.scale.setScalar(detail.scale);
-                rock.castShadow = true;
-                rock.receiveShadow = true;
-                acropolis.add(rock);
-            });
-
-            const pathMaterial = pavedRoadMaterial.clone();
-            if (pathMaterial.map) {
-                pathMaterial.map = pathMaterial.map.clone();
-                pathMaterial.map.wrapS = pathMaterial.map.wrapT = THREE.RepeatWrapping;
-                pathMaterial.map.repeat.set(2 * CITY_SCALE, 12 * CITY_SCALE);
-                pathMaterial.map.anisotropy = renderer.capabilities.getMaxAnisotropy();
-                pathMaterial.map.needsUpdate = true;
-            }
-            pathMaterial.color = new THREE.Color(0xD2C3A4);
-
-            const rampDepthBase = 60;
-            const rampDepth = scaleValue(rampDepthBase);
-            const rampAngle = Math.asin(Math.min(1, plateauHeight / rampDepth));
-            const rampCenterZBase = -7.5 + rampDepthBase / 2;
-            const rampCenterZ = scaleValue(rampCenterZBase);
-            const rampHeight = plateauHeight / 2;
-
-            const ramp = new THREE.Mesh(new THREE.BoxGeometry(scaleValue(8), 0.4, rampDepth), pathMaterial);
-            ramp.position.set(scaleValue(0), rampHeight, rampCenterZ);
-            ramp.rotation.x = -rampAngle;
-            ramp.castShadow = true;
-            ramp.receiveShadow = true;
-            acropolis.add(ramp);
-
-            const rampWallsMaterial = stoneMaterial.clone();
-            rampWallsMaterial.color = new THREE.Color(0xE0D0B8);
-            const rampWallGeometry = new THREE.BoxGeometry(scaleValue(0.6), 1.2, rampDepth);
-            [-1, 1].forEach(side => {
-                const wall = new THREE.Mesh(rampWallGeometry, rampWallsMaterial);
-                wall.position.set(scaleValue(side * 4.4), rampHeight + 0.6, rampCenterZ);
-                wall.rotation.x = -rampAngle;
-                wall.castShadow = true;
-                wall.receiveShadow = true;
-                acropolis.add(wall);
-            });
-
-            const lowerPlaza = new THREE.Mesh(new THREE.CylinderGeometry(scaleValue(15), scaleValue(19), 0.5, 48), pathMaterial);
-            lowerPlaza.position.set(scaleValue(0), 0.25, scaleValue(rampCenterZBase + rampDepthBase / 2 + 4));
-            lowerPlaza.castShadow = true;
-            lowerPlaza.receiveShadow = true;
-            acropolis.add(lowerPlaza);
-
-            const upperLanding = new THREE.Mesh(new THREE.BoxGeometry(scaleValue(16), 0.4, scaleValue(10)), pathMaterial);
-            upperLanding.position.set(scaleValue(0), plateauHeight - 0.2, scaleValue(-12));
-            upperLanding.castShadow = true;
-            upperLanding.receiveShadow = true;
-            acropolis.add(upperLanding);
-
-            const parthenon = new THREE.Group();
-            const steps = new THREE.Group();
-            for (let i = 0; i < 3; i++) {
-                const stepGeometry = new THREE.BoxGeometry(scaleValue(35 - i), 0.5, scaleValue(18 - i));
-                const step = new THREE.Mesh(stepGeometry, marbleMaterial);
-                if(step.material.map) {
-                    step.material.map.repeat.set(8 * CITY_SCALE, 1 * CITY_SCALE);
-                }
-                step.position.y = i * 0.5;
-                step.castShadow = true;
-                step.receiveShadow = true;
-                steps.add(step);
-            }
-            parthenon.add(steps);
-            const parthenonBase = createEnhancedBuilding(0, 0, 30, 15, 4, marbleMaterial);
-            if(parthenonBase.children[0].material.map) {
-                parthenonBase.children[0].material.map.repeat.set(8 * CITY_SCALE, 2 * CITY_SCALE);
-            }
-            parthenonBase.position.y = 3.5;
-            parthenon.add(parthenonBase);
-            for (let i = 0; i < 8; i++) {
-                const frontColumn = createEnhancedColumn(12);
-                setScaledPosition(frontColumn, -13 + i * 4, -0.5, -7.5);
-                parthenon.add(frontColumn);
-
-                const backColumn = createEnhancedColumn(12);
-                setScaledPosition(backColumn, -13 + i * 4, -0.5, 7.5);
-                parthenon.add(backColumn);
-            }
-            for (let i = 0; i < 4; i++) {
-                const leftColumn = createEnhancedColumn(12);
-                setScaledPosition(leftColumn, -15, -0.5, -5.5 + i * 3.5);
-                parthenon.add(leftColumn);
-
-                const rightColumn = createEnhancedColumn(12);
-                setScaledPosition(rightColumn, 15, -0.5, -5.5 + i * 3.5);
-                parthenon.add(rightColumn);
-            }
-            const roofGroup = new THREE.Group();
-            const roofLength = scaleValue(32);
-            const roofDepth = scaleValue(18);
-            const roofHeight = 4.5;
-            const halfLength = roofLength / 2;
-            const halfDepth = roofDepth / 2;
-            const pedimentDepth = scaleValue(0.8);
-            const slopeRun = Math.sqrt(halfDepth * halfDepth + roofHeight * roofHeight);
-
-            const roofTileTexture = redTileMaterial.map.clone();
-            roofTileTexture.wrapS = roofTileTexture.wrapT = THREE.RepeatWrapping;
-            roofTileTexture.repeat.set(roofLength / 4, slopeRun / 2);
-            roofTileTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
-            roofTileTexture.needsUpdate = true;
-
-            const roofTileMaterial = redTileMaterial.clone();
-            roofTileMaterial.map = roofTileTexture;
-            roofTileMaterial.roughness = Math.max(0.45, roofTileMaterial.roughness - 0.15);
-            roofTileMaterial.metalness = 0.05;
-
-            const createSlopeGeometry = (sign = 1) => {
-                const geometry = new THREE.BufferGeometry();
-                const positions = sign > 0
-                    ? new Float32Array([
-                        -halfLength, 0, halfDepth,
-                         halfLength, 0, halfDepth,
-                         halfLength, roofHeight, 0,
-                         halfLength, roofHeight, 0,
-                        -halfLength, roofHeight, 0,
-                        -halfLength, 0, halfDepth
-                    ])
-                    : new Float32Array([
-                        -halfLength, 0, -halfDepth,
-                        -halfLength, roofHeight, 0,
-                         halfLength, roofHeight, 0,
-                         halfLength, roofHeight, 0,
-                         halfLength, 0, -halfDepth,
-                        -halfLength, 0, -halfDepth
-                    ]);
-                const uvs = sign > 0
-                    ? new Float32Array([
-                        0, 0,
-                        1, 0,
-                        1, 1,
-                        1, 1,
-                        0, 1,
-                        0, 0
-                    ])
-                    : new Float32Array([
-                        0, 0,
-                        0, 1,
-                        1, 1,
-                        1, 1,
-                        1, 0,
-                        0, 0
-                    ]);
-                geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-                geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
-                geometry.computeVertexNormals();
-                return geometry;
-            };
-
-            const southSlope = new THREE.Mesh(createSlopeGeometry(1), roofTileMaterial);
-            southSlope.castShadow = true;
-            southSlope.receiveShadow = true;
-            roofGroup.add(southSlope);
-
-            const northSlopeMaterial = roofTileMaterial.clone();
-            northSlopeMaterial.map = roofTileTexture.clone();
-            northSlopeMaterial.map.wrapS = northSlopeMaterial.map.wrapT = THREE.RepeatWrapping;
-            northSlopeMaterial.map.repeat.copy(roofTileTexture.repeat);
-            northSlopeMaterial.map.anisotropy = roofTileTexture.anisotropy;
-            northSlopeMaterial.map.needsUpdate = true;
-            const northSlope = new THREE.Mesh(createSlopeGeometry(-1), northSlopeMaterial);
-            northSlope.castShadow = true;
-            northSlope.receiveShadow = true;
-            roofGroup.add(northSlope);
-
-            const roofDeckTexture = marbleMaterial.map.clone();
-            roofDeckTexture.wrapS = roofDeckTexture.wrapT = THREE.RepeatWrapping;
-            roofDeckTexture.repeat.set(roofLength / 6, roofDepth / 4);
-            roofDeckTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
-            roofDeckTexture.needsUpdate = true;
-            const roofDeckMaterial = marbleMaterial.clone();
-            roofDeckMaterial.map = roofDeckTexture;
-            const roofDeck = new THREE.Mesh(new THREE.BoxGeometry(roofLength, 0.5, roofDepth), roofDeckMaterial);
-            roofDeck.position.y = -0.25;
-            roofDeck.castShadow = true;
-            roofDeck.receiveShadow = true;
-            roofGroup.add(roofDeck);
-
-            const pedimentTexture = marbleMaterial.map.clone();
-            pedimentTexture.wrapS = pedimentTexture.wrapT = THREE.RepeatWrapping;
-            pedimentTexture.repeat.set(roofLength / 6, roofHeight / 2);
-            pedimentTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
-            pedimentTexture.needsUpdate = true;
-            const pedimentMaterial = marbleMaterial.clone();
-            pedimentMaterial.map = pedimentTexture;
-            pedimentMaterial.roughness = Math.max(0.35, pedimentMaterial.roughness - 0.05);
-
-            const buildPedimentGeometry = () => {
-                const geometry = new THREE.BufferGeometry();
-                const positions = [];
-                const uvs = [];
-                const addTriangle = (a, b, c, uva, uvb, uvc) => {
-                    positions.push(a[0], a[1], a[2], b[0], b[1], b[2], c[0], c[1], c[2]);
-                    uvs.push(uva[0], uva[1], uvb[0], uvb[1], uvc[0], uvc[1]);
-                };
-
-                const f0 = [-halfLength, 0, pedimentDepth / 2];
-                const f1 = [halfLength, 0, pedimentDepth / 2];
-                const f2 = [0, roofHeight, pedimentDepth / 2];
-                const b0 = [-halfLength, 0, -pedimentDepth / 2];
-                const b1 = [halfLength, 0, -pedimentDepth / 2];
-                const b2 = [0, roofHeight, -pedimentDepth / 2];
-
-                addTriangle(f0, f1, f2, [0, 0], [1, 0], [0.5, 1]);
-                addTriangle(b0, b2, b1, [0, 0], [0.5, 1], [1, 0]);
-                addTriangle(f0, f1, b1, [0, 0], [1, 0], [1, 1]);
-                addTriangle(f0, b1, b0, [0, 0], [1, 1], [0, 1]);
-                addTriangle(f0, b2, b0, [0, 0], [1, 1], [1, 0]);
-                addTriangle(f0, f2, b2, [0, 0], [1, 0], [1, 1]);
-                addTriangle(f1, b1, b2, [0, 0], [0, 1], [1, 1]);
-                addTriangle(f1, b2, f2, [0, 0], [1, 1], [1, 0]);
-
-                geometry.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(positions), 3));
-                geometry.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(uvs), 2));
-                geometry.computeVertexNormals();
-                return geometry;
-            };
-
-            const pedimentGeometry = buildPedimentGeometry();
-            const reliefMaterial = createEnhancedMaterial(0xD5C7A8, 0.6, 0.1);
-            reliefMaterial.side = THREE.FrontSide;
-
-            const createPediment = (isFront = true) => {
-                const group = new THREE.Group();
-                const pedimentMesh = new THREE.Mesh(pedimentGeometry, pedimentMaterial);
-                pedimentMesh.castShadow = true;
-                pedimentMesh.receiveShadow = true;
-                group.add(pedimentMesh);
-
-                const reliefInset = scaleValue(2.5);
-                const reliefShape = new THREE.Shape();
-                reliefShape.moveTo(-halfLength + reliefInset, 0.6);
-                reliefShape.lineTo(halfLength - reliefInset, 0.6);
-                reliefShape.lineTo(0, roofHeight - 0.8);
-                reliefShape.closePath();
-                const reliefGeometry = new THREE.ShapeGeometry(reliefShape);
-                const relief = new THREE.Mesh(reliefGeometry, reliefMaterial);
-                relief.position.z = pedimentDepth / 2 + 0.02;
-                relief.castShadow = true;
-                group.add(relief);
-
-                if (!isFront) {
-                    group.rotation.y = Math.PI;
-                }
-                group.position.z = isFront ? halfDepth - pedimentDepth / 2 : -halfDepth + pedimentDepth / 2;
-                return group;
-            };
-
-            const frontPediment = createPediment(true);
-            const backPediment = createPediment(false);
-            roofGroup.add(frontPediment);
-            roofGroup.add(backPediment);
-
-            const ridgeMaterial = pedimentMaterial.clone();
-            ridgeMaterial.map = pedimentTexture.clone();
-            ridgeMaterial.map.wrapS = ridgeMaterial.map.wrapT = THREE.RepeatWrapping;
-            ridgeMaterial.map.repeat.set(roofLength / 6, 1);
-            ridgeMaterial.map.anisotropy = renderer.capabilities.getMaxAnisotropy();
-            ridgeMaterial.map.needsUpdate = true;
-            const ridge = new THREE.Mesh(new THREE.BoxGeometry(roofLength + scaleValue(0.2), 0.3, scaleValue(0.6)), ridgeMaterial);
-            ridge.position.y = roofHeight - 0.1;
-            ridge.castShadow = true;
-            ridge.receiveShadow = true;
-            roofGroup.add(ridge);
-
-            roofGroup.position.y = 12.55;
-            parthenon.add(roofGroup);
-            const athenaGeometry = new THREE.CylinderGeometry(0.5 * CITY_SCALE, 0.8 * CITY_SCALE, 8);
-            const athena = new THREE.Mesh(athenaGeometry, goldMaterial);
-            athena.position.set(0, 10, 0);
-            athena.castShadow = true;
-            parthenon.add(athena);
-
-            parthenon.position.y = plateauHeight;
-            acropolis.add(parthenon);
-
-            setScaledPosition(acropolis, 0, 0, -50);
-            scene.add(acropolis);
-        }
-        
-        function createStoa() {
-            const stoa = new THREE.Group();
-            for (let i = 0; i < 12; i++) {
-                const column = createEnhancedColumn(8);
-                setScaledPosition(column, -30 + i * 5, -0.5, 0);
-                stoa.add(column);
-            }
-            const stoaRoof = createEnhancedBuilding(0, 0, 60, 8, 1.5, redTileMaterial, { includeDetails: false });
-            if(stoaRoof.children[0].material.map) {
-                stoaRoof.children[0].material.map.repeat.set(16 * CITY_SCALE, 4 * CITY_SCALE);
-            }
-            stoaRoof.position.y = 9;
-            stoa.add(stoaRoof);
-            setScaledPosition(stoa, 40, 0, -20);
-            scene.add(stoa);
-        }
-
-        function createHouses() {
-            const houseConfigs = [ {x: -50, z: 0, w: 8, d: 6, style: 'wealthy'}, {x: -50, z: 15, w: 6, d: 8, style: 'middle'}, {x: 50, z: 0, w: 7, d: 7, style: 'wealthy'}, {x: 50, z: -20, w: 9, d: 6, style: 'artisan'}, {x: 30, z: 50, w: 6, d: 6, style: 'middle'}, {x: -30, z: 50, w: 8, d: 7, style: 'wealthy'} ];
-            houseConfigs.forEach(config => {
-                const material = config.style === 'wealthy' ? marbleMaterial : stoneMaterial;
-                const house = createEnhancedBuilding(config.x, config.z, config.w, config.d, 6, material);
-                const roofMaterial = config.style === 'wealthy' ? goldMaterial : redTileMaterial;
-                const houseRoof = createEnhancedBuilding(config.x, config.z, config.w + 1, config.d + 1, 1, roofMaterial, { includeDetails: false });
-                if(houseRoof.children[0].material.map) {
-                    houseRoof.children[0].material.map.repeat.set((config.w/2) * CITY_SCALE, (config.d/2) * CITY_SCALE);
-                }
-                houseRoof.position.y = 7.5;
-                scene.add(house);
-                scene.add(houseRoof);
-            });
-        }
-        
-        function createEnhancedTree(x, z, scale = 1) {
-            const tree = new THREE.Group();
-            const trunkGeometry = new THREE.CylinderGeometry(0.3 * scale * CITY_SCALE, 0.5 * scale * CITY_SCALE, 5 * scale, 8);
-            const trunkMaterial = createEnhancedMaterial(0x8B4513, 1.0, 0.0);
-            const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
-            trunk.position.y = 2.5 * scale;
-            trunk.castShadow = true;
-            tree.add(trunk);
-            for (let i = 0; i < 3; i++) {
-                const leavesGeometry = new THREE.SphereGeometry((2.5 - i * 0.3) * scale * CITY_SCALE, 8, 6);
-                const leavesMaterial = createEnhancedMaterial(0x228B22, 0.8, 0.0);
-                const leaves = new THREE.Mesh(leavesGeometry, leavesMaterial);
-                leaves.position.y = (5 + i * 0.5) * scale;
-                leaves.castShadow = true;
-                tree.add(leaves);
-            }
-            setScaledPosition(tree, x, 0, z);
-            return tree;
-        }
-
-        function createTrees() {
-            const treePositions = [ {x: 25, z: 25, scale: 1.2}, {x: -25, z: 25, scale: 0.9}, {x: 35, z: -15, scale: 1.1}, {x: -35, z: 10, scale: 1.0}, {x: 45, z: 35, scale: 0.8}, {x: -40, z: -10, scale: 1.3} ];
-            treePositions.forEach(pos => { scene.add(createEnhancedTree(pos.x, pos.z, pos.scale)); });
-        }
-        
-        function createSkybox() {
-            const skyGeo = new THREE.SphereGeometry(500, 32, 32);
-            
-            const dayMaterial = new THREE.MeshBasicMaterial({ color: 0x87CEEB, side: THREE.BackSide });
-            const sunsetMaterial = new THREE.MeshBasicMaterial({ color: 0xFF4500, side: THREE.BackSide });
-            const nightMaterial = new THREE.MeshBasicMaterial({ color: 0x000033, side: THREE.BackSide });
-            
-            skybox = new THREE.Mesh(skyGeo, dayMaterial);
-            skyboxMaterials.day = dayMaterial;
-            skyboxMaterials.sunset = sunsetMaterial;
-            skyboxMaterials.night = nightMaterial;
-
-            scene.add(skybox);
-        }
-
-        function createFountain() {
-            const fountainGroup = new THREE.Group();
-
-            // Base
-            const baseGeo = new THREE.CylinderGeometry(4 * CITY_SCALE, 4 * CITY_SCALE, 0.5, 32);
-            const base = new THREE.Mesh(baseGeo, stoneMaterial);
-            base.receiveShadow = true;
-            fountainGroup.add(base);
-
-            // Water in base
-            const waterBaseGeo = new THREE.CylinderGeometry(3.8 * CITY_SCALE, 3.8 * CITY_SCALE, 0.4, 32);
-            const waterBase = new THREE.Mesh(waterBaseGeo, waterMaterial);
-            waterBase.position.y = 0.2;
-            fountainGroup.add(waterBase);
-
-            // Pillar
-            const pillarGeo = new THREE.CylinderGeometry(0.5 * CITY_SCALE, 0.5 * CITY_SCALE, 3, 16);
-            const pillar = new THREE.Mesh(pillarGeo, marbleMaterial);
-            pillar.position.y = 1.75;
-            pillar.castShadow = true;
-            fountainGroup.add(pillar);
-
-            // Top Basin
-            const topBasinGeo = new THREE.CylinderGeometry(1.5 * CITY_SCALE, 1.5 * CITY_SCALE, 0.3, 24);
-            const topBasin = new THREE.Mesh(topBasinGeo, stoneMaterial);
-            topBasin.position.y = 3.25;
-            topBasin.castShadow = true;
-            fountainGroup.add(topBasin);
-
-            // Water in top basin
-            const waterTopGeo = new THREE.CylinderGeometry(1.4 * CITY_SCALE, 1.4 * CITY_SCALE, 0.2, 24);
-            const waterTop = new THREE.Mesh(waterTopGeo, waterMaterial);
-            waterTop.position.y = 3.2;
-            fountainGroup.add(waterTop);
-
-            fountainGroup.position.set(0, 0.25, 0);
-            scene.add(fountainGroup);
-
-            // Particle System for water spray
-            const particleCount = 200;
-            const particlesGeo = new THREE.BufferGeometry();
-            const positions = new Float32Array(particleCount * 3);
-            const particleVelocities = [];
-
-            for (let i = 0; i < particleCount; i++) {
-                const i3 = i * 3;
-                positions[i3 + 0] = 0; // x
-                positions[i3 + 1] = 3.5; // y
-                positions[i3 + 2] = 0; // z
-
-                particleVelocities.push(new THREE.Vector3(
-                    (Math.random() - 0.5) * 1.5,
-                    Math.random() * 3 + 2,
-                    (Math.random() - 0.5) * 1.5
-                ));
-            }
-
-            particlesGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-            const particleMaterial = new THREE.PointsMaterial({
-                color: 0xadd8e6,
-                size: 0.1,
-                transparent: true,
-                opacity: 0.7
-            });
-
-            const fountainSpray = new THREE.Points(particlesGeo, particleMaterial);
-            fountainSpray.position.copy(fountainGroup.position);
-            scene.add(fountainSpray);
-
-            const fountainSprayObject = {
-                particles: fountainSpray,
-                velocities: particleVelocities,
-                tick: function(delta) {
-                    const positions = this.particles.geometry.attributes.position.array;
-                    for (let i = 0; i < this.velocities.length; i++) {
-                        const i3 = i * 3;
-                        
-                        this.velocities[i].y -= 9.8 * delta * 0.5;
-
-                        positions[i3 + 0] += this.velocities[i].x * delta;
-                        positions[i3 + 1] += this.velocities[i].y * delta;
-                        positions[i3 + 2] += this.velocities[i].z * delta;
-
-                        // Reset particle if it falls below the top basin
-                        if (positions[i3 + 1] < 3.3 ) {
-                            positions[i3 + 0] = 0;
-                            positions[i3 + 1] = 3.5;
-                            positions[i3 + 2] = 0;
-                            this.velocities[i].set(
-                                (Math.random() - 0.5) * 1.5,
-                                Math.random() * 3 + 2,
-                                (Math.random() - 0.5) * 1.5
-                            );
-                        }
-                    }
-                    this.particles.geometry.attributes.position.needsUpdate = true;
-                }
-            };
-            updatableObjects.push(fountainSprayObject);
-        }
-        
-        function createCityWall(x, z, width, height, depth, rotationY) {
-            const scaledWidth = scaleValue(width);
-            const scaledDepth = scaleValue(depth);
-            const scaledX = scaleValue(x);
-            const scaledZ = scaleValue(z);
-            const wall = new THREE.Mesh(
-                new THREE.BoxGeometry(scaledWidth, height, scaledDepth),
-                stoneMaterial
-            );
-            wall.position.set(scaledX, height / 2, scaledZ);
-            wall.rotation.y = rotationY;
-            wall.castShadow = true;
-            wall.receiveShadow = true;
-            scene.add(wall);
-
-            const wallBody = new CANNON.Body({
-                mass: 0,
-                shape: new CANNON.Box(new CANNON.Vec3(scaledWidth / 2, height / 2, scaledDepth / 2)),
-                position: new CANNON.Vec3(scaledX, height / 2, scaledZ)
-            });
-            wallBody.quaternion.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rotationY);
-            world.addBody(wallBody);
-        }
-
-        function createCityFortifications() {
-            const wallSize = 80;
-            const wallHeight = 10;
-            const wallDepth = 4;
-
-            // Walls
-            createCityWall(-wallSize / 2 - 10, -wallSize, wallSize - 20, wallHeight, wallDepth, 0);
-            createCityWall(wallSize / 2 + 10, -wallSize, wallSize - 20, wallHeight, wallDepth, 0);
-            createCityWall(0, wallSize, wallSize * 2, wallHeight, wallDepth, 0);
-            createCityWall(wallSize, 0, wallSize * 2, wallHeight, wallDepth, Math.PI / 2);
-            createCityWall(-wallSize, 0, wallSize * 2, wallHeight, wallDepth, Math.PI / 2);
-
-            // Gatehouse
-            const towerWidth = 8;
-            const towerHeight = 15;
-            const gateGap = 10;
-
-            const tower1 = createEnhancedBuilding(-gateGap, -wallSize, towerWidth, towerWidth, towerHeight, stoneMaterial, { includeDetails: false });
-            scene.add(tower1);
-            const tower1Body = new CANNON.Body({ mass: 0, shape: new CANNON.Box(new CANNON.Vec3(scaleValue(towerWidth) / 2, towerHeight/2, scaleValue(towerWidth) / 2)) });
-            tower1Body.position.copy(tower1.position);
-            world.addBody(tower1Body);
-
-            const tower2 = createEnhancedBuilding(gateGap, -wallSize, towerWidth, towerWidth, towerHeight, stoneMaterial, { includeDetails: false });
-            scene.add(tower2);
-            const tower2Body = new CANNON.Body({ mass: 0, shape: new CANNON.Box(new CANNON.Vec3(scaleValue(towerWidth) / 2, towerHeight/2, scaleValue(towerWidth) / 2)) });
-            tower2Body.position.copy(tower2.position);
-            world.addBody(tower2Body);
-
-            const arch = new THREE.Mesh(new THREE.BoxGeometry(scaleValue(gateGap * 2), 4, scaleValue(towerWidth)), stoneMaterial);
-            setScaledPosition(arch, 0, towerHeight - 2, -wallSize);
-            scene.add(arch);
-            const archBody = new CANNON.Body({ mass: 0, shape: new CANNON.Box(new CANNON.Vec3(scaleValue(gateGap), 2, scaleValue(towerWidth) / 2)) });
-            archBody.position.copy(arch.position);
-            world.addBody(archBody);
-
-        }
-        
-        function createMarketStalls() {
-            const woodMaterial = createEnhancedMaterial(0x8B4513, 0.9, 0.1);
-            
-            function createMarketStall(x, z, color) {
-                const stallGroup = new THREE.Group();
-
-                // Posts
-                const postGeo = new THREE.CylinderGeometry(0.1 * CITY_SCALE, 0.1 * CITY_SCALE, 2, 8);
-                const postPositions = [
-                    {x: -1.4, z: -0.9}, {x: 1.4, z: -0.9},
-                    {x: -1.4, z: 0.9}, {x: 1.4, z: 0.9}
-                ];
-                postPositions.forEach(pos => {
-                    const post = new THREE.Mesh(postGeo, woodMaterial);
-                    const { x: postX, z: postZ } = scaleXZ(pos.x, pos.z);
-                    post.position.set(postX, 1, postZ);
-                    post.castShadow = true;
-                    stallGroup.add(post);
-                });
-
-                // Tabletop
-                const tableGeo = new THREE.BoxGeometry(scaleValue(3), 0.2, scaleValue(2));
-                const table = new THREE.Mesh(tableGeo, woodMaterial);
-                table.position.y = 1;
-                table.castShadow = true;
-                table.receiveShadow = true;
-                stallGroup.add(table);
-
-                // Canopy
-                const canopyMat = createEnhancedMaterial(color, 0.8, 0.1);
-                const canopyGeo = new THREE.PlaneGeometry(scaleValue(3.2), scaleValue(2.2));
-                const canopy = new THREE.Mesh(canopyGeo, canopyMat);
-                canopy.position.y = 2.1;
-                canopy.rotation.x = -Math.PI / 12;
-                canopy.castShadow = true;
-                stallGroup.add(canopy);
-
-                // Goods
-                for (let i = 0; i < 5; i++) {
-                    const potGeo = new THREE.CylinderGeometry((Math.random() * 0.2 + 0.1) * CITY_SCALE, (Math.random() * 0.2 + 0.1) * CITY_SCALE, Math.random() * 0.4 + 0.2, 8);
-                    const pot = new THREE.Mesh(potGeo, createEnhancedMaterial(0xCD853F, 0.8, 0.2));
-                    const randomXZ = scaleXZ(Math.random() * 2 - 1, Math.random() * 1.5 - 0.75);
-                    pot.position.set(randomXZ.x, 1.2 + pot.geometry.parameters.height / 2, randomXZ.z);
-                    pot.castShadow = true;
-                    stallGroup.add(pot);
-                }
-
-                setScaledPosition(stallGroup, x, 0, z);
-                scene.add(stallGroup);
-            }
-
-            createMarketStall(-10, 5, 0xc23b22);
-            createMarketStall(-15, 5, 0x006994);
-            createMarketStall(10, 5, 0x50c878);
-        }
-        
-        function createDemocracyMonuments() {
-             const pnyx = new THREE.Group();
-             for(let i=0; i<3; i++){
-                const step = new THREE.Mesh(
-                    new THREE.CylinderGeometry(scaleValue(15 - i*2), scaleValue(15 - i*2), 0.5, 64, 1, false, 0, Math.PI),
-                    stoneMaterial
-                );
-                step.position.y = (i * 0.5) + 0.25;
-                pnyx.add(step);
-             }
-             const bema = new THREE.Mesh(new THREE.BoxGeometry(scaleValue(2),0.5,scaleValue(2)), marbleMaterial);
-             bema.position.y = 1.75;
-             bema.position.z = scaleValue(-12);
-             pnyx.add(bema);
-             setScaledPosition(pnyx, -30, 0, 15);
-             pnyx.rotation.y = -Math.PI / 2;
-             scene.add(pnyx);
-
-             const bouleuterion = createEnhancedBuilding(30, 15, 10, 8, 7, marbleMaterial);
-             const portico = new THREE.Group();
-             for(let i=0; i<4; i++){
-                 const column = createEnhancedColumn(6);
-                 setScaledPosition(column, i * 2.5, 0, 0);
-                 portico.add(column);
-             }
-             portico.position.set(scaleValue(-3.75), -3.5, scaleValue(5));
-             bouleuterion.add(portico);
-             scene.add(bouleuterion);
-
-             const dikasteria = createEnhancedBuilding(0, -15, 8, 12, 6, marbleMaterial);
-             const colonnade = new THREE.Group();
-             for(let i=0; i<5; i++){
-                 const column = createEnhancedColumn(6);
-                 setScaledPosition(column, 0, 0, i * 2.5);
-                 colonnade.add(column);
-             }
-             colonnade.position.set(scaleValue(4.5), -3, scaleValue(-5));
-             dikasteria.add(colonnade);
-             scene.add(dikasteria);
-        }
-        
-        function createPavedRoads() {
-            const panathenaicWayMaterial = pavedRoadMaterial.clone();
-            if (pavedRoadMaterial.map) {
-                panathenaicWayMaterial.map = pavedRoadMaterial.map.clone();
-            }
-            const panathenaicWay = new THREE.Mesh(
-                new THREE.PlaneGeometry(scaleValue(8), scaleValue(120)),
-                panathenaicWayMaterial
-            );
-            panathenaicWay.rotation.x = -Math.PI / 2;
-            panathenaicWay.position.set(scaleValue(0), 0.01, scaleValue(-20));
-            if (panathenaicWayMaterial.map) {
-                panathenaicWayMaterial.map.repeat.set(2 * CITY_SCALE, 30 * CITY_SCALE);
-                panathenaicWayMaterial.map.needsUpdate = true;
-            }
-            panathenaicWay.receiveShadow = true;
-            scene.add(panathenaicWay);
-
-            const stoaWayMaterial = pavedRoadMaterial.clone();
-            if (pavedRoadMaterial.map) {
-                stoaWayMaterial.map = pavedRoadMaterial.map.clone();
-            }
-            const stoaWay = new THREE.Mesh(
-                new THREE.PlaneGeometry(scaleValue(60), scaleValue(6)),
-                stoaWayMaterial
-            );
-            stoaWay.rotation.x = -Math.PI / 2;
-            stoaWay.position.set(scaleValue(40), 0.01, scaleValue(8));
-            if (stoaWayMaterial.map) {
-                stoaWayMaterial.map.repeat.set(15 * CITY_SCALE, 2 * CITY_SCALE);
-                stoaWayMaterial.map.needsUpdate = true;
-            }
-            stoaWay.receiveShadow = true;
-            scene.add(stoaWay);
-        }
-
-        // --- NPC AND INTERACTIVE OBJECTS ---
-        
-        function createCitizenModel(tunicColor, type = 'citizen') {
-            const citizenGroup = new THREE.Group();
-            const skinMaterial = createEnhancedMaterial(0xad6452, 0.8, 0.1);
-            const tunicMaterial = createEnhancedMaterial(tunicColor, 0.9, 0.1);
-            const hairMaterial = createEnhancedMaterial(0x333333, 0.9, 0.1);
-
-            // Head
-            const head = new THREE.Mesh(new THREE.SphereGeometry(0.25, 16, 12), skinMaterial);
-            head.position.y = 1.6;
-            head.name = "head";
-            citizenGroup.add(head);
-            
-            // Nose
-            const noseGeo = new THREE.CylinderGeometry(0.02, 0.05, 0.1, 8);
-            const nose = new THREE.Mesh(noseGeo, skinMaterial);
-            nose.position.z = 0.25;
-            nose.position.y = -0.05;
-            head.add(nose);
-
-
-            // Simple Hair
-            const hair = new THREE.Mesh(new THREE.SphereGeometry(0.26, 16, 12, 0, Math.PI * 2, 0, Math.PI / 1.8), hairMaterial);
-            hair.position.y = 0.05;
-            head.add(hair);
-
-            // Eyes
-            const eyeMaterial = new THREE.MeshBasicMaterial({color: 0x111111});
-            const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 8), eyeMaterial);
-            eyeL.position.set(-0.1, 0.05, 0.23);
-            head.add(eyeL);
-            const eyeR = eyeL.clone();
-            eyeR.position.x = 0.1;
-            head.add(eyeR);
-
-            // Torso
-            const torsoGeo = new THREE.CylinderGeometry(0.3, 0.35, 1.0, 12);
-            const torso = new THREE.Mesh(torsoGeo, tunicMaterial);
-            torso.position.y = 1.0;
-            citizenGroup.add(torso);
-            
-            // Limbs
-            const limbGeo = new THREE.CylinderGeometry(0.08, 0.06, 0.55, 8);
-            limbGeo.translate(0, -0.275, 0); // Pivot at top
-
-            // Left Arm
-            const armL = new THREE.Mesh(limbGeo, skinMaterial);
-            armL.position.set(-0.35, 1.45, 0);
-            armL.name = "armL";
-            citizenGroup.add(armL);
-
-            // Right Arm
-            const armR = armL.clone();
-            armR.position.x = 0.35;
-            armR.name = "armR";
-            citizenGroup.add(armR);
-
-            // Legs
-            const legGeo = new THREE.CylinderGeometry(0.1, 0.08, 0.5, 8);
-            legGeo.translate(0, -0.25, 0);
-
-            const legL = new THREE.Mesh(legGeo, skinMaterial);
-            legL.position.set(-0.15, 0.5, 0);
-            legL.name = "legL";
-            citizenGroup.add(legL);
-
-            const legR = legL.clone();
-            legR.position.x = 0.15;
-            legR.name = "legR";
-            citizenGroup.add(legR);
-            
-            // Feet
-            const footGeo = new THREE.BoxGeometry(0.15, 0.1, 0.25);
-            const footL = new THREE.Mesh(footGeo, createEnhancedMaterial(0x5C4033, 0.9, 0.1));
-            footL.position.y = -0.25;
-            footL.position.z = 0.05;
-            legL.add(footL);
-
-            const footR = footL.clone();
-            legR.add(footR);
-
-            if(type === 'scribe'){
-                const scrollMat = createEnhancedMaterial(0xF5DEB3, 0.7, 0.1);
-                const scrollGeo = new THREE.CylinderGeometry(0.05, 0.05, 0.4, 8);
-                const scroll = new THREE.Mesh(scrollGeo, scrollMat);
-                scroll.rotation.z = Math.PI / 2;
-                scroll.position.y = -0.2;
-                armR.add(scroll);
-            }
-            
-            citizenGroup.traverse(child => {
-                if(child.isMesh) {
-                    child.castShadow = true;
-                    child.receiveShadow = true;
-                }
-            });
-
-            return citizenGroup;
-        }
-
-        function getRandomPointInZone(zone) {
-            const angle = Math.random() * Math.PI * 2;
-            const radius = Math.random() * zone.radius;
-            return new THREE.Vector3(
-                zone.center.x + Math.cos(angle) * radius,
-                zone.center.y,
-                zone.center.z + Math.sin(angle) * radius
-            );
-        }
-
-        function chooseNewCitizenDestination(npc) {
-            let target;
-            let attempts = 0;
-            do {
-                target = getRandomPointInZone(npc.zone);
-                attempts++;
-            } while (target.distanceToSquared(npc.model.position) < 4 * CITY_SCALE * CITY_SCALE && attempts < 6);
-            target.y = npc.baseY;
-            npc.destination = target;
-        }
-
-        function createCitizenNPCs() {
-            const tunicPalette = [
-                0x8b5a2b,
-                0x6f4d3a,
-                0x3f6b4c,
-                0x7f8fa6,
-                0x9c755f,
-                0x4d5c8b
-            ];
-
-            citizenZones.forEach(zone => {
-                for (let i = 0; i < zone.count; i++) {
-                    const color = tunicPalette[Math.floor(Math.random() * tunicPalette.length)];
-                    const model = createCitizenModel(color);
-                    const spawnPosition = getRandomPointInZone(zone);
-
-                    model.position.copy(spawnPosition);
-                    model.rotation.y = Math.random() * Math.PI * 2;
-
-                    const npc = {
-                        model,
-                        zone,
-                        baseY: spawnPosition.y,
-                        speed: Math.random() * 0.6 + 0.8,
-                        state: Math.random() < 0.6 ? 'walking' : 'idle',
-                        walkTimer: 0,
-                        idleTimer: 0,
-                        walkCycle: Math.random() * Math.PI * 2,
-                        animationOffset: Math.random() * Math.PI * 2,
-                        destination: null,
-                        limbs: {
-                            armL: model.getObjectByName('armL'),
-                            armR: model.getObjectByName('armR'),
-                            legL: model.getObjectByName('legL'),
-                            legR: model.getObjectByName('legR')
-                        }
-                    };
-
-                    chooseNewCitizenDestination(npc);
-                    if (npc.state === 'walking') {
-                        npc.walkTimer = Math.random() * 5 + 3;
-                    } else {
-                        npc.idleTimer = Math.random() * 3 + 2;
-                    }
-
-                    citizens.push(npc);
-                    scene.add(model);
-                }
-            });
-        }
-
-        function createChickenModel() {
-            const chicken = new THREE.Group();
-            const bodyMat = createEnhancedMaterial(0xffffff, 0.8, 0.1);
-            const beakMat = createEnhancedMaterial(0xffa500, 0.8, 0.1);
-            const wattleMat = createEnhancedMaterial(0xff0000, 0.8, 0.1);
-
-            const body = new THREE.Mesh(new THREE.SphereGeometry(0.3, 8, 6), bodyMat);
-            body.scale.y = 0.8;
-            chicken.add(body);
-
-            const head = new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 6), bodyMat);
-            head.position.set(0, 0.2, 0.25);
-            chicken.add(head);
-
-            const beak = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.15, 4), beakMat);
-            beak.position.z = 0.15;
-            beak.rotation.x = Math.PI / 2;
-            head.add(beak);
-            
-            const wattle = new THREE.Mesh(new THREE.SphereGeometry(0.04, 6, 4), wattleMat);
-            wattle.scale.y = 1.5;
-            wattle.position.set(0, -0.05, 0.1);
-            head.add(wattle);
-
-            chicken.position.y = 0.3;
-            chicken.traverse(child => { if(child.isMesh) child.castShadow = true; });
-            return chicken;
-        }
-        
-        function createInteractables() {
-            // Player
-            player = {};
-            
-            // Player Physics Body
-            const playerShape = new CANNON.Cylinder(0.5, 0.5, 1.8, 8);
-            player.body = new CANNON.Body({ mass: 70, shape: playerShape, fixedRotation: true });
-            player.body.position.set(scaleValue(0), 0.9, scaleValue(30));
-            player.body.angularDamping = 0.9;
-            world.addBody(player.body);
-            
-            // Load Animated Player Model
-            const loader = new THREE.GLTFLoader();
-            loader.load('https://models.readyplayer.me/68cb1b7024a928560bd57842.glb', (gltf) => {
-                player.model = gltf.scene;
-                player.model.scale.set(1.0, 1.0, 1.0);
-                scene.add(player.model);
-                player.model.traverse(function (object) {
-                    if (object.isMesh) {
-                        object.castShadow = true;
-                        if (object.geometry && !object.geometry.boundingBox) {
-                            object.geometry.computeBoundingBox();
-                        }
-                    }
-                });
-
-                player.model.updateMatrixWorld(true);
-                const bbox = new THREE.Box3().setFromObject(gltf.scene);
-                player.modelOffsetY = -((player.body.shapes?.[0]?.height ?? 1.8) / 2) - bbox.min.y;
-                player.model.position.copy(player.body.position);
-                player.model.position.y += player.modelOffsetY ?? 0;
-
-                mixer = new THREE.AnimationMixer(player.model);
-                player.animations = {};
-                gltf.animations.forEach((clip) => {
-                    player.animations[clip.name.toLowerCase()] = mixer.clipAction(clip);
-                });
-                
-                let idleAnim = player.animations['idle'] || Object.values(player.animations)[0];
-                if (idleAnim) {
-                    player.action = 'idle';
-                    idleAnim.play();
-                } else {
-                     console.warn("No animations found in the model.");
-                }
-
-            });
-
-
-            // Scribes
-            const scribeModel1 = createCitizenModel(0x654321, 'scribe');
-            const pnyxScribe = { model: scribeModel1, promptElement: document.getElementById('pnyx-scribe-prompt'), name: "Pnyx Scribe", position: scaleLocation({ x: -30, z: 10 }), isPlayerNear: false, radius: scaleValue(5) };
-            pnyxScribe.model.position.copy(pnyxScribe.position);
-            interactables.push(pnyxScribe);
-            scene.add(pnyxScribe.model);
-
-            const scribeModel2 = createCitizenModel(0x654321, 'scribe');
-            const bouleuterionScribe = { model: scribeModel2, promptElement: document.getElementById('bouleuterion-scribe-prompt'), name: "Bouleuterion Scribe", position: scaleLocation({ x: 30, z: 10 }), isPlayerNear: false, radius: scaleValue(5) };
-            bouleuterionScribe.model.position.copy(bouleuterionScribe.position);
-            interactables.push(bouleuterionScribe);
-            scene.add(bouleuterionScribe.model);
-            
-            const scribeModel3 = createCitizenModel(0x654321, 'scribe');
-            const dikasteriaScribe = { model: scribeModel3, promptElement: document.getElementById('dikasteria-scribe-prompt'), name: "Dikasteria Scribe", position: scaleLocation({ x: 0, z: -20 }), isPlayerNear: false, radius: scaleValue(5) };
-            dikasteriaScribe.model.position.copy(dikasteriaScribe.position);
-            interactables.push(dikasteriaScribe);
-            scene.add(dikasteriaScribe.model);
-
-            // Citizens
-            createCitizenNPCs();
-
-            // Chickens
-            for(let i=0; i<10; i++) {
-                const model = createChickenModel();
-                const spawnPosition = getRandomWorldVector3(0, CHICKEN_WORLD_PADDING);
-                const chicken = {
-                    model: model,
-                    speed: Math.random() * 0.8 + 0.2,
-                    destination: getRandomWorldVector3(0, CHICKEN_WORLD_PADDING),
-                    state: 'pecking',
-                    timer: Math.random() * 5,
-                    sound: new Tone.MembraneSynth({
-                        pitchDecay: 0.01,
-                        octaves: 6,
-                        envelope: { attack: 0.001, decay: 0.2, sustain: 0 }
-                    }),
-                    panner: new Tone.Panner3D().toDestination()
-                };
-                chicken.sound.connect(chicken.panner);
-                chicken.model.position.copy(spawnPosition);
-                chickens.push(chicken);
-                scene.add(chicken.model);
-            }
-        }
-        
-        function createInteractiveObjects() {
-            for (let i = 0; i < 10; i++) {
-                const radius = Math.random() * 0.3 + 0.2;
-                const height = Math.random() * 0.8 + 0.5;
-                const mesh = new THREE.Mesh(
-                    new THREE.CylinderGeometry(radius * 0.7, radius, height, 8),
-                    createEnhancedMaterial(0xCD853F, 0.9, 0.1)
-                );
-                mesh.castShadow = true;
-                mesh.receiveShadow = true;
-                
-                const { x: barrelX, z: barrelZ } = getRandomWorldXZ(BARREL_WORLD_PADDING);
-                const body = new CANNON.Body({
-                    mass: 2,
-                    shape: new CANNON.Cylinder(radius, radius, height, 8),
-                    position: new CANNON.Vec3(barrelX, 5, barrelZ)
-                });
-
-                world.addBody(body);
-                mesh.position.set(barrelX, 5, barrelZ);
-                scene.add(mesh);
-                physicsObjects.push({ mesh, body });
-            }
-        }
-
-        // --- GAME LOGIC & ANIMATION ---
-        
-        const locations = [
-            { name: "The Parthenon", position: scaleLocation({ x: 0, y: 10, z: -50 }), radius: scaleValue(30), title: "🏛️ The Parthenon" },
-            { name: "Stoa of Attalos", position: scaleLocation({ x: 40, y: 4, z: -20 }), radius: scaleValue(35), title: "🏛️ Stoa of Attalos" },
-            { name: "Residential Quarter", position: scaleLocation({ x: -50, y: 3, z: 5 }), radius: scaleValue(20), title: "🏡 Residential Quarter" },
-            { name: "Olive Grove", position: scaleLocation({ x: 35, y: 2, z: 25 }), radius: scaleValue(25), title: "🌳 Sacred Olive Grove" }
-        ];
-
-        function updateProximityInteractions() {
-            if (!player || !player.body) return;
-            const currentLocationDiv = document.getElementById('current-location');
-            if (!currentLocationDiv) return;
-
-            // Location Info
-            let playerInLocation = false;
-            
-            for (const loc of locations) {
-                if (player.body.position.distanceTo(loc.position) < loc.radius) {
-                    playerInLocation = true;
-                     if (currentLocationDiv.innerText !== loc.title) {
-                        currentLocationDiv.innerHTML = `<span class="location-badge golden-text pulse">${loc.title}</span>`;
-                    }
-                    break;
-                }
-            }
-            if (!playerInLocation) {
-                if (currentLocationDiv.innerText !== '🚶 Exploring the Outskirts') {
-                    currentLocationDiv.innerHTML = `<span class="location-badge golden-text">🚶 Exploring the Outskirts</span>`;
-                }
-            }
-            
-            // Interactable Objects
-            interactables.forEach(obj => {
-                if(obj.promptElement && obj.position && obj.radius) {
-                    if (player.body.position.distanceTo(obj.position) < obj.radius) {
-                        if (!obj.isPlayerNear) {
-                            obj.isPlayerNear = true;
-                            obj.promptElement.classList.add('show');
-                        }
-                    } else {
-                        if (obj.isPlayerNear) {
-                            obj.isPlayerNear = false;
-                            obj.promptElement.classList.remove('show');
-                        }
-                    }
-                }
-            });
-        }
-
-        function updateEnvironment() {
-            const timeInfo = document.getElementById('current-time');
-            if(!timeInfo) return;
-            timeInfo.textContent = timeNames[currentTimeOfDay];
-
-            let directionalColor, directionalIntensity, ambientIntensity, hemiColorTop, hemiColorBottom, fogColor, fogDensity, skyboxMat;
-            let sunPos = new THREE.Vector3();
-
-            switch (currentTimeOfDay) {
-                case 0: // Dawn
-                    directionalColor = 0xffd8b1; directionalIntensity = 0.7; ambientIntensity = 0.2;
-                    hemiColorTop = 0xffa500; hemiColorBottom = 0x8B4513;
-                    fogColor = 0x877d8f; fogDensity = 0.003;
-                    sunPos.set(scaleValue(100), 20, scaleValue(50));
-                    skyboxMat = skyboxMaterials.sunset;
-                    break;
-                case 1: // Noon
-                    directionalColor = 0xffffff; directionalIntensity = 1.0; ambientIntensity = 0.4;
-                    hemiColorTop = 0x87CEEB; hemiColorBottom = 0xC2B280;
-                    fogColor = 0xc2d1e5; fogDensity = 0.001;
-                    sunPos.set(scaleValue(0), 100, scaleValue(0));
-                    skyboxMat = skyboxMaterials.day;
-                    break;
-                case 2: // Sunset
-                    directionalColor = 0xff4500; directionalIntensity = 0.8; ambientIntensity = 0.3;
-                    hemiColorTop = 0xff8c00; hemiColorBottom = 0x5a3930;
-                    fogColor = 0x5e3c35; fogDensity = 0.004;
-                    sunPos.set(scaleValue(-100), 20, scaleValue(-50));
-                    skyboxMat = skyboxMaterials.sunset;
-                    break;
-                case 3: // Night
-                    directionalColor = 0x142850; directionalIntensity = 0.3; ambientIntensity = 0.05;
-                    hemiColorTop = 0x000033; hemiColorBottom = 0x000000;
-                    fogColor = 0x0a0a1a; fogDensity = 0.006;
-                    sunPos.set(scaleValue(0), 100, scaleValue(100)); // Moon
-                    skyboxMat = skyboxMaterials.night;
-                    break;
-                case 4: // Blue Hour
-                    directionalColor = 0x6e7c8f; directionalIntensity = 0.5; ambientIntensity = 0.1;
-                    hemiColorTop = 0x4a5a70; hemiColorBottom = 0x2e3540;
-                    fogColor = 0x3a404d; fogDensity = 0.005;
-                    sunPos.set(scaleValue(-100), 10, scaleValue(50));
-                    skyboxMat = skyboxMaterials.night;
-                    break;
-            }
-
-            if (skybox && skyboxMat) skybox.material = skyboxMat;
-
-            directionalLight.color.setHex(directionalColor);
-            directionalLight.intensity = directionalIntensity;
-            sunMoon.position.copy(sunPos);
-            sunMoon.material.color.setHex(currentTimeOfDay !== 3 ? 0xFFFF00 : 0xFFFFFF);
-            sunMoon.material.emissive.setHex(currentTimeOfDay !== 3 ? 0xFFFF00 : 0xE0E0E0);
-            
-            ambientLight.intensity = ambientIntensity;
-            hemisphereLight.color.setHex(hemiColorTop);
-            hemisphereLight.groundColor.setHex(hemiColorBottom);
-            
-            if (scene.fog) {
-                scene.fog.color.setHex(fogColor);
-                scene.fog.density = fogDensity;
-            }
-            
-            pointLights.forEach(light => light.visible = currentTimeOfDay === 3 || currentTimeOfDay === 4);
-        }
-        
-        function updateNPCs(delta) {
-            const time = clock.getElapsedTime();
-
-            citizens.forEach(npc => {
-                if (!npc.destination) {
-                    chooseNewCitizenDestination(npc);
-                }
-
-                if (npc.state === 'walking') {
-                    npc.walkTimer -= delta;
-                    const toTarget = npc.destination.clone().sub(npc.model.position);
-                    const distance = toTarget.length();
-
-                    if (distance < 0.3 || npc.walkTimer <= 0) {
-                        npc.state = 'idle';
-                        npc.idleTimer = Math.random() * 3 + 2;
-                        npc.model.position.y = npc.baseY;
-                    } else {
-                        toTarget.normalize();
-                        npc.model.position.addScaledVector(toTarget, npc.speed * delta);
-                        npc.model.position.y = npc.baseY;
-
-                        const targetAngle = Math.atan2(toTarget.x, toTarget.z);
-                        npc.model.rotation.y = THREE.MathUtils.lerp(npc.model.rotation.y, targetAngle, 0.15);
-
-                        npc.walkCycle += delta * npc.speed * 4;
-                        const swing = Math.sin(npc.walkCycle);
-                        if (npc.limbs.armL) npc.limbs.armL.rotation.x = swing * 0.5;
-                        if (npc.limbs.armR) npc.limbs.armR.rotation.x = -swing * 0.5;
-                        if (npc.limbs.legL) npc.limbs.legL.rotation.x = -swing * 0.6;
-                        if (npc.limbs.legR) npc.limbs.legR.rotation.x = swing * 0.6;
-                    }
-                } else {
-                    npc.idleTimer -= delta;
-                    const relaxFactor = Math.min(1, delta * 5);
-                    if (npc.limbs.armL) npc.limbs.armL.rotation.x = THREE.MathUtils.lerp(npc.limbs.armL.rotation.x, 0, relaxFactor);
-                    if (npc.limbs.armR) npc.limbs.armR.rotation.x = THREE.MathUtils.lerp(npc.limbs.armR.rotation.x, 0, relaxFactor);
-                    if (npc.limbs.legL) npc.limbs.legL.rotation.x = THREE.MathUtils.lerp(npc.limbs.legL.rotation.x, 0, relaxFactor);
-                    if (npc.limbs.legR) npc.limbs.legR.rotation.x = THREE.MathUtils.lerp(npc.limbs.legR.rotation.x, 0, relaxFactor);
-
-                    npc.model.position.y = npc.baseY + Math.sin(time * 1.5 + npc.animationOffset) * 0.02;
-
-                    if (npc.idleTimer <= 0) {
-                        npc.state = 'walking';
-                        chooseNewCitizenDestination(npc);
-                        npc.walkTimer = Math.random() * 5 + 3;
-                        npc.model.position.y = npc.baseY;
-                    }
-                }
-            });
-
-            chickens.forEach(chicken => {
-                chicken.timer -= delta;
-                if (chicken.timer <= 0) {
-                    if (chicken.state === 'pecking') {
-                        chicken.state = 'walking';
-                        chicken.destination.copy(getRandomWorldVector3(0, CHICKEN_WORLD_PADDING));
-                        chicken.timer = Math.random() * 8 + 4; // walk for 4-12 seconds
-                    } else {
-                        chicken.state = 'pecking';
-                        chicken.timer = Math.random() * 5 + 2; // peck for 2-7 seconds
-                    }
-                }
-
-                if (chicken.state === 'walking') {
-                    const dir = chicken.destination.clone().sub(chicken.model.position).normalize();
-                    chicken.model.position.add(dir.multiplyScalar(chicken.speed * delta));
-                    chicken.model.lookAt(chicken.destination);
-                } else { // pecking
-                    chicken.model.children[1].rotation.x = Math.sin(performance.now() * 0.01) * 0.5 + 0.5;
-                    if (canChickenCluck && Math.random() < 0.05) {
-                        const now = Tone.now();
-                        if (now > lastCluckTime) {
-                            chicken.sound.triggerAttackRelease("C5", "8n", now);
-                            lastCluckTime = now + 0.1;
-                        }
-                    }
-                }
-            });
-        }
-        
-        function updateLabels() {
-            interactables.forEach(npc => {
-                const head = npc.model.getObjectByName("head") || npc.model;
-                if (!head) return;
-
-                const vector = new THREE.Vector3();
-                head.getWorldPosition(vector);
-                
-                let yOffset = (npc.name === "Pnyx Scribe" || npc.name === "Bouleuterion Scribe" || npc.name === "Dikasteria Scribe") ? 2.0 : 0.5;
-                 if (npc.model.isGroup && npc.model.children[0].geometry.type === "CylinderGeometry") { // Is a scroll
-                    yOffset = 0.8;
-                }
-                vector.y += yOffset; 
-                
-                vector.project(camera);
-
-                const x = (vector.x * .5 + .5) * renderer.domElement.clientWidth;
-                const y = (vector.y * -.5 + .5) * renderer.domElement.clientHeight;
-                
-                if (npc.promptElement) {
-                    npc.promptElement.style.left = `${x}px`;
-                    npc.promptElement.style.top = `${y - 30}px`;
-                }
-            });
-        }
-        
-        function updateSoundPositions(delta) {
-            // Update listener to match camera
-            const forward = new THREE.Vector3();
-            camera.getWorldDirection(forward);
-            Tone.Listener.set({
-                positionX: camera.position.x,
-                positionY: camera.position.y,
-                positionZ: camera.position.z,
-                forwardX: forward.x,
-                forwardY: forward.y,
-                forwardZ: forward.z,
-                upX: camera.up.x,
-                upY: camera.up.y,
-                upZ: camera.up.z
-            });
-
-            // Update sound source positions
-            chickens.forEach(chicken => {
-                chicken.panner.positionX.value = chicken.model.position.x;
-                chicken.panner.positionY.value = chicken.model.position.y;
-                chicken.panner.positionZ.value = chicken.model.position.z;
-            });
-            
-            // Randomly trigger blacksmith sound
-            if (Math.random() < 0.003) {
-                blacksmithSound.triggerAttackRelease("C3", "4n", Tone.now(), 0.8);
-            }
-        }
-
-        function animate() {
-            requestAnimationFrame(animate);
-            canChickenCluck = true;
-
-            const delta = clock.getDelta();
-            if(mixer) mixer.update(delta);
-            
-            updateFPS();
-            if (player && player.body) {
-                updateControls(delta);
-            }
-            updateProximityInteractions();
-            updateLabels();
-            if (audioStarted) {
-                updateSoundPositions(delta);
-            }
-            
-            world.step(1 / 60, delta, 3);
-            physicsObjects.forEach(obj => {
-                obj.mesh.position.copy(obj.body.position);
-                obj.mesh.quaternion.copy(obj.body.quaternion);
-            });
-            
-            if (player && player.body && player.model) {
-                player.model.position.copy(player.body.position);
-                if (player.modelOffsetY !== undefined) {
-                    player.model.position.y += player.modelOffsetY;
-                }
-                player.model.quaternion.copy(player.body.quaternion);
-            }
-            
-            updatableObjects.forEach(obj => obj.tick(delta));
-
-            updateNPCs(delta);
-            updateCamera();
-            updateMiniMap();
-            
-            composer.render();
-        }
-
-        // --- CONTROLS ---
-        function createAmbientSounds() {
-            // Crowd Murmur
-            crowdChatter = new Tone.Noise("pink").start();
-            const crowdFilter = new Tone.AutoFilter({
-                frequency: "8m",
-                baseFrequency: 200,
-                octaves: 4
-            }).toDestination();
-            const crowdVolume = new Tone.Volume(-25).connect(crowdFilter);
-            crowdChatter.connect(crowdVolume);
-
-            // Blacksmith
-            const blacksmithPanner = new Tone.Panner3D({
-                positionX: blacksmithPosition.x,
-                positionY: blacksmithPosition.y,
-                positionZ: blacksmithPosition.z,
-            }).toDestination();
-            
-            blacksmithSound = new Tone.MetalSynth({
-                frequency: 150,
-                envelope: { attack: 0.001, decay: 0.4, release: 0.2 },
-                harmonicity: 8.1,
-                modulationIndex: 20,
-                resonance: 4000,
-                octaves: 1.5
-            }).connect(blacksmithPanner);
-        }
-
-        function addEventListeners() {
-            document.getElementById('start-button').addEventListener('click', async () => {
-                document.getElementById('start-overlay').classList.add('fade-out');
-                 if (!audioStarted) {
-                    await Tone.start();
-                    console.log("Audio context started.");
-                    createAmbientSounds();
-                    audioStarted = true;
-                }
-            });
-
-            window.addEventListener('resize', () => {
-                camera.aspect = window.innerWidth / window.innerHeight;
-                camera.updateProjectionMatrix();
-                renderer.setSize(window.innerWidth, window.innerHeight);
-                composer.setSize(window.innerWidth, window.innerHeight);
-            });
-
-            document.addEventListener('keydown', (e) => {
-                if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
-                    e.preventDefault();
-                }
-                controls[e.code] = true;
-            });
-            document.addEventListener('keyup', (e) => {
-                controls[e.code] = false;
-                if(e.code === 'KeyE') {
-                    for(const obj of interactables) {
-                        if(obj.isPlayerNear && obj.promptElement) {
-                            obj.promptElement.querySelector('button').click();
-                            break;
-                        }
-                    }
-                }
-            });
-
-            document.addEventListener('keydown', (e) => {
-                if (e.repeat) return;
-                if(e.code === 'KeyT') {
-                    currentTimeOfDay = (currentTimeOfDay + 1) % timeNames.length;
-                    updateEnvironment();
-                }
-                if(e.code === 'KeyF') {
-                    if (scene.fog) {
-                        scene.fog = null;
-                    } else {
-                        scene.fog = new THREE.FogExp2(0x000000, 0.002); // Re-create fog
-                        updateEnvironment(); // and update to match time of day
-                    }
-                }
-                if(e.code === 'KeyX') {
-                    isFlying = !isFlying;
-                    if (player && player.body) {
-                        player.body.velocity.set(0, 0, 0);
-                        if (player.body.force) {
-                            player.body.force.set(0, 0, 0);
-                        }
-                    }
-                }
-                if(e.code === 'KeyL') {
-                    enhancedLighting = !enhancedLighting;
-                    // Adjust base intensities if needed
-                    updateEnvironment();
-                }
-                if(e.code === 'KeyM') {
-                    soundEnabled = !soundEnabled;
-                    Tone.getDestination().mute = !soundEnabled;
-                }
-                if(e.code === 'KeyP') {
-                    document.getElementById('fps-counter').classList.toggle('show');
-                }
-            });
-            
-            document.getElementById('close-info-scroll').addEventListener('click', () => {
-                document.getElementById('info-scroll-overlay').classList.remove('show');
-            });
-            
-            document.querySelectorAll('.prompt .gemini-button').forEach(button => {
-                button.addEventListener('click', (e) => {
-                    const infoType = e.target.dataset.info;
-                    if (infoType) {
-                        showInfoScroll(infoType);
-                    }
-                });
-            });
-
-             document.getElementById('toggle-hud').addEventListener('click', () => {
-                const hud = document.getElementById('hud');
-                const button = document.getElementById('toggle-hud');
-                hud.classList.toggle('hidden');
-                if (hud.classList.contains('hidden')) {
-                    button.textContent = 'Show UI';
-                } else {
-                    button.textContent = 'Hide UI';
-                }
-            });
-        }
-        
-        function updateControls(delta) {
-            if (!player || !player.body) return;
-            
-            // Handle rotation
-            if (controls.KeyA) {
-                player.body.angularVelocity.y = playerRotationSpeed;
-            } else if (controls.KeyD) {
-                player.body.angularVelocity.y = -playerRotationSpeed;
-            } else {
-                 player.body.angularVelocity.y = 0;
-            }
-            
-            // Handle movement
-            const moveDirection = new THREE.Vector3();
-            if (controls.KeyW) moveDirection.z -= 1;
-            if (controls.KeyS) moveDirection.z += 1;
-
-            const hasHorizontalInput = moveDirection.lengthSq() > 0;
-            const isMoving = controls.KeyW || controls.KeyS;
-
-            if (player.animations) {
-                let walkAnimName = Object.keys(player.animations).find(name => name.includes('walk'));
-                let idleAnimName = Object.keys(player.animations).find(name => name.includes('idle'));
-                
-                if(!walkAnimName) walkAnimName = player.action;
-                if(!idleAnimName) idleAnimName = player.action;
-
-                const actionToPlay = isMoving ? walkAnimName : idleAnimName;
-                if(player.action !== actionToPlay) {
-                    if (player.animations[player.action]) {
-                        const currentAction = player.animations[player.action];
-                        currentAction.fadeOut(0.2);
-                    }
-                    if (player.animations[actionToPlay]) {
-                        const nextAction = player.animations[actionToPlay];
-                        nextAction.reset().fadeIn(0.2).play();
-                        player.action = actionToPlay;
-                    }
-                }
-            }
-
-
-            const playerQuaternion = new THREE.Quaternion(
-                player.body.quaternion.x,
-                player.body.quaternion.y,
-                player.body.quaternion.z,
-                player.body.quaternion.w
-            );
-
-            if (hasHorizontalInput) {
-                moveDirection.normalize();
-                moveDirection.applyQuaternion(playerQuaternion);
-            } else {
-                moveDirection.set(0, 0, 0);
-            }
-
-            if (isFlying) {
-                if (player.body.force) {
-                    player.body.force.y += -world.gravity.y * player.body.mass;
-                }
-
-                let verticalVelocity = 0;
-                if (controls.Space) verticalVelocity += flightVerticalSpeed;
-                if (controls.ShiftLeft || controls.ShiftRight) verticalVelocity -= flightVerticalSpeed;
-
-                const flightVelocity = new CANNON.Vec3(
-                    moveDirection.x * flightSpeed,
-                    verticalVelocity,
-                    moveDirection.z * flightSpeed
-                );
-
-                if (player.body.velocity) {
-                    player.body.velocity.copy(flightVelocity);
-                }
-            } else {
-                const currentVelocity = new CANNON.Vec3(
-                    moveDirection.x * playerSpeed,
-                    player.body.velocity.y, // Preserve vertical velocity
-                    moveDirection.z * playerSpeed
-                );
-
-                if (player.body.velocity) {
-                    player.body.velocity.copy(currentVelocity);
-                }
-
-                if (!controls.KeyW && !controls.KeyS) {
-                    player.body.velocity.x = 0;
-                    player.body.velocity.z = 0;
-                }
-            }
-
-            // Camera orbit
-            if (controls.ArrowUp) cameraOffset.y += 2 * delta;
-            if (controls.ArrowDown) cameraOffset.y -= 2 * delta;
-            if (controls.ArrowLeft) cameraOffset.applyAxisAngle(new THREE.Vector3(0,1,0), 2 * delta);
-            if (controls.ArrowRight) cameraOffset.applyAxisAngle(new THREE.Vector3(0,1,0), -2 * delta);
-            
-            cameraOffset.y = Math.max(1, Math.min(5, cameraOffset.y)); // Clamp camera height
-            
-        }
-        
-        function updateCamera() {
-            if (!player || !player.body || !player.model) return;
-
-            const playerPosition = new THREE.Vector3(
-                player.body.position.x,
-                player.body.position.y,
-                player.body.position.z
-            );
-            
-            const cameraTargetPosition = playerPosition.clone().add(cameraOffset);
-
-            camera.position.lerp(cameraTargetPosition, 0.2);
-
-            const lookAtPosition = playerPosition.clone();
-            lookAtPosition.y += 1.5;
-
-            camera.lookAt(lookAtPosition);
-        }
-
-        function createMapIcons() {
-            const mapContainer = document.getElementById('mini-map-container');
-            const allLocations = [
-                ...locations.map(l => ({...l, type: 'cultural'})),
-                { name: 'Pnyx', position: scaleLocation({ x: -30, z: 15 }), type: 'democracy' },
-                { name: 'Dikasteria', position: scaleLocation({ x: 0, z: -15 }), type: 'democracy' },
-                { name: 'Bouleuterion', position: scaleLocation({ x: 30, z: 15 }), type: 'democracy' }
-            ];
-
-            allLocations.forEach(loc => {
-                const icon = document.createElement('div');
-                icon.className = `map-icon map-icon-${loc.type}`;
-                
-                const mapWidth = 200;
-                const mapHeight = 200;
-                const worldWidth = mapBounds.xMax - mapBounds.xMin;
-                const worldDepth = mapBounds.zMax - mapBounds.zMin;
-
-                let percentX = (loc.position.x - mapBounds.xMin) / worldWidth;
-                let percentZ = (loc.position.z - mapBounds.zMin) / worldDepth;
-                percentX = THREE.MathUtils.clamp(percentX, 0, 1);
-                percentZ = THREE.MathUtils.clamp(percentZ, 0, 1);
-
-                icon.style.left = `${percentX * mapWidth}px`;
-                icon.style.top = `${percentZ * mapHeight}px`;
-
-                mapContainer.appendChild(icon);
-            });
-        }
-        
-        function updateMiniMap() {
-            if (!player || !player.body || !player.model) return;
-
-            const playerIcon = document.getElementById('map-player');
-            const mapWidth = 200;
-            const mapHeight = 200;
-            const worldWidth = mapBounds.xMax - mapBounds.xMin;
-            const worldDepth = mapBounds.zMax - mapBounds.zMin;
-
-            let percentX = (player.body.position.x - mapBounds.xMin) / worldWidth;
-            let percentZ = (player.body.position.z - mapBounds.zMin) / worldDepth;
-            percentX = THREE.MathUtils.clamp(percentX, 0, 1);
-            percentZ = THREE.MathUtils.clamp(percentZ, 0, 1);
-
-            let mapX = percentX * mapWidth;
-            let mapY = percentZ * mapHeight;
-
-            playerIcon.style.left = `${mapX}px`;
-            playerIcon.style.top = `${mapY}px`;
-            
-            const euler = new THREE.Euler().setFromQuaternion(player.body.quaternion, 'YXZ');
-            playerIcon.style.transform = `translate(-50%, -50%) rotate(${-(euler.y)}rad)`;
-        }
-
-        function showInfoScroll(type) {
-            const info = infoData[type];
-            if (info) {
-                document.getElementById('info-title').textContent = info.title;
-                document.getElementById('info-text').innerHTML = info.text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-                document.getElementById('info-scroll-overlay').classList.add('show');
-            }
-        }
-        
-        // --- START ---
-        window.onload = function() {
-            init();
-        };
-
-    </script>
-
-    <script type="module">
-        import { loadGeoJson } from './src/geo/geoLoader.js';
-        import { LocalEquirectangularProjection } from './src/geo/projection.js';
-
-        const origin = { lat: 37.9715379, lon: 23.7266531 }; // Parthenon
-        const rotationDegrees = 0;
-        const projector = new LocalEquirectangularProjection({ origin, rotationDegrees });
-
-        loadGeoJson()
-            .then((geoJson) => {
-                if (!geoJson || !Array.isArray(geoJson.features)) {
-                    console.warn('GeoJSON file did not contain any features to transform.');
-                    return;
-                }
-
-                console.group('Athens GeoJSON → local meters');
-                geoJson.features
-                    .filter((feature) => feature?.geometry?.type === 'Point')
-                    .forEach((feature) => {
-                        const [lon, lat] = feature.geometry.coordinates;
-                        const { x, y } = projector.project({ lat, lon });
-                        const name = feature.properties?.title || feature.properties?.name || 'Unnamed feature';
-                        console.log(name, { x, y, lat, lon });
-                    });
-                console.groupEnd();
-            })
-            .catch((error) => {
-                console.error('Failed to load Athens GeoJSON data', error);
-            });
-
-        window.AthensGeo = {
-            projector,
-            setRotation: (degrees) => projector.setRotation(degrees)
-        };
-       
-  // if your file lives at data/athens_places.geojson in the repo, this keeps it safe on GitHub Pages:
-</script>
-
-<script type="module">
-  import { createLandmarkOverlay } from './src/map/landmarks.js';
-
-  const lmCanvas = document.getElementById('landmarks-canvas');
-  if (lmCanvas) {
-    createLandmarkOverlay(lmCanvas, {
-      geoJsonUrl: './data/athens_places.geojson',
-      markerFill: '#FFD700',
-      markerStroke: '#704c00',
-      fitPadding: 48
-    }).catch(err => console.error('Landmark overlay failed to initialize:', err));
-  } else {
-    console.warn('landmarks-canvas not found; overlay disabled.');
-  }
-</script>
-
+    <script type="module" src="./public/game.js"></script>
 </body>
 </html>
-
