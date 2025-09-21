@@ -8,11 +8,23 @@ class TileLoader {
     this.cache = new Map();
     this.loading = new Map(); // Track promises to avoid duplicate loads
     this.basePaths = [
+      // existing locations
       'assets/tiles/',
       'public/assets/tiles/',
       './assets/tiles/',
-      './public/assets/tiles/'
+      './public/assets/tiles/',
+      // pixelcrawler locations (new)
+      'public/assets/pixelcrawler/',
+      'public/assets/pixelcrawler/tiles/',
+      'public/assets/pixelcrawler/props/',
+      './public/assets/pixelcrawler/',
+      './public/assets/pixelcrawler/tiles/',
+      './public/assets/pixelcrawler/props/'
     ];
+    // optional: filename aliasing (tileName -> fileName without .png)
+    this.alias = {
+      // example: 'castle_wall': 'castle/wall_stone_01'
+    };
   }
 
   async loadTile(tileName) {
@@ -45,7 +57,8 @@ class TileLoader {
   }
 
   async _loadTileFromPaths(tileName) {
-    const filename = `${tileName}.png`;
+    const stem = this.alias[tileName] || tileName;
+    const filename = `${stem}.png`;
     
     for (const basePath of this.basePaths) {
       const url = `${basePath}${filename}`;
