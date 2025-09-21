@@ -30,6 +30,92 @@ const PLAYER_ANIMATIONS = {
   walk_west: { frames: ['player_west_0', 'player_west_1', 'player_west_2'], fps: 8 }
 };
 
+const SPRITE_SHEET_DEFAULTS = {
+  columns: 3,
+  rows: 4,
+  directions: ['south', 'west', 'east', 'north'],
+  framePrefix: 'player'
+};
+
+function loadSpriteSheetImage(url) {
+  return new Promise((resolve, reject) => {
+    if (!url) {
+      reject(new Error('Sprite sheet URL is required.'));
+      return;
+    }
+    const image = new Image();
+    image.decoding = 'async';
+    image.crossOrigin = 'anonymous';
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error(`Failed to load sprite sheet: ${url}`));
+    image.src = url;
+  });
+}
+
+function normaliseSpriteSheetOptions(options = {}) {
+  const columns = Number.isFinite(options.columns) && options.columns > 0
+    ? Math.floor(options.columns)
+    : SPRITE_SHEET_DEFAULTS.columns;
+  const rows = Number.isFinite(options.rows) && options.rows > 0
+    ? Math.floor(options.rows)
+    : SPRITE_SHEET_DEFAULTS.rows;
+  const framePrefix = typeof options.framePrefix === 'string' && options.framePrefix.trim()
+    ? options.framePrefix.trim()
+    : SPRITE_SHEET_DEFAULTS.framePrefix;
+  const baseDirections = Array.isArray(options.directions) && options.directions.length
+    ? options.directions
+    : SPRITE_SHEET_DEFAULTS.directions;
+  const directions = [];
+  for (let row = 0; row < rows; row += 1) {
+    const candidate = baseDirections[row];
+    if (typeof candidate === 'string' && candidate.trim()) {
+      directions.push(candidate.trim().toLowerCase());
+    } else if (SPRITE_SHEET_DEFAULTS.directions[row]) {
+      directions.push(SPRITE_SHEET_DEFAULTS.directions[row]);
+    } else {
+      directions.push(`row${row}`);
+    }
+  }
+  return { columns, rows, framePrefix, directions };
+}
+
+function createSpriteSheetData(image, config, url) {
+  const columns = Math.max(1, config.columns);
+  const rows = Math.max(1, config.rows);
+  const frameWidth = Math.floor(image.width / columns);
+  const frameHeight = Math.floor(image.height / rows);
+  if (frameWidth <= 0 || frameHeight <= 0) {
+    throw new Error(`Sprite sheet ${url || image.src} has invalid frame dimensions.`);
+  }
+  const frames = {};
+  for (let row = 0; row < rows; row += 1) {
+    const direction = config.directions[row] || `row${row}`;
+    for (let col = 0; col < columns; col += 1) {
+      const key = `${config.framePrefix}_${direction}_${col}`;
+      frames[key] = {
+        sx: col * frameWidth,
+        sy: row * frameHeight,
+        sw: frameWidth,
+        sh: frameHeight
+      };
+    }
+  }
+  const preferredDefault = `${config.framePrefix}_${config.directions[0] || 'south'}_1`;
+  const defaultFrameKey = frames[preferredDefault] ? preferredDefault : Object.keys(frames)[0] || null;
+  return {
+    url: url || image.src,
+    image,
+    columns,
+    rows,
+    frameWidth,
+    frameHeight,
+    frames,
+    defaultFrameKey,
+    directions: config.directions.slice(),
+    framePrefix: config.framePrefix
+  };
+}
+
 function computeSignature(items) {
   if (!Array.isArray(items) || items.length === 0) return '';
   return items
@@ -94,6 +180,8 @@ export default class RenderEngine {
     this.highlightColor = '#ffe066';
     this.objects = [];
     this.npcs = [];
+    this.playerSprite = null;
+    this.spriteSheetCache = new Map();
     this.objectSignature = '';
 
     this.mapPixelWidth = 0;
@@ -150,6 +238,94 @@ export default class RenderEngine {
 
   setParticles(emitter) {
     this.particles = emitter || null;
+  }
+
+  async loadPlayerSprite(url, options = {}) {
+    if (!url) {
+      this.playerSprite = null;
+      return null;
+    }
+    try {
+      const sheet = await this.ensureSpriteSheet(url, options);
+      this.playerSprite = sheet || null;
+      return this.playerSprite;
+    } catch (error) {
+      this.playerSprite = null;
+      throw error;
+    }
+  }
+
+  _spriteSheetKey(url, config) {
+    const dirKey = (config?.directions || []).join(',');
+    const prefix = config?.framePrefix || SPRITE_SHEET_DEFAULTS.framePrefix;
+    return `${url}::${config?.columns || 0}x${config?.rows || 0}::${prefix}::${dirKey}`;
+  }
+
+  _resolveSpriteSheetEntry(url, options = {}) {
+    const config = normaliseSpriteSheetOptions(options);
+    const key = this._spriteSheetKey(url, config);
+    const entry = this.spriteSheetCache.get(key) || null;
+    return { entry, config, key };
+  }
+
+  ensureSpriteSheet(url, options = {}) {
+    if (!url) return Promise.resolve(null);
+    const { entry, config, key } = this._resolveSpriteSheetEntry(url, options);
+    if (entry) {
+      if (entry.data) {
+        return Promise.resolve(entry.data);
+      }
+      if (entry.promise) {
+        return entry.promise;
+      }
+    }
+    const record = { data: null, promise: null, config };
+    const promise = loadSpriteSheetImage(url)
+      .then((image) => createSpriteSheetData(image, config, url))
+      .then((sheet) => {
+        record.data = sheet;
+        record.promise = null;
+        this.spriteSheetCache.set(key, record);
+        return sheet;
+      })
+      .catch((error) => {
+        this.spriteSheetCache.delete(key);
+        throw error;
+      });
+    record.promise = promise;
+    this.spriteSheetCache.set(key, record);
+    return promise;
+  }
+
+  getSpriteSheetSync(url, options = {}) {
+    const { entry } = this._resolveSpriteSheetEntry(url, options);
+    return entry?.data || null;
+  }
+
+  requestSpriteSheet(url, options = {}) {
+    if (!url) return null;
+    const { entry } = this._resolveSpriteSheetEntry(url, options);
+    if (entry?.data) {
+      return entry.data;
+    }
+    if (!entry) {
+      this.ensureSpriteSheet(url, options).catch((error) => {
+        console.warn(`Failed to load sprite sheet: ${url}`, error);
+      });
+    }
+    return null;
+  }
+
+  drawSpriteSheetFrame(ctx, sheet, frameKey, dx, dy, dw = this.tileSize, dh = this.tileSize) {
+    if (!sheet || !sheet.image) return false;
+    const key = frameKey && sheet.frames[frameKey] ? frameKey : sheet.defaultFrameKey;
+    if (!key) return false;
+    const frame = sheet.frames[key];
+    if (!frame) return false;
+    const px = Math.round(dx);
+    const py = Math.round(dy);
+    ctx.drawImage(sheet.image, frame.sx, frame.sy, frame.sw, frame.sh, px, py, dw, dh);
+    return true;
   }
 
   start() {
@@ -395,6 +571,22 @@ export default class RenderEngine {
     if (!this.npcs.length) return;
     this.npcs.forEach((npc) => {
       if (typeof npc?.x !== 'number' || typeof npc?.y !== 'number') return;
+      if (npc.spriteSheet) {
+        const sheetOptions = npc.spriteSheetOptions || npc.spriteOptions;
+        const sheet = this.getSpriteSheetSync(npc.spriteSheet, sheetOptions);
+        if (sheet) {
+          const px = this.offsetX + npc.x * this.tileSize;
+          const py = this.offsetY + npc.y * this.tileSize;
+          const frameKey = npc.spriteFrame || 'player_south_1';
+          const width = typeof npc.spriteWidth === 'number' ? npc.spriteWidth : this.tileSize;
+          const height = typeof npc.spriteHeight === 'number' ? npc.spriteHeight : this.tileSize;
+          if (this.drawSpriteSheetFrame(ctx, sheet, frameKey, px, py, width, height)) {
+            return;
+          }
+        } else {
+          this.requestSpriteSheet(npc.spriteSheet, sheetOptions);
+        }
+      }
       const sprite = npc?.sprite || npc?.type || 'npc';
       const color = npc?.color || '#cfa658';
       this.drawAtlasTile(ctx, sprite, npc.x, npc.y, color);
@@ -412,12 +604,19 @@ export default class RenderEngine {
   }
 
   drawPlayer(ctx) {
-    if (!this.player || !this.atlas) return;
+    if (!this.player) return;
     const position = this.player.position;
     if (!position) return;
     const px = this.offsetX + position.x * this.tileSize;
     const py = this.offsetY + position.y * this.tileSize;
     const frameKey = this.playerAnim.frame() || 'player_south_1';
+    if (this.playerSprite) {
+      const drawnSheet = this.drawSpriteSheetFrame(ctx, this.playerSprite, frameKey, px, py, this.tileSize, this.tileSize);
+      if (drawnSheet) {
+        return;
+      }
+    }
+    if (!this.atlas) return;
     const drawn = drawSprite(ctx, this.atlas, frameKey, px, py, this.tileSize, this.tileSize);
     if (!drawn) {
       drawSprite(ctx, this.atlas, 'player_south_1', px, py, this.tileSize, this.tileSize);

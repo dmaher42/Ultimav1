@@ -1,3 +1,6 @@
+export const LORD_BRITISH_SPRITE_SHEET = 'assets/sprites/Soldier-01-2-1758429653885-76805eae.png';
+export const LORD_BRITISH_SPRITE_FRAME = 'player_south_1';
+
 const TILE_DEFINITIONS = {
   grass: {
     name: 'Meadow',
@@ -338,6 +341,8 @@ export function createWorld() {
         x: 10,
         y: 10,
         sprite: 'npc',
+        spriteSheet: LORD_BRITISH_SPRITE_SHEET,
+        spriteFrame: LORD_BRITISH_SPRITE_FRAME,
         color: '#d4af37',
         dialogue: 'Welcome to my castle, brave adventurer! I am Lord British, ruler of Britannia.'
       },
