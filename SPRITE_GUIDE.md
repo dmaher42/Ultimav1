@@ -6,8 +6,8 @@ This guide will walk you through adding custom character sprites to the Ultima V
 
 1. **Create or Find a Sprite Sheet**: Must be 3 columns × 4 rows (12 frames total)
 2. **Test with Sprite Loader**: Open `/sprite-loader.html` in your browser
-3. **Drag & Drop**: Simply drag your PNG file onto the browser window
-4. **Install Permanently**: Copy to `assets/sprites/` directory
+3. **Preview Locally**: Drag & drop or choose your PNG/JPG sprite to see it animate
+4. **Click “Upload Sprite”**: The tool saves it to `assets/sprites/` automatically (PNG/JPG up to 5 MB)
 
 ## Sprite Format Specification
 
@@ -46,12 +46,14 @@ The interactive sprite loader tool is perfect for testing your sprites:
 
 2. **Open Sprite Loader**: Navigate to `http://localhost:3000/sprite-loader.html`
 
-3. **Load Your Sprite** using any of these methods:
+3. **Preview Your Sprite** using any of these methods:
    - **Drag & Drop**: Drag your PNG/JPG file directly onto the browser window
    - **File Browser**: Click "Choose File..." and select your sprite
    - **URL Input**: Type the filename in "Sprite URL" field and click "Load"
 
-4. **Test Animation**: Use arrow keys to move the character and verify all directions work correctly
+4. **Upload to Assets**: Click **Upload Sprite** to copy the previewed sheet into `assets/sprites/` (PNG/JPG up to 5 MB)
+
+5. **Test Animation**: Use arrow keys to move the character and verify all directions work correctly
 
 ### Method 2: Direct File Installation
 
@@ -66,6 +68,8 @@ For permanent installation in the game:
    ```
 
 2. **Reference in Game**: The sprite will be automatically detected and available in the sprite selector dropdown
+
+> 💡 You can still copy files manually if you prefer, but the sprite loader's **Upload Sprite** button now saves directly to `assets/sprites/` for you.
 
 ## Creating Your Own Sprites
 
@@ -123,6 +127,19 @@ For permanent installation in the game:
 - **Scaling**: The game automatically scales sprites, but consistent sizing works best
 - **Transparency**: Use PNG with alpha channel for best results
 - **Centering**: Make sure characters are centered within each frame
+
+## Sprite Upload API
+
+Automate sprite management or integrate with other tools using these endpoints:
+
+- `POST /api/upload-sprite`
+  - Send a `multipart/form-data` request with a single field named `sprite`
+  - Accepts PNG or JPG files up to **5 MB** and stores them in `assets/sprites/`
+  - Returns the saved `filename`, `url`, original filename, and the refreshed sprite list
+- `GET /api/sprites`
+  - Returns `{ sprites: [{ name, url }, ...] }` covering all supported sprite directories
+
+Uploads appear immediately in the sprite loader dropdown and inside the main game.
 
 ## Example Resources
 
