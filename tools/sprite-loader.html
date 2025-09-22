@@ -48,6 +48,62 @@
   const bg = bgC.getContext('2d');
   const ctx = gameC.getContext('2d');
 
+  const COLOR_PARSER_CANVAS=document.createElement('canvas');
+  COLOR_PARSER_CANVAS.width=1;
+  COLOR_PARSER_CANVAS.height=1;
+  const COLOR_PARSER_CTX=COLOR_PARSER_CANVAS.getContext('2d');
+  function colorWithAlpha(color, alpha){
+    const numericAlpha=Number(alpha);
+    const normalizedAlpha=Number.isFinite(numericAlpha)?Math.max(0,Math.min(1,numericAlpha)):0;
+    if(!COLOR_PARSER_CTX){
+      return `rgba(255,255,255,${normalizedAlpha})`;
+    }
+    let computedColor;
+    try{
+      COLOR_PARSER_CTX.fillStyle='#000';
+      COLOR_PARSER_CTX.fillStyle=color;
+      computedColor=COLOR_PARSER_CTX.fillStyle;
+    }catch(err){
+      return `rgba(255,255,255,${normalizedAlpha})`;
+    }
+    if(computedColor.startsWith('#')){
+      const hex=computedColor.slice(1);
+      if(hex.length===3 || hex.length===4){
+        const r=parseInt(hex[0]+hex[0],16);
+        const g=parseInt(hex[1]+hex[1],16);
+        const b=parseInt(hex[2]+hex[2],16);
+        return `rgba(${r},${g},${b},${normalizedAlpha})`;
+      }
+      if(hex.length>=6){
+        const r=parseInt(hex.slice(0,2),16);
+        const g=parseInt(hex.slice(2,4),16);
+        const b=parseInt(hex.slice(4,6),16);
+        if(Number.isFinite(r) && Number.isFinite(g) && Number.isFinite(b)){
+          return `rgba(${r},${g},${b},${normalizedAlpha})`;
+        }
+      }
+    }
+    const rgbMatch=computedColor.match(/rgba?\(([^)]+)\)/i);
+    if(rgbMatch){
+      const channels=rgbMatch[1]
+        .split(',')
+        .map(part=>part.trim())
+        .slice(0,3)
+        .map(value=>{
+          if(value.endsWith('%')){
+            const pct=parseFloat(value.slice(0,-1));
+            return Number.isFinite(pct)?Math.round(Math.max(0,Math.min(100,pct))*2.55):NaN;
+          }
+          const num=parseFloat(value);
+          return Number.isFinite(num)?Math.max(0,Math.min(255,num)):NaN;
+        });
+      if(channels.length===3 && channels.every(value=>Number.isFinite(value))){
+        return `rgba(${channels[0]},${channels[1]},${channels[2]},${normalizedAlpha})`;
+      }
+    }
+    return `rgba(255,255,255,${normalizedAlpha})`;
+  }
+
   // Global graphics configuration used by the toon pipeline.
   const DEFAULT_TONE_LEVELS=[0.0,0.55,1.0];
   const Graphics={
@@ -1949,8 +2005,24 @@
               const twinkleMax=Math.min(1.05,twinkleCenter + twinkleRange);
               const glowRadius=Math.max(1.6,size * (2.1 + rng()*1.4));
               const coreRadius=Math.max(0.6,size * (0.55 + rng()*0.35));
-              const crossLength=Math.max(coreRadius*2.2,Math.min(glowRadius*1.2,size * (2.4 + rng()*1.6)));
-              const crossThickness=size>1.6?1.25:1;
+              const flareEligible=size>1.1;
+              const hasFlare=flareEligible && rng()>0.38;
+              let flareAngle=0;
+              let flareLength=0;
+              let flareAlpha=0;
+              let flareWidth=0;
+              let flareSecondaryOffset=0;
+              let flareSecondaryScale=0;
+              if(hasFlare){
+                flareAngle=rng()*Math.PI*2;
+                flareLength=size * (3 + rng()*3.6);
+                flareAlpha=0.35 + rng()*0.45;
+                flareWidth=Math.max(0.35,size * (0.32 + rng()*0.28));
+                if(rng()>0.55){
+                  flareSecondaryOffset=(Math.PI/2) + (rng()-0.5)*0.5;
+                  flareSecondaryScale=0.45 + rng()*0.35;
+                }
+              }
               stars.push({
                 x:rng()*tileWidth,
                 y:rng()*tileHeight,
@@ -1963,8 +2035,13 @@
                 twinkleMax,
                 glowRadius,
                 coreRadius,
-                crossLength,
-                crossThickness
+                hasFlare,
+                flareAngle,
+                flareLength,
+                flareAlpha,
+                flareWidth,
+                flareSecondaryOffset,
+                flareSecondaryScale
               });
             }
             layer._cache={
@@ -1987,6 +2064,11 @@
           const startY=-tileHeight*2 + positiveMod(-parallaxY, tileHeight);
           const endY=camera.height+tileHeight*2;
           const starColor=layer.color||'#dbe9ff';
+          const haloMidColor=colorWithAlpha(starColor,0.55);
+          const haloOuterColor=colorWithAlpha(starColor,0);
+          const coreEdgeColor=colorWithAlpha(starColor,0.45);
+          const flareMidTint=colorWithAlpha(starColor,0.25);
+          const flareEdgeTint=colorWithAlpha(starColor,0);
           for(let x=startX; x<endX; x+=tileWidth){
             for(let y=startY; y<endY; y+=tileHeight){
               for(const star of layer._cache.stars){
@@ -1999,28 +2081,73 @@
                 const px=x+star.x;
                 const py=y+star.y;
 
-                const glowAlpha=alpha*0.6;
-                if(glowAlpha>0.01){
-                  g.globalAlpha=glowAlpha;
-                  g.fillStyle=starColor;
-                  g.beginPath();
-                  g.arc(px,py,star.glowRadius,0,Math.PI*2);
-                  g.fill();
-                }
+                g.save();
+                g.globalCompositeOperation='lighter';
 
-                g.globalAlpha=Math.min(1,alpha*1.1);
-                g.fillStyle='#ffffff';
+                const haloGradient=g.createRadialGradient(px,py,Math.max(0.1,star.coreRadius*0.4),px,py,star.glowRadius);
+                haloGradient.addColorStop(0,'rgba(255,244,220,1)');
+                haloGradient.addColorStop(0.45,'rgba(255,255,255,0.92)');
+                haloGradient.addColorStop(0.8,haloMidColor);
+                haloGradient.addColorStop(1,haloOuterColor);
+                g.globalAlpha=Math.max(0,Math.min(1,alpha*0.78));
+                g.fillStyle=haloGradient;
+                g.beginPath();
+                g.arc(px,py,star.glowRadius,0,Math.PI*2);
+                g.fill();
+
+                const coreGradient=g.createRadialGradient(px,py,0,px,py,star.coreRadius);
+                coreGradient.addColorStop(0,'rgba(255,253,245,1)');
+                coreGradient.addColorStop(0.55,'rgba(255,255,255,0.95)');
+                coreGradient.addColorStop(1,coreEdgeColor);
+                g.globalAlpha=Math.min(1,alpha*1.15);
+                g.fillStyle=coreGradient;
                 g.beginPath();
                 g.arc(px,py,star.coreRadius,0,Math.PI*2);
                 g.fill();
 
-                const half=star.crossLength/2;
-                if(half>0.2){
-                  const thickness=Math.max(0.75,star.crossThickness);
-                  g.globalAlpha=Math.min(1,alpha);
-                  g.fillRect(px-half, py-thickness/2, star.crossLength, thickness);
-                  g.fillRect(px-thickness/2, py-half, thickness, star.crossLength);
+                if(star.hasFlare && star.flareLength>0.3 && star.flareAlpha>0){
+                  const baseFlareAlpha=Math.min(1,alpha*star.flareAlpha);
+                  if(baseFlareAlpha>0.01){
+                    const drawFlare=(length,width,intensity)=>{
+                      const len=Number(length);
+                      const w=Number(width);
+                      const a=Math.max(0,Math.min(1,Number(intensity)));
+                      if(!Number.isFinite(len) || !Number.isFinite(w) || len<=0 || w<=0 || a<=0) return;
+                      const gradient=g.createLinearGradient(-len,0,len,0);
+                      gradient.addColorStop(0,flareEdgeTint);
+                      gradient.addColorStop(0.2,flareMidTint);
+                      gradient.addColorStop(0.5,'rgba(255,255,255,0.9)');
+                      gradient.addColorStop(0.8,flareMidTint);
+                      gradient.addColorStop(1,flareEdgeTint);
+                      g.globalAlpha=a;
+                      g.fillStyle=gradient;
+                      g.beginPath();
+                      g.moveTo(-len,0);
+                      g.lineTo(-len*0.36,-w);
+                      g.lineTo(-len*0.08,-w*0.25);
+                      g.lineTo(len*0.08,-w*0.25);
+                      g.lineTo(len*0.36,-w);
+                      g.lineTo(len,0);
+                      g.lineTo(len*0.36,w);
+                      g.lineTo(len*0.08,w*0.25);
+                      g.lineTo(-len*0.08,w*0.25);
+                      g.lineTo(-len*0.36,w);
+                      g.closePath();
+                      g.fill();
+                    };
+                    g.save();
+                    g.translate(px,py);
+                    g.rotate(star.flareAngle);
+                    drawFlare(star.flareLength, star.flareWidth, baseFlareAlpha);
+                    if(star.flareSecondaryOffset && star.flareSecondaryScale>0){
+                      g.rotate(star.flareSecondaryOffset);
+                      drawFlare(star.flareLength*0.65, star.flareWidth*0.75, baseFlareAlpha*star.flareSecondaryScale);
+                    }
+                    g.restore();
+                  }
                 }
+
+                g.restore();
               }
             }
           }
