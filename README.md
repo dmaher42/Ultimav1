@@ -45,6 +45,15 @@ The following new tile types have been added for the castle scene:
 - `study_desk` - Desks covered in maps and ledgers (golden brown)
 - `chapel_altar` - Sacred altar at the heart of the chapel (ivory)
 
+### Castle Tile Pipeline
+
+- **Canonical Tile Size** – every tile in the castle set is now 48×48 pixels. PNGs live alongside their `.tsx` counterparts so Tiled knows how to auto-tile and so the renderer can find them quickly.
+- **Purpose-Driven Folders** – assets are organised by intent: `assets/tiles/terrain/` for autotiles (floors, carpets, water, grass), `assets/tiles/architecture/` for modular walls/doors/windows, and `assets/tiles/props/` for object-layer sprites (throne room décor, torches, fountains).
+- **Autotiling Ready** – each terrain tileset defines a Wang set (e.g., `castle_floor_auto`, `red_carpet_auto`) so painting rooms automatically blends corners and edges. Keep a 2 px margin and spacing when expanding the spritesheets to avoid texture bleeding.
+- **Manifest-Driven Metadata** – `assets/tiles/manifest.json` tags tiles with collision, default layer, sound, and interaction hints. The front-end reads this file to extend loader search paths, preload assets per layer, and align props via their baseline anchors.
+- **Object Layer Props** – props now default to an object layer with baseline anchors and optional interactions (`talkToLordBritish`, `listenToWater`). The renderer draws a subtle shadow using those anchors so objects feel grounded without extra manual art passes.
+- **Sample Map** – `assets/maps/castle_throne_room.tmx` demonstrates how to layer terrain, carpet overlays, walls, and props using the external tilesets defined in the new structure.
+
 ### NPCs in the Castle
 
 - **Lord British**: The ruler of Britannia welcomes visitors in the great hall (golden)
@@ -221,20 +230,21 @@ Sprites uploaded through the API are immediately available in the loader dropdow
 
 #### Upgrading Castle Assets
 
-The castle currently uses fallback colors for visual tiles. To upgrade with pixel art assets:
+The castle tile library now mirrors the way we build maps in Tiled. All tiles are 48×48 and split across three folders:
 
-1. **Castle Tiles**: Add proper 48x48 pixel art tiles to `assets/tiles/` directory:
-   - `castle_wall.png` - Medieval stone wall texture
-   - `castle_floor.png` - Polished stone floor pattern  
-   - `red_carpet.png` - Rich red carpet with royal patterns
-   - `throne.png` - Ornate golden throne sprite
-   - `banner.png` - Royal heraldic banners with coat of arms
-   - `torch_wall.png` - Flickering wall torch with flame animation
-   - `castle_door.png` - Heavy wooden door with iron reinforcements
-   - `castle_window.png` - Tall arched window with light rays
-   - `fountain.png` - Decorative stone fountain with water
-   - `garden.png` - Lush garden with flowers and plants
-   - `courtyard.png` - Smooth stone courtyard paving
+- `assets/tiles/terrain/` – floors, carpets, courtyards, grass, dirt, and water autotiles.
+- `assets/tiles/architecture/` – modular walls, doors, and windows for structural layers.
+- `assets/tiles/props/` – throne room furniture, torches, banners, fountains, and other interactables that live on object layers.
+
+Each PNG has a companion `.tsx` file that declares Wang-set metadata, default layers, and anchor points. The master manifest at `assets/tiles/manifest.json` tags every tile with gameplay meaning so the renderer can preload the right atlas, align props to the floor, and attach default interactions.
+
+To extend the castle set:
+
+1. **Terrain autotiles** – expand the spritesheets in `assets/tiles/terrain/`, update the Wang sets inside the matching `.tsx`, and add the tile to the manifest with the correct `kind`, `layer`, and `wangset` name.
+2. **Modular architecture** – drop new wall/window/door variations into `assets/tiles/architecture/`, making sure inner/outer corners, tees, and caps are present. Update the manifest so the game knows which layer and collision behaviour to apply.
+3. **Props** – place interactable art in `assets/tiles/props/`, set `anchorX`/`anchorY` inside the `.tsx`, and list the object in the manifest with optional interaction metadata. The renderer now reads those anchors to draw baseline shadows and attach behaviours.
+
+The sample map at `assets/maps/castle_throne_room.tmx` shows how terrain, carpet overlays, walls, and prop object layers fit together using the external tilesets.
 
 2. **NPC Sprites**: Add character sprites to represent:
    - Lord British in royal robes and crown

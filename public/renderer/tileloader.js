@@ -1,19 +1,23 @@
+import {
+  TILE_BASE_PATHS,
+  loadTileManifest,
+  getTileDefinition,
+  FALLBACK_TILE_MANIFEST
+} from './tilesetManifest.js';
+
 /**
- * Individual tile loader that attempts to load tiles from assets/tiles/
- * before falling back to atlas sprites
+ * Individual tile loader that attempts to load tiles from the reorganised
+ * assets/tiles structure before falling back to atlas sprites.
  */
 
 class TileLoader {
   constructor() {
     this.cache = new Map();
     this.loading = new Map(); // Track promises to avoid duplicate loads
+    this.manifest = FALLBACK_TILE_MANIFEST;
     this.basePaths = [
-      // existing locations
-      'assets/tiles/',
-      'public/assets/tiles/',
-      './assets/tiles/',
-      './public/assets/tiles/',
-      // pixelcrawler locations (new)
+      ...TILE_BASE_PATHS,
+      // pixelcrawler locations (legacy extractions)
       'public/assets/pixelcrawler/',
       'public/assets/pixelcrawler/tiles/',
       'public/assets/pixelcrawler/props/',
@@ -53,6 +57,16 @@ class TileLoader {
       'grass': 'floor_04_00',
       'path': 'floor_05_00'
     };
+
+    loadTileManifest()
+      .then((manifest) => {
+        if (manifest) {
+          this.manifest = manifest;
+        }
+      })
+      .catch((error) => {
+        console.warn('[TileLoader] Falling back to built-in manifest:', error.message || error);
+      });
   }
 
   async loadTile(tileName) {
@@ -84,10 +98,27 @@ class TileLoader {
     }
   }
 
+  getTileMetadata(tileName) {
+    return getTileDefinition(this.manifest, tileName);
+  }
+
   async _loadTileFromPaths(tileName) {
+    const metadata = this.getTileMetadata(tileName);
+    const tilesetPath = metadata?.tileset;
+    if (tilesetPath && tilesetPath.endsWith('.tsx')) {
+      const directImagePath = tilesetPath.replace(/\.tsx$/i, '.png');
+      try {
+        const image = await this._loadImage(directImagePath);
+        console.log(`✓ Loaded individual tile: ${tileName} from ${directImagePath}`);
+        return { image, source: 'tileset' };
+      } catch (error) {
+        console.log(`✗ Failed to load tile from ${directImagePath}:`, error.message);
+      }
+    }
+
     const stem = this.alias[tileName] || tileName;
     const filename = `${stem}.png`;
-    
+
     for (const basePath of this.basePaths) {
       const url = `${basePath}${filename}`;
       try {

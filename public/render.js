@@ -2,6 +2,7 @@ import { TileInfo } from './GameMap.js';
 import { DPR } from './renderer/canvas.js';
 import { drawSprite } from './renderer/atlas.js';
 import { drawTile, tileLoader } from './renderer/tileloader.js';
+import { loadTileManifest, getTileNamesByCategory } from './renderer/tilesetManifest.js';
 import { vignette, colorGrade } from './renderer/postfx.js';
 import { createCamera } from './renderer/camera.js';
 import { createFlashLayer } from './renderer/flash.js';
@@ -224,18 +225,19 @@ export default class RenderEngine {
     
     // Preload individual castle tiles for better graphics
     if (this.assetsLoaded) {
-      const castleTiles = [
-        'castle_wall', 'castle_floor', 'red_carpet', 'throne',
-        'banner', 'torch_wall', 'castle_door', 'castle_window',
-        'fountain', 'garden', 'courtyard', 'pillar',
-        'bookshelf', 'barracks_bed', 'kitchen_table', 'study_desk', 'chapel_altar',
-        'kitchen_hearth', 'wash_basin', 'dining_table', 'armory_rack',
-        'training_dummy', 'royal_bed', 'stable_hay'
-      ];
-      
-      tileLoader.preloadTiles(castleTiles).catch(err => {
-        console.warn('Failed to preload individual tiles:', err);
-      });
+      loadTileManifest()
+        .then((manifest) => {
+          const categories = ['terrain', 'architecture', 'props'];
+          const tileNames = new Set();
+          categories.forEach((category) => {
+            getTileNamesByCategory(manifest, category).forEach((name) => tileNames.add(name));
+          });
+          return Array.from(tileNames);
+        })
+        .then((tileNames) => tileLoader.preloadTiles(tileNames))
+        .catch((err) => {
+          console.warn('Failed to preload individual tiles:', err);
+        });
     }
   }
 
@@ -547,6 +549,18 @@ export default class RenderEngine {
     }
   }
 
+  drawSoftShadow(ctx, centerX, baseY, width, height, opacity = 0.24) {
+    const radiusX = Math.max(width * 0.45, this.tileSize * 0.4);
+    const radiusY = Math.max(height * 0.18, this.tileSize * 0.12);
+    ctx.save();
+    ctx.fillStyle = '#000000';
+    ctx.globalAlpha = opacity;
+    ctx.beginPath();
+    ctx.ellipse(centerX, baseY - radiusY * 0.25, radiusX, radiusY, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
   drawObjects(ctx) {
     if (!this.objects.length) return;
     this.objects.forEach((object) => {
@@ -565,7 +579,40 @@ export default class RenderEngine {
       } else if (typeof object?.x === 'number' && typeof object?.y === 'number') {
         const sprite = object?.sprite || object?.type || 'default';
         const color = object?.color || '#8c7853';
-        this.drawAtlasTile(ctx, sprite, object.x, object.y, color);
+        const metadata = tileLoader.getTileMetadata(sprite) || {};
+        const tileUnitsWidth = Number.isFinite(object?.width) && object.width > 0 ? object.width : 1;
+        const tileUnitsHeight = Number.isFinite(object?.height) && object.height > 0 ? object.height : 1;
+        const width = tileUnitsWidth * this.tileSize;
+        const height = tileUnitsHeight * this.tileSize;
+        const anchorArray = Array.isArray(metadata.anchor) ? metadata.anchor : null;
+        const anchorX = Number.isFinite(object?.anchorX)
+          ? object.anchorX
+          : Number.isFinite(metadata.anchorX)
+            ? metadata.anchorX
+            : anchorArray && Number.isFinite(anchorArray[0])
+              ? anchorArray[0]
+              : 0;
+        const anchorY = Number.isFinite(object?.anchorY)
+          ? object.anchorY
+          : Number.isFinite(metadata.anchorY)
+            ? metadata.anchorY
+            : anchorArray && Number.isFinite(anchorArray[1])
+              ? anchorArray[1]
+              : 0;
+        const baseX = this.offsetX + (object.x + 0.5) * this.tileSize;
+        const baseY = this.offsetY + (object.y + 1) * this.tileSize;
+        const px = baseX - anchorX * width;
+        const py = baseY - anchorY * height;
+
+        const shouldDrawShadow = object?.shadow ?? (metadata.shadow ?? metadata.category === 'props');
+        if (shouldDrawShadow) {
+          this.drawSoftShadow(ctx, baseX, baseY, width, height);
+        }
+
+        if (!drawTile(ctx, this.atlas, sprite, px, py, width, height, color)) {
+          ctx.fillStyle = color;
+          ctx.fillRect(px, py, width, height);
+        }
       }
     });
   }
