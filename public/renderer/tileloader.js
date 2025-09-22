@@ -23,7 +23,35 @@ class TileLoader {
     ];
     // optional: filename aliasing (tileName -> fileName without .png)
     this.alias = {
-      // example: 'castle_wall': 'castle/wall_stone_01'
+      // Map game tile names to pixelcrawler assets
+      'castle_wall': 'wall_00_00',
+      'castle_floor': 'floor_00_00',
+      'red_carpet': 'floor_01_01',
+      'throne': 'dungeon_00_03',
+      'banner': 'dungeon_00_04',
+      'torch_wall': 'wall_01_00',
+      'castle_door': 'dungeon_01_00',
+      'castle_window': 'wall_02_00',
+      'fountain': 'dungeon_02_00',
+      'garden': 'floor_02_00',
+      'courtyard': 'floor_00_01',
+      'pillar': 'wall_03_00',
+      'bookshelf': 'dungeon_03_00',
+      'barracks_bed': 'dungeon_04_00',
+      'kitchen_table': 'dungeon_05_00',
+      'study_desk': 'dungeon_06_00',
+      'chapel_altar': 'dungeon_07_00',
+      'kitchen_hearth': 'wall_04_00',
+      'wash_basin': 'dungeon_02_01',
+      'dining_table': 'dungeon_05_01',
+      'armory_rack': 'dungeon_06_01',
+      'training_dummy': 'dungeon_07_01',
+      'royal_bed': 'dungeon_04_01',
+      'stable_hay': 'floor_03_00',
+      'water': 'water_00_00',
+      'trees': 'wall_05_00',
+      'grass': 'floor_04_00',
+      'path': 'floor_05_00'
     };
   }
 

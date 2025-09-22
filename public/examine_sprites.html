@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Pixelcrawler Sprite Examiner</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .sprite-sheet { margin: 20px 0; border: 1px solid #ccc; }
+        .sprite-sheet img { max-width: 100%; }
+        .info { background: #f0f0f0; padding: 10px; margin: 10px 0; }
+        canvas { border: 1px solid #ddd; margin: 5px; }
+    </style>
+</head>
+<body>
+    <h1>Pixelcrawler Sprite Sheet Examiner</h1>
+    <div id="sprites"></div>
+    
+    <script>
+        const spriteSheets = [
+            'Wall_Tiles.png',
+            'Floors_Tiles.png', 
+            'Dungeon_Tiles.png',
+            'Wall_Variations.png',
+            'Water_tiles.png',
+            'structure/Walls.png',
+            'structure/Floors.png',
+            'structure/Props.png'
+        ];
+        
+        function loadSpriteSheet(filename) {
+            const img = new Image();
+            img.onload = function() {
+                const container = document.getElementById('sprites');
+                const div = document.createElement('div');
+                div.className = 'sprite-sheet';
+                
+                div.innerHTML = `
+                    <h3>${filename}</h3>
+                    <div class="info">Size: ${img.width}x${img.height}</div>
+                `;
+                
+                div.appendChild(img);
+                container.appendChild(div);
+                
+                // Try to guess tile size and create extraction canvas
+                const tileSize = 16; // Common pixel art tile size, adjust if needed
+                if (img.width % tileSize === 0 && img.height % tileSize === 0) {
+                    const cols = img.width / tileSize;
+                    const rows = img.height / tileSize;
+                    
+                    const info = document.createElement('div');
+                    info.className = 'info';
+                    info.innerHTML = `Estimated grid: ${cols}x${rows} tiles (${tileSize}x${tileSize} each)`;
+                    div.appendChild(info);
+                    
+                    // Show first few tiles as samples
+                    for (let i = 0; i < Math.min(6, cols * rows); i++) {
+                        const row = Math.floor(i / cols);
+                        const col = i % cols;
+                        
+                        const canvas = document.createElement('canvas');
+                        canvas.width = tileSize * 3; // Scale up for visibility
+                        canvas.height = tileSize * 3;
+                        const ctx = canvas.getContext('2d');
+                        ctx.imageSmoothingEnabled = false;
+                        
+                        ctx.drawImage(img, 
+                            col * tileSize, row * tileSize, tileSize, tileSize,
+                            0, 0, tileSize * 3, tileSize * 3
+                        );
+                        
+                        canvas.title = `Tile ${i} (${col},${row})`;
+                        div.appendChild(canvas);
+                    }
+                }
+            };
+            img.src = `/assets/pixelcrawler/tiles/${filename}`;
+        }
+        
+        spriteSheets.forEach(loadSpriteSheet);
+    </script>
+</body>
+</html>

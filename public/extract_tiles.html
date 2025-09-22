@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Pixelcrawler Tile Extractor</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .extraction-result { margin: 10px 0; }
+        .tile-preview { border: 1px solid #ddd; margin: 2px; display: inline-block; }
+        .controls { background: #f0f0f0; padding: 15px; margin: 10px 0; }
+        .download-section { background: #e8f4fd; padding: 15px; margin: 10px 0; }
+        button { padding: 8px 16px; margin: 5px; cursor: pointer; }
+        input, select { margin: 5px; padding: 5px; }
+    </style>
+</head>
+<body>
+    <h1>Pixelcrawler Tile Extractor</h1>
+    
+    <div class="controls">
+        <h3>Extract Individual Tiles</h3>
+        <label>Sprite Sheet: 
+            <select id="spriteSelect">
+                <option value="Wall_Tiles.png">Wall_Tiles.png</option>
+                <option value="Floors_Tiles.png">Floors_Tiles.png</option>
+                <option value="Dungeon_Tiles.png">Dungeon_Tiles.png</option>
+                <option value="structure/Walls.png">structure/Walls.png</option>
+                <option value="structure/Floors.png">structure/Floors.png</option>
+                <option value="structure/Props.png">structure/Props.png</option>
+            </select>
+        </label><br>
+        <label>Tile Size: <input type="number" id="tileSize" value="16" min="8" max="64"></label><br>
+        <label>Output Size: <input type="number" id="outputSize" value="48" min="16" max="128"> (scale for game)</label><br>
+        <button onclick="loadSpriteSheet()">Load Sprite Sheet</button>
+    </div>
+    
+    <div id="spriteInfo"></div>
+    
+    <div id="tileGrid"></div>
+    
+    <div class="download-section" id="downloadSection" style="display: none;">
+        <h3>Download Extracted Tiles</h3>
+        <p>Click on individual tiles above to download them, or use the buttons below:</p>
+        <button onclick="downloadCastleTileSet()">Download Castle Tile Set</button>
+        <button onclick="downloadAllVisibleTiles()">Download All Visible Tiles</button>
+    </div>
+    
+    <script>
+        let currentImage = null;
+        let currentTileSize = 16;
+        let currentOutputSize = 48;
+        
+        // Predefined mappings for common castle tiles
+        const castleTileMappings = {
+            'castle_wall': { sheet: 'structure/Walls.png', x: 0, y: 0 },
+            'castle_floor': { sheet: 'structure/Floors.png', x: 0, y: 0 },
+            'red_carpet': { sheet: 'structure/Floors.png', x: 4, y: 2 },
+            'throne': { sheet: 'structure/Props.png', x: 10, y: 8 },
+            'banner': { sheet: 'structure/Props.png', x: 15, y: 0 },
+            'torch_wall': { sheet: 'structure/Props.png', x: 0, y: 10 },
+            'castle_door': { sheet: 'structure/Props.png', x: 8, y: 12 },
+            'castle_window': { sheet: 'structure/Props.png', x: 12, y: 4 },
+            'fountain': { sheet: 'structure/Props.png', x: 20, y: 15 },
+            'garden': { sheet: 'Floors_Tiles.png', x: 5, y: 10 },
+            'courtyard': { sheet: 'structure/Floors.png', x: 2, y: 0 },
+            'pillar': { sheet: 'structure/Props.png', x: 6, y: 0 }
+        };
+        
+        function loadSpriteSheet() {
+            const select = document.getElementById('spriteSelect');
+            const tileSizeInput = document.getElementById('tileSize');
+            const outputSizeInput = document.getElementById('outputSize');
+            
+            currentTileSize = parseInt(tileSizeInput.value);
+            currentOutputSize = parseInt(outputSizeInput.value);
+            
+            const img = new Image();
+            img.onload = function() {
+                currentImage = img;
+                displayTileGrid(img, select.value);
+                document.getElementById('downloadSection').style.display = 'block';
+            };
+            img.src = `/assets/pixelcrawler/tiles/${select.value}`;
+        }
+        
+        function displayTileGrid(img, filename) {
+            const infoDiv = document.getElementById('spriteInfo');
+            const gridDiv = document.getElementById('tileGrid');
+            
+            const cols = Math.floor(img.width / currentTileSize);
+            const rows = Math.floor(img.height / currentTileSize);
+            
+            infoDiv.innerHTML = `
+                <h3>${filename}</h3>
+                <p>Image: ${img.width}x${img.height}, Grid: ${cols}x${rows} tiles</p>
+            `;
+            
+            gridDiv.innerHTML = '';
+            
+            for (let row = 0; row < Math.min(rows, 20); row++) { // Limit to first 20 rows for performance
+                for (let col = 0; col < Math.min(cols, 20); col++) { // Limit to first 20 cols for performance
+                    const canvas = document.createElement('canvas');
+                    canvas.width = currentOutputSize;
+                    canvas.height = currentOutputSize;
+                    canvas.className = 'tile-preview';
+                    canvas.title = `Tile (${col},${row}) - Click to download`;
+                    
+                    const ctx = canvas.getContext('2d');
+                    ctx.imageSmoothingEnabled = false;
+                    
+                    // Extract and scale the tile
+                    ctx.drawImage(img, 
+                        col * currentTileSize, row * currentTileSize, currentTileSize, currentTileSize,
+                        0, 0, currentOutputSize, currentOutputSize
+                    );
+                    
+                    // Add click handler for individual download
+                    canvas.onclick = () => downloadTile(canvas, `tile_${col}_${row}.png`);
+                    
+                    gridDiv.appendChild(canvas);
+                }
+            }
+        }
+        
+        function downloadTile(canvas, filename) {
+            const link = document.createElement('a');
+            link.download = filename;
+            link.href = canvas.toDataURL();
+            link.click();
+        }
+        
+        function downloadCastleTileSet() {
+            // Download predefined castle tiles based on mappings
+            const select = document.getElementById('spriteSelect');
+            const currentSheet = select.value;
+            
+            Object.entries(castleTileMappings).forEach(([tileName, mapping]) => {
+                if (mapping.sheet === currentSheet) {
+                    const canvas = extractTileFromCoords(mapping.x, mapping.y);
+                    if (canvas) {
+                        downloadTile(canvas, `${tileName}.png`);
+                    }
+                }
+            });
+        }
+        
+        function extractTileFromCoords(col, row) {
+            if (!currentImage) return null;
+            
+            const canvas = document.createElement('canvas');
+            canvas.width = currentOutputSize;
+            canvas.height = currentOutputSize;
+            
+            const ctx = canvas.getContext('2d');
+            ctx.imageSmoothingEnabled = false;
+            
+            ctx.drawImage(currentImage, 
+                col * currentTileSize, row * currentTileSize, currentTileSize, currentTileSize,
+                0, 0, currentOutputSize, currentOutputSize
+            );
+            
+            return canvas;
+        }
+        
+        function downloadAllVisibleTiles() {
+            const tiles = document.querySelectorAll('.tile-preview');
+            tiles.forEach((canvas, index) => {
+                setTimeout(() => {
+                    const col = index % 20;
+                    const row = Math.floor(index / 20);
+                    downloadTile(canvas, `tile_${col}_${row}.png`);
+                }, index * 100); // Stagger downloads
+            });
+        }
+    </script>
+</body>
+</html>
