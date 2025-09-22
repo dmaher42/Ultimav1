@@ -1364,8 +1364,15 @@
 
   function updatePlayerCollider(){
     // Shrink the collision box so the player feels responsive.
-    player.collider.w=Math.max(18,Math.min(frameW*0.6, frameW));
-    player.collider.h=Math.max(20,Math.min(frameH*0.7, frameH));
+    try {
+      if(typeof player !== 'undefined' && player && player.collider){
+        player.collider.w=Math.max(18,Math.min(frameW*0.6, frameW));
+        player.collider.h=Math.max(20,Math.min(frameH*0.7, frameH));
+      }
+    } catch (err) {
+      // Player not yet initialized, skip for now
+      console.warn('updatePlayerCollider skipped: player not ready');
+    }
   }
   waitForSpriteReady().then(updatePlayerCollider);
 
