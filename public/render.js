@@ -227,7 +227,7 @@ export default class RenderEngine {
       const castleTiles = [
         'castle_wall', 'castle_floor', 'red_carpet', 'throne',
         'banner', 'torch_wall', 'castle_door', 'castle_window',
-        'fountain', 'garden', 'courtyard',
+        'fountain', 'garden', 'courtyard', 'pillar',
         'bookshelf', 'barracks_bed', 'kitchen_table', 'study_desk', 'chapel_altar',
         'kitchen_hearth', 'wash_basin', 'dining_table', 'armory_rack',
         'training_dummy', 'royal_bed', 'stable_hay'
