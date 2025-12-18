@@ -160,7 +160,10 @@ export function createWorld() {
     transitions: [
       { x: 9, y: 13, map: 'village', spawn: 'castle_gate' },
       { x: 10, y: 13, map: 'village', spawn: 'castle_gate' }
-    ]
+    ],
+    spawnPoints: {
+      'castle_entry': { x: 9, y: 12 }
+    }
   });
 
   // VILLAGE MAP
@@ -352,5 +355,12 @@ export class GameMap {
       const tile = this.getTile(x, y);
       const info = TileInfo[tile];
       return info ? info.description : 'Unknown terrain.';
+  }
+
+  getSpawn(tag) {
+    if (tag && this.spawnPoints && this.spawnPoints[tag]) {
+      return this.spawnPoints[tag];
+    }
+    return { x: Math.floor(this.width / 2), y: Math.floor(this.height / 2) };
   }
 }
