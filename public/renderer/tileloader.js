@@ -104,6 +104,18 @@ class TileLoader {
 
   async _loadTileFromPaths(tileName) {
     const metadata = this.getTileMetadata(tileName);
+
+    // Prioritize explicit src from manifest
+    if (metadata && metadata.src) {
+      try {
+        const image = await this._loadImage(metadata.src);
+        console.log(`✓ Loaded individual tile: ${tileName} from ${metadata.src}`);
+        return { image, source: 'explicit_src' };
+      } catch (error) {
+        console.log(`✗ Failed to load tile from explicit src ${metadata.src}:`, error.message);
+      }
+    }
+
     const tilesetPath = metadata?.tileset;
     if (tilesetPath && tilesetPath.endsWith('.tsx')) {
       const directImagePath = tilesetPath.replace(/\.tsx$/i, '.png');
