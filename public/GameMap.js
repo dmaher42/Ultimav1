@@ -1,5 +1,4 @@
 // Feature: Game World Data & Map Definitions
-// Organized for clarity and Ultima 6 style interactions
 
 // --- SPRITE ASSETS ---
 export const AVATAR_SPRITE = 'assets/sprites/avatar.png';
@@ -19,7 +18,7 @@ export const TileInfo = {
     name: 'Woodland',
     description: 'A dense wall of oaks and birch trees.',
     color: '#1f3d1b',
-    passable: false, // Blocks movement
+    passable: false,
     encounterChance: 0
   },
   water: {
@@ -35,6 +34,13 @@ export const TileInfo = {
     color: '#9f884f',
     passable: true,
     encounterChance: 0.02
+  },
+  courtyard: {
+    name: 'Courtyard',
+    description: 'Cobblestones paving the way to the keep.',
+    color: '#555555',
+    passable: true,
+    encounterChance: 0
   },
   castle_floor: {
     name: 'Castle Floor',
@@ -76,15 +82,14 @@ export const TileInfo = {
 // --- WORLD FACTORY ---
 export function createWorld() {
   // CASTLE MAP
-  // A throne room layout with walls, carpet, and pillars
   const castle = new GameMap({
     id: 'castle',
     name: 'Castle Britannia',
     width: 20,
     height: 15,
     safe: true,
-    // Simple ASCII layout for the throne room
-    // # = Wall, . = Floor, R = Carpet, T = Throne, P = Pillar
+    // ASCII Layout
+    // #=Wall, .=Floor, R=Carpet, T=ThroneArea(Floor), P=Pillar(Floor)
     layout: [
       '####################',
       '#..................#',
@@ -101,12 +106,11 @@ export function createWorld() {
       '#.......RRRR.......#',
       '####################'
     ],
-    // Map ASCII chars to Tile Keys
     legend: {
       '#': 'castle_wall',
       '.': 'castle_floor',
       'R': 'red_carpet',
-      'P': 'castle_floor' // Pillars are objects, floor underneath
+      'P': 'castle_floor'
     },
     objects: [
       // Pillars
@@ -130,9 +134,9 @@ export function createWorld() {
         id: 'lord_british',
         name: 'Lord British',
         x: 9,
-        y: 3, // Sitting on/near throne
-        spriteSheet: LORD_BRITISH_SPRITE_SHEET,
-        spriteFrame: 'player_south_1', // Sitting/Idle frame
+        y: 3,
+        spriteSheet: 'assets/sprites/lord_british.png',
+        spriteFrame: 'player_south_1',
         color: '#ffdd00',
         dialogue: 'Welcome, Avatar! Use the arrow keys to explore, and press T to speak with my subjects.'
       },
@@ -160,10 +164,7 @@ export function createWorld() {
     transitions: [
       { x: 9, y: 13, map: 'village', spawn: 'castle_gate' },
       { x: 10, y: 13, map: 'village', spawn: 'castle_gate' }
-    ],
-    spawnPoints: {
-      'castle_entry': { x: 9, y: 12 }
-    }
+    ]
   });
 
   // VILLAGE MAP
@@ -196,15 +197,11 @@ export function createWorld() {
       'T': 'trees',
       '.': 'grass',
       'P': 'path',
-      'G': 'garden', // mapped below
+      'G': 'garden',
       'W': 'water'
     },
     objects: [
-      // Fountain in center
-      { x: 15, y: 15, sprite: 'fountain', width: 2, height: 2 },
-      // Houses (visualized as walls for now, or objects if you have sprites)
-      { x: 5, y: 5, sprite: 'house_small', width: 4, height: 3 },
-      { x: 20, y: 8, sprite: 'house_large', width: 5, height: 4 }
+      { x: 15, y: 15, sprite: 'fountain', width: 2, height: 2 }
     ],
     npcs: [
       {
@@ -241,8 +238,7 @@ export function createWorld() {
     height: 40,
     safe: false,
     defaultTile: 'grass',
-    encounterRate: 0.15,
-    // No layout string, we'll generate simple noise in constructor or use default
+    encounterRate: 0.15
   });
 
   // Fill forest edges with trees
@@ -327,8 +323,6 @@ export class GameMap {
     if (info && !info.passable) return false;
 
     // Check Objects (Collision)
-    // Simple check: if an object exists at x,y, is it passable?
-    // For now, assume all objects block movement unless specified otherwise
     const obj = this.objects.find(o => {
         // Handle objects larger than 1x1
         const w = o.width || 1;
@@ -355,12 +349,5 @@ export class GameMap {
       const tile = this.getTile(x, y);
       const info = TileInfo[tile];
       return info ? info.description : 'Unknown terrain.';
-  }
-
-  getSpawn(tag) {
-    if (tag && this.spawnPoints && this.spawnPoints[tag]) {
-      return this.spawnPoints[tag];
-    }
-    return { x: Math.floor(this.width / 2), y: Math.floor(this.height / 2) };
   }
 }
