@@ -2,7 +2,7 @@
 // Feature: Village area + transitions (Castle↔Village↔Forest)
 import CharacterCreator from './CharacterCreator.js';
 import Character from './Character.js';
-import { createWorld, TileInfo, LORD_BRITISH_SPRITE_SHEET } from './GameMap.js';
+import { createWorld, TileInfo, LORD_BRITISH_SPRITE_SHEET, AVATAR_SPRITE } from './GameMap.js';
 import Renderer from './render.js';
 import Player from './Player.js';
 import CombatEngine from './CombatEngine.js';
@@ -17,7 +17,7 @@ const ctx = initCanvas('game');
 const renderer = new Renderer(ctx);
 const particles = createEmitter();
 renderer.setParticles(particles);
-const DEFAULT_PLAYER_SPRITE_SHEET = 'assets/sprites/Male-17-3-1758428284774-d1ea43dc.png';
+const DEFAULT_PLAYER_SPRITE_SHEET = AVATAR_SPRITE;
 const syncCanvasSize = () => {
   resize();
 };
