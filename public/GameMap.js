@@ -1,4 +1,5 @@
 // Feature: Game World Data (Multi-Room Expansion)
+import QuestManager from './QuestManager.js';
 
 export const AVATAR_SPRITE = 'assets/sprites/avatar.png';
 export const LORD_BRITISH_SPRITE_SHEET = 'assets/sprites/lord_british.png';
@@ -53,7 +54,10 @@ export function createWorld() {
         spriteSheet: LORD_BRITISH_SPRITE_SHEET, spriteFrame: 'player_south_1',
         color: '#ffdd00',
         behavior: 'static',
-        dialogue: 'Welcome! My quarters are to the West. The village lies to the South.'
+        dialogue: (state) => {
+          const stage = state.character.getQuestStage('orb_quest');
+          return QuestManager.resolveDialogue('orb_quest', stage);
+        }
       }
     ],
     transitions: [
@@ -152,7 +156,8 @@ export function createWorld() {
     legend: { '#': 'dungeon_wall', '.': 'dungeon_floor', 'E': 'cave_exit' },
     objects: [
       { x: 10, y: 10, sprite: 'torch_wall' },
-      { x: 2, y: 2, sprite: 'armory_rack' }
+      { x: 2, y: 2, sprite: 'armory_rack' },
+      { x: 15, y: 15, type: 'item', sprite: 'fountain', color: '#88f', data: { id: 'orb_of_moons', name: 'Orb of Moons', type: 'quest_item', weight: 1 } }
     ],
     transitions: [
       { x: 8, y: 7, map: 'village', spawn: 'dungeon_exit' }
@@ -166,6 +171,8 @@ export function createWorld() {
 export class GameMap {
   constructor(data) {
     Object.assign(this, data);
+    this.npcs = data.npcs || [];
+    this.objects = data.objects || [];
     this.tiles = [];
     for (let y = 0; y < this.height; y++) {
       this.tiles.push(new Array(this.width).fill(data.defaultTile || 'grass'));

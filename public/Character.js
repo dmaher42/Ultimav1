@@ -43,7 +43,8 @@ export default class Character {
     inventory = [],
     currentHP,
     currentMP,
-    unspentStatPoints = 0
+    unspentStatPoints = 0,
+    quests = {}
   }) {
     this.name = name?.trim() || 'Adventurer';
     this.level = clamp(level, 1);
@@ -61,6 +62,15 @@ export default class Character {
     this.unspentStatPoints = clamp(unspentStatPoints, 0);
     this.currentHP = Number.isFinite(currentHP) ? clamp(currentHP, 0) : this.maxHP;
     this.currentMP = Number.isFinite(currentMP) ? clamp(currentMP, 0) : this.maxMP;
+    this.quests = { ...quests };
+  }
+
+  getQuestStage(questId) {
+    return this.quests[questId] || 0;
+  }
+
+  setQuestStage(questId, stage) {
+    this.quests[questId] = stage;
   }
 
   get maxHP() {
@@ -277,7 +287,8 @@ export default class Character {
       inventory: this.inventory.map((item) => ({ ...item })),
       currentHP: this.currentHP,
       currentMP: this.currentMP,
-      unspentStatPoints: this.unspentStatPoints
+      unspentStatPoints: this.unspentStatPoints,
+      quests: { ...this.quests }
     };
   }
 
