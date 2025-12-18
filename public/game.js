@@ -21,6 +21,18 @@ const syncCanvasSize = () => {
   resize();
 };
 
+// --- DIALOGUE UI SETUP ---
+const dialogueEl = document.createElement('div');
+dialogueEl.id = 'dialogue-ui';
+dialogueEl.className = 'panel hidden';
+dialogueEl.style.cssText = `
+    position: absolute; bottom: 80px; left: 50%; transform: translateX(-50%);
+    width: 600px; background: rgba(16, 22, 40, 0.95); border: 2px solid #8c7853;
+    color: #f3efe3; padding: 20px; font-family: 'Trebuchet MS', monospace;
+    z-index: 100; box-shadow: 0 4px 10px rgba(0,0,0,0.5); border-radius: 4px;
+`;
+document.body.appendChild(dialogueEl);
+
 window.addEventListener('resize', syncCanvasSize);
 window.addEventListener('orientationchange', syncCanvasSize);
 syncCanvasSize();
@@ -133,11 +145,12 @@ function updateHUD() {
 }
 
 function isPanelOpen() {
-  return Object.values(panels).some((panel) => !panel.classList.contains('hidden'));
+  return Object.values(panels).some((panel) => !panel.classList.contains('hidden')) || !dialogueEl.classList.contains('hidden');
 }
 
 function closeAllPanels() {
   Object.values(panels).forEach((panel) => panel.classList.add('hidden'));
+  dialogueEl.classList.add('hidden');
   hideTooltip();
 }
 
@@ -442,12 +455,34 @@ function changeMap(mapId, spawnTag) {
   autoSave('area-transition');
 }
 
+function getNPCAt(x, y) {
+  if (!state.map || !state.map.npcs) return null;
+  return state.map.npcs.find(npc => npc.x === x && npc.y === y);
+}
+
 function attemptMove(dx, dy) {
   if (!state.player || state.inCombat) return;
-  if (isPanelOpen()) return;
+  if (isPanelOpen() && dialogueEl.classList.contains('hidden')) return; // Allow move if only dialogue is open? No, standard behavior is block.
+
+  const targetX = state.player.position.x + dx;
+  const targetY = state.player.position.y + dy;
+
+  // Check for NPC Collision
+  const npc = getNPCAt(targetX, targetY);
+  if (npc) {
+    log(`Blocked by: ${npc.name}. Press 'T' to talk.`);
+    // Update facing even if blocked so we can talk to them
+    if (dx === 1) state.player.facing = 'east';
+    if (dx === -1) state.player.facing = 'west';
+    if (dy === 1) state.player.facing = 'south';
+    if (dy === -1) state.player.facing = 'north';
+    renderGame();
+    return;
+  }
+
   const moved = state.player.move(dx, dy);
   if (!moved) {
-    const targetTile = state.map.getTile(state.player.position.x + dx, state.player.position.y + dy);
+    const targetTile = state.map.getTile(targetX, targetY);
     if (targetTile) {
       const def = TileInfo[targetTile] || TileInfo.grass;
       log(`Cannot move there: ${def.name}.`);
@@ -455,9 +490,53 @@ function attemptMove(dx, dy) {
     renderGame();
     return;
   }
+
+  // Close dialogue if moving
+  if (!dialogueEl.classList.contains('hidden')) {
+    dialogueEl.classList.add('hidden');
+  }
+
   renderGame();
   updateHUD();
   handleTileEvents();
+}
+
+function handleTalk() {
+  if (!state.player) return;
+
+  // Determine tile in front of player
+  const offset = DIRECTION_OFFSETS[state.player.facing || 'south'];
+  const targetX = state.player.position.x + offset.dx;
+  const targetY = state.player.position.y + offset.dy;
+
+  const npc = getNPCAt(targetX, targetY);
+  if (npc) {
+    showDialogue(npc);
+  } else {
+    log("There is no one there to talk to.");
+  }
+}
+
+function showDialogue(npc) {
+  dialogueEl.classList.remove('hidden');
+  // Ultima 6 Style: Portrait (placeholder) + Name + Text
+  dialogueEl.innerHTML = `
+    <div style="display: flex; gap: 20px; align-items: flex-start;">
+      <div style="
+        width: 64px;
+        height: 64px;
+        background-color: ${npc.color || '#555'};
+        border: 2px solid #8c7853;
+        flex-shrink: 0;
+      "></div>
+      <div>
+        <h3 style="margin: 0 0 10px 0; color: #fe5; text-transform: uppercase; font-size: 1.1em;">${npc.name}</h3>
+        <p style="margin: 0; line-height: 1.5; font-size: 1.1em;">"${npc.dialogue || 'Greetings, traveler.'}"</p>
+      </div>
+    </div>
+    <div style="margin-top: 15px; font-size: 0.8em; color: #888; text-align: right;">[SPACE] or [ESC] to close</div>
+  `;
+  log(`You speak with ${npc.name}.`);
 }
 
 function handleTileEvents() {
@@ -483,8 +562,15 @@ function handleLook(dx, dy) {
     return;
   }
   state.lookHighlight = { x: lookPos.x, y: lookPos.y, expires: Date.now() + 2500 };
-  const description = state.map.describeTile(lookPos.x, lookPos.y);
-  log(description);
+
+  // Check NPC first
+  const npc = getNPCAt(lookPos.x, lookPos.y);
+  if (npc) {
+      log(`You see ${npc.name}.`);
+  } else {
+      const description = state.map.describeTile(lookPos.x, lookPos.y);
+      log(description);
+  }
   renderGame();
 }
 
@@ -606,6 +692,17 @@ function loadGame(manual = false) {
 function setupEventListeners() {
   document.addEventListener('keydown', (event) => {
     if (event.target instanceof HTMLInputElement) return;
+
+    // Handle Dialogue Closing or Advancing
+    if (!dialogueEl.classList.contains('hidden')) {
+        const key = event.key.toLowerCase();
+        if (key === 'escape' || key === ' ' || key === 'enter') {
+            event.preventDefault();
+            dialogueEl.classList.add('hidden');
+        }
+        return;
+    }
+
     if (state.inCombat) return;
     const normalizedKey = event.key.toLowerCase();
     const direction = KEY_TO_DIRECTION[normalizedKey];
@@ -630,6 +727,10 @@ function setupEventListeners() {
     }
 
     switch (normalizedKey) {
+      case 't': // Talk Command
+        event.preventDefault();
+        handleTalk();
+        break;
       case 'f3':
         event.preventDefault();
         renderer.toggleDebugOverlay();
@@ -794,7 +895,7 @@ async function bootstrap() {
   renderGame();
   celebrateCastle();
   saveGame('new-adventurer', true);
-  log('Use WASD or arrows to explore.');
+  log('Use WASD to move. Press T to talk.');
   console.log('Bootstrap completed successfully');
 }
 
