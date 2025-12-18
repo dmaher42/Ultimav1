@@ -663,7 +663,10 @@ function loadGame(manual = false) {
   }
   const character = new Character(data.character);
   const player = new Player(character);
-  const currentMap = state.world.maps[data.world?.current_map] || state.world.startingMap;
+  const mapId = data.world?.current_map;
+  const currentMap = (mapId && Object.prototype.hasOwnProperty.call(state.world.maps, mapId))
+    ? state.world.maps[mapId]
+    : state.world.startingMap;
   player.setMap(currentMap, data.character.position ? undefined : 'village');
   if (data.character.position && currentMap.isWalkable(data.character.position.x, data.character.position.y)) {
     player.setPosition(data.character.position.x, data.character.position.y);
