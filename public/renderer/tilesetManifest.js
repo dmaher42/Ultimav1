@@ -1,10 +1,6 @@
 // Feature: Tile Manifest & Definitions
 // Maps logical tile names to file paths for the loader
 
-const MANIFEST_URL = 'assets/tiles/manifest.json';
-
-// Define the tiles we actually have and use.
-// This prevents 404 errors for missing assets.
 const CORE_TILES = [
   // --- TERRAIN ---
   {
@@ -26,6 +22,11 @@ const CORE_TILES = [
     name: 'path',
     category: 'terrain',
     src: 'assets/tiles/path.png'
+  },
+  {
+    name: 'courtyard',
+    category: 'terrain',
+    src: 'assets/tiles/terrain/courtyard.png'
   },
 
   // --- CASTLE ARCHITECTURE ---
@@ -81,13 +82,13 @@ const CORE_TILES = [
     category: 'props',
     src: 'assets/tiles/pillar.png'
   },
-
-  // --- MISC / DUNGEON ---
   {
-    name: 'courtyard',
-    category: 'terrain',
-    src: 'assets/tiles/terrain/courtyard.png'
+    name: 'garden',
+    category: 'props',
+    src: 'assets/tiles/props/garden.png'
   },
+
+  // --- DUNGEON / MISC ---
   {
     name: 'cave_entrance',
     category: 'terrain',
@@ -97,11 +98,15 @@ const CORE_TILES = [
     name: 'cave_exit',
     category: 'terrain',
     src: 'assets/tiles/cave_exit.png'
+  },
+  {
+    name: 'bookshelf',
+    category: 'props',
+    src: 'assets/tiles/bookshelf.png'
   }
 ];
 
 export async function loadTileManifest() {
-  // Return our hardcoded list for reliability
   return {
     tiles: CORE_TILES,
     tilesByName: new Map(CORE_TILES.map(t => [t.name, t])),
@@ -134,43 +139,3 @@ export function getAllTileNames(manifest) {
   if (!manifest || !Array.isArray(manifest.tiles)) return [];
   return manifest.tiles.map((tile) => tile.name);
 }
-
-// --- Compatibility Exports for TileLoader ---
-
-const TILE_DIRECTORIES = ['terrain', 'architecture', 'props'];
-
-export const TILE_BASE_PATHS = (() => {
-  // Directories that use the structured layout (category subdirectories)
-  const structuredRoots = [
-    'assets/tiles/',
-    './assets/tiles/'
-  ];
-  // Directories that are flat (all tiles in one folder)
-  const flatRoots = [
-    'public/assets/tiles/',
-    './public/assets/tiles/'
-  ];
-
-  const expanded = [];
-
-  // Add structured paths: root + category/
-  structuredRoots.forEach((root) => {
-    TILE_DIRECTORIES.forEach((dir) => {
-      expanded.push(`${root}${dir}/`);
-    });
-  });
-
-  // Add structured roots themselves as fallback
-  expanded.push(...structuredRoots);
-
-  // Add flat roots (no categories appended)
-  expanded.push(...flatRoots);
-
-  return expanded;
-})();
-
-export const FALLBACK_TILE_MANIFEST = {
-    tiles: CORE_TILES,
-    tilesByName: new Map(CORE_TILES.map(t => [t.name, t])),
-    categories: groupByCategory(CORE_TILES)
-};
