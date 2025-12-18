@@ -164,7 +164,10 @@ export function createWorld() {
     transitions: [
       { x: 9, y: 13, map: 'village', spawn: 'castle_gate' },
       { x: 10, y: 13, map: 'village', spawn: 'castle_gate' }
-    ]
+    ],
+    spawnPoints: {
+      'castle_entry': { x: 9, y: 12 }
+    }
   });
 
   // VILLAGE MAP
@@ -343,6 +346,17 @@ export class GameMap {
     const info = TileInfo[tile];
     // Base rate + Tile modifier
     return this.encounterRate + (info ? (info.encounterChance || 0) : 0);
+  }
+
+  getSpawn(tag) {
+    if (tag && this.spawnPoints[tag]) {
+      return this.spawnPoints[tag];
+    }
+    // Default to center if no specific spawn or tag not found
+    return {
+      x: Math.floor(this.width / 2),
+      y: Math.floor(this.height / 2)
+    };
   }
 
   describeTile(x, y) {
