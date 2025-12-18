@@ -119,6 +119,25 @@ class TileLoader {
     const stem = this.alias[tileName] || tileName;
     const filename = `${stem}.png`;
 
+    // Optimization: If source is pixelcrawler, prioritize public/assets/tiles
+    if (metadata?.source === 'pixelcrawler') {
+      const pixelcrawlerPaths = [
+        'public/assets/tiles/',
+        './public/assets/tiles/'
+      ];
+
+      for (const path of pixelcrawlerPaths) {
+        const url = `${path}${filename}`;
+        try {
+          const image = await this._loadImage(url);
+          console.log(`✓ Loaded individual tile: ${tileName} from ${url}`);
+          return { image, source: 'individual' };
+        } catch (error) {
+          // Silent failure on optimization attempt, fall back to main loop
+        }
+      }
+    }
+
     for (const basePath of this.basePaths) {
       const url = `${basePath}${filename}`;
       try {
