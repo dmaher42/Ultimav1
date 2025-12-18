@@ -428,22 +428,32 @@ export function getAllTileNames(manifest) {
 }
 
 export const TILE_BASE_PATHS = (() => {
-  const roots = [
+  // Directories that use the structured layout (category subdirectories)
+  const structuredRoots = [
     'assets/tiles/',
+    './assets/tiles/'
+  ];
+  // Directories that are flat (all tiles in one folder)
+  const flatRoots = [
     'public/assets/tiles/',
-    './assets/tiles/',
     './public/assets/tiles/'
   ];
+
   const expanded = [];
-  roots.forEach((root) => {
+
+  // Add structured paths: root + category/
+  structuredRoots.forEach((root) => {
     TILE_DIRECTORIES.forEach((dir) => {
       expanded.push(`${root}${dir}/`);
     });
   });
-  expanded.push('assets/tiles/');
-  expanded.push('public/assets/tiles/');
-  expanded.push('./assets/tiles/');
-  expanded.push('./public/assets/tiles/');
+
+  // Add structured roots themselves as fallback
+  expanded.push(...structuredRoots);
+
+  // Add flat roots (no categories appended)
+  expanded.push(...flatRoots);
+
   return expanded;
 })();
 
