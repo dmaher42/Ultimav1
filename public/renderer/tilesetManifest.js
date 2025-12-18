@@ -66,3 +66,15 @@ export function getAllTileNames(manifest) {
   if (!manifest || !Array.isArray(manifest.tiles)) return [];
   return manifest.tiles.map((tile) => tile.name);
 }
+
+export const TILE_BASE_PATHS = [
+  'assets/tiles/',
+  'public/assets/tiles/',
+  './assets/tiles/'
+];
+
+export const FALLBACK_TILE_MANIFEST = {
+  tiles: CORE_TILES,
+  tilesByName: new Map(CORE_TILES.map(t => [t.name, t])),
+  categories: groupByCategory(CORE_TILES)
+};

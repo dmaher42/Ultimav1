@@ -7,6 +7,7 @@ import Player from './Player.js';
 import CombatEngine from './CombatEngine.js';
 import { createEnemy } from './Enemy.js';
 import ItemGenerator from './ItemGenerator.js';
+import QuestManager from './QuestManager.js';
 import SaveManager, { formatTimestamp } from './SaveManager.js';
 import { initCanvas, resize, DPR } from './renderer/canvas.js';
 import { loadAtlas } from './renderer/atlas.js';
@@ -34,6 +35,24 @@ dialogueEl.style.cssText = `
 `;
 document.body.appendChild(dialogueEl);
 
+// --- JOURNAL UI SETUP ---
+const journalEl = document.createElement('div');
+journalEl.id = 'journal-panel';
+journalEl.className = 'panel hidden';
+journalEl.style.cssText = `
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    width: 400px; height: 500px; background: #e8dcb5; color: #2e1d0e;
+    border: 4px solid #5c3c1e; padding: 25px; font-family: 'Times New Roman', serif;
+    box-shadow: 10px 10px 30px rgba(0,0,0,0.6); z-index: 100; border-radius: 2px;
+    overflow-y: auto;
+`;
+journalEl.innerHTML = `
+    <h2 style="text-align: center; border-bottom: 2px solid #5c3c1e; padding-bottom: 10px; margin-top: 0;">Quest Journal</h2>
+    <div id="journal-content"></div>
+    <div style="text-align: center; margin-top: 20px; font-size: 0.8em;">(Press J to close)</div>
+`;
+document.body.appendChild(journalEl);
+
 window.addEventListener('resize', syncCanvasSize);
 window.addEventListener('orientationchange', syncCanvasSize);
 syncCanvasSize();
@@ -54,7 +73,8 @@ const hud = {
 const panels = {
   inventory: document.getElementById('inventory-panel'),
   character: document.getElementById('character-panel'),
-  menu: document.getElementById('menu-panel')
+  menu: document.getElementById('menu-panel'),
+  journal: journalEl
 };
 
 const inventoryList = document.getElementById('inventory-list');
@@ -197,7 +217,38 @@ function openPanel(name) {
   if (name === 'inventory') renderInventory();
   if (name === 'character') renderCharacterSheet();
   if (name === 'menu') updateMenuStatus();
+  if (name === 'journal') renderJournal();
   panels[name].classList.remove('hidden');
+}
+
+function renderJournal() {
+    const content = journalEl.querySelector('#journal-content');
+    content.innerHTML = '';
+
+    const quests = state.character.quests;
+    let hasQuests = false;
+
+    Object.keys(quests).forEach(questId => {
+        const stage = quests[questId];
+        if (stage > 0) {
+            hasQuests = true;
+            const questData = QuestManager.getQuest(questId);
+            if (questData) {
+                const entry = document.createElement('div');
+                entry.style.marginBottom = '20px';
+                entry.innerHTML = `
+                    <h3 style="margin: 0 0 5px 0; color: #4a2c10;">${questData.title}</h3>
+                    <p style="margin: 0; font-style: italic;">${questData.description}</p>
+                    <p style="margin: 5px 0 0 0; font-weight: bold; font-size: 0.9em;">Status: ${stage >= 3 ? 'Completed' : 'In Progress'}</p>
+                `;
+                content.appendChild(entry);
+            }
+        }
+    });
+
+    if (!hasQuests) {
+        content.innerHTML = '<p style="text-align: center; color: #666;">No active quests.</p>';
+    }
 }
 
 function togglePanel(name) {
@@ -386,6 +437,12 @@ function handleGet() {
     const obj = state.map.objects[objIndex];
     const itemData = obj.data || { name: 'Unknown Item', type: 'misc', weight: 1 };
 
+    // Handle Quest Item Logic
+    if (itemData.id === 'orb_of_moons') {
+         state.character.setQuestStage('orb_quest', 2);
+         log("Journal Updated! You found the Orb.");
+    }
+
     // Add to inventory
     const added = state.character.addItem(itemData);
     if (added) {
@@ -401,13 +458,31 @@ function handleGet() {
 }
 
 function showDialogue(npc) {
+  let text = '...';
+  if (typeof npc.dialogue === 'function') {
+      text = npc.dialogue(state);
+      // Auto-update quest state if Lord British talks at stage 0
+      if (npc.id === 'lord_british') {
+          if (state.character.getQuestStage('orb_quest') === 0) {
+              state.character.setQuestStage('orb_quest', 1);
+              log("New Quest Added: The Stolen Orb");
+          } else if (state.character.getQuestStage('orb_quest') === 2) {
+              state.character.setQuestStage('orb_quest', 3);
+              log("Quest Completed!");
+              state.character.gainXP(500);
+          }
+      }
+  } else {
+      text = npc.dialogue || 'Greetings.';
+  }
+
   dialogueEl.classList.remove('hidden');
   dialogueEl.innerHTML = `
     <div style="display: flex; gap: 20px;">
       <div style="width: 64px; height: 64px; background: ${npc.color || '#555'}; border: 2px solid #8c7853;"></div>
       <div>
         <h3 style="margin: 0 0 10px 0; color: #fe5;">${npc.name}</h3>
-        <p>"${npc.dialogue || 'Greetings.'}"</p>
+        <p>"${text}"</p>
       </div>
     </div>
     <div style="margin-top: 15px; font-size: 0.8em; color: #888;">[SPACE] to close</div>
@@ -581,6 +656,7 @@ function setupEventListeners() {
       case 'i': togglePanel('inventory'); break;
       case 'c': togglePanel('character'); break;
       case 'm': togglePanel('menu'); break;
+      case 'j': togglePanel('journal'); break;
       case 'escape': closeAllPanels(); break;
     }
   });
