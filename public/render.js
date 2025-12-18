@@ -1,3 +1,4 @@
+
 import { TileInfo } from './GameMap.js';
 import { DPR } from './renderer/canvas.js';
 import { drawSprite } from './renderer/atlas.js';
@@ -223,7 +224,6 @@ export default class RenderEngine {
     this.atlas = atlas || null;
     this.assetsLoaded = Boolean(atlas?.img && atlas?.meta);
     
-    // Preload individual castle tiles for better graphics
     if (this.assetsLoaded) {
       loadTileManifest()
         .then((manifest) => {
@@ -380,10 +380,7 @@ export default class RenderEngine {
   }
 
   draw() {
-    if (!this.assetsLoaded) {
-      console.log('Assets not loaded, skipping draw');
-      return;
-    }
+    if (!this.assetsLoaded) return;
 
     this.updateCanvasMetrics();
     const ctx = this.ctx;
@@ -395,18 +392,48 @@ export default class RenderEngine {
     ctx.fillRect(0, 0, this.viewportWidth, this.viewportHeight);
 
     const grid = this.getMapGrid();
-    console.log('Draw called - Grid exists:', !!grid, 'Viewport:', this.viewportWidth, 'x', this.viewportHeight);
+
     if (grid) {
       this.camera.apply(ctx);
+
+      // 1. Draw Map Tiles (Ground Layer)
       this.drawMap(ctx, grid);
-      this.drawObjects(ctx);
-      this.drawNPCs(ctx);
+
+      // 2. Depth Sort Entities (Player, NPCs, Objects)
+      // This is crucial for Ultima 6 style "oblique" rendering
+      const entities = [];
+
+      // Add Objects
+      this.objects.forEach(obj => {
+         const y = (obj.y + 1) * this.tileSize; // Sort by bottom of the tile
+         entities.push({ type: 'object', y, data: obj });
+      });
+
+      // Add NPCs
+      this.npcs.forEach(npc => {
+         const y = (npc.y + 1) * this.tileSize;
+         entities.push({ type: 'npc', y, data: npc });
+      });
+
+      // Add Player
+      if (this.player && this.player.position) {
+         const y = (this.player.position.y + 1) * this.tileSize;
+         entities.push({ type: 'player', y, data: this.player });
+      }
+
+      // Sort by Y coordinate
+      entities.sort((a, b) => a.y - b.y);
+
+      // Draw sorted entities
+      entities.forEach(entity => {
+          if (entity.type === 'object') this.drawObject(ctx, entity.data);
+          if (entity.type === 'npc') this.drawNPC(ctx, entity.data);
+          if (entity.type === 'player') this.drawPlayer(ctx);
+      });
 
       if (this.highlight) {
         this.drawHighlight(ctx, this.highlight);
       }
-
-      this.drawPlayer(ctx);
 
       if (this.particles) {
         this.particles.draw(ctx);
@@ -414,15 +441,14 @@ export default class RenderEngine {
 
       this.camera.reset(ctx);
     }
-
     ctx.restore();
 
     if (grid) {
-      const { tint, vignette: vignetteStrength } = this.timeOfDay.getTint();
-      ctx.save();
-      vignette(ctx, this.viewportWidth, this.viewportHeight, vignetteStrength);
-      colorGrade(ctx, tint, this.viewportWidth, this.viewportHeight);
-      ctx.restore();
+        const { tint, vignette: vignetteStrength } = this.timeOfDay.getTint();
+        ctx.save();
+        vignette(ctx, this.viewportWidth, this.viewportHeight, vignetteStrength);
+        colorGrade(ctx, tint, this.viewportWidth, this.viewportHeight);
+        ctx.restore();
     }
 
     if (this.flashLayer.hasActive()) {
@@ -520,15 +546,11 @@ export default class RenderEngine {
   drawAtlasTile(ctx, sprite, tileX, tileY, fallbackColor) {
     const px = this.offsetX + tileX * this.tileSize;
     const py = this.offsetY + tileY * this.tileSize;
-    
-    // Try individual tile first, then atlas, then fallback color
     const drawn = drawTile(ctx, this.atlas, sprite, px, py, this.tileSize, this.tileSize, fallbackColor);
-    
     return drawn;
   }
 
   drawMap(ctx, grid) {
-    console.log('Drawing map with grid:', grid.width, 'x', grid.height);
     const tiles = grid.tiles;
     for (let y = 0; y < grid.height; y += 1) {
       const row = tiles[y];
@@ -536,10 +558,7 @@ export default class RenderEngine {
       for (let x = 0; x < grid.width; x += 1) {
         const tileType = row[x];
         const fallback = TileInfo[tileType]?.color;
-        const drawn = this.drawAtlasTile(ctx, tileType, x, y, fallback);
-        if (x === 0 && y === 0) {
-          console.log('First tile draw:', tileType, 'drawn:', drawn, 'fallback:', fallback);
-        }
+        this.drawAtlasTile(ctx, tileType, x, y, fallback);
       }
     }
 
@@ -561,86 +580,84 @@ export default class RenderEngine {
     ctx.restore();
   }
 
-  drawObjects(ctx) {
-    if (!this.objects.length) return;
-    this.objects.forEach((object) => {
-      if (typeof object?.draw === 'function') {
-        ctx.save();
-        ctx.translate(this.offsetX, this.offsetY);
-        object.draw(ctx, {
-          tileSize: this.tileSize,
-          drawSprite: (name, gridX, gridY, width = this.tileSize, height = this.tileSize) => {
-            const px = gridX * this.tileSize;
-            const py = gridY * this.tileSize;
-            return drawSprite(ctx, this.atlas, name, px, py, width, height);
-          }
-        });
-        ctx.restore();
-      } else if (typeof object?.x === 'number' && typeof object?.y === 'number') {
-        const sprite = object?.sprite || object?.type || 'default';
-        const color = object?.color || '#8c7853';
-        const metadata = tileLoader.getTileMetadata(sprite) || {};
-        const tileUnitsWidth = Number.isFinite(object?.width) && object.width > 0 ? object.width : 1;
-        const tileUnitsHeight = Number.isFinite(object?.height) && object.height > 0 ? object.height : 1;
-        const width = tileUnitsWidth * this.tileSize;
-        const height = tileUnitsHeight * this.tileSize;
-        const anchorArray = Array.isArray(metadata.anchor) ? metadata.anchor : null;
-        const anchorX = Number.isFinite(object?.anchorX)
-          ? object.anchorX
-          : Number.isFinite(metadata.anchorX)
-            ? metadata.anchorX
-            : anchorArray && Number.isFinite(anchorArray[0])
-              ? anchorArray[0]
-              : 0;
-        const anchorY = Number.isFinite(object?.anchorY)
-          ? object.anchorY
-          : Number.isFinite(metadata.anchorY)
-            ? metadata.anchorY
-            : anchorArray && Number.isFinite(anchorArray[1])
-              ? anchorArray[1]
-              : 0;
-        const baseX = this.offsetX + (object.x + 0.5) * this.tileSize;
-        const baseY = this.offsetY + (object.y + 1) * this.tileSize;
-        const px = baseX - anchorX * width;
-        const py = baseY - anchorY * height;
-
-        const shouldDrawShadow = object?.shadow ?? (metadata.shadow ?? metadata.category === 'props');
-        if (shouldDrawShadow) {
-          this.drawSoftShadow(ctx, baseX, baseY, width, height);
+  drawObject(ctx, object) {
+    if (typeof object?.draw === 'function') {
+      ctx.save();
+      // Since we are using camera.apply(), we likely don't need this.offsetX manually here
+      // if the object.draw expects local coordinates. However, existing objects likely expect
+      // to draw themselves relative to the world offset.
+      ctx.translate(this.offsetX, this.offsetY);
+      object.draw(ctx, {
+        tileSize: this.tileSize,
+        drawSprite: (name, gridX, gridY, width = this.tileSize, height = this.tileSize) => {
+          const px = gridX * this.tileSize;
+          const py = gridY * this.tileSize;
+          return drawSprite(ctx, this.atlas, name, px, py, width, height);
         }
+      });
+      ctx.restore();
+    } else if (typeof object?.x === 'number' && typeof object?.y === 'number') {
+      const sprite = object?.sprite || object?.type || 'default';
+      const color = object?.color || '#8c7853';
+      const metadata = tileLoader.getTileMetadata(sprite) || {};
+      const tileUnitsWidth = Number.isFinite(object?.width) && object.width > 0 ? object.width : 1;
+      const tileUnitsHeight = Number.isFinite(object?.height) && object.height > 0 ? object.height : 1;
+      const width = tileUnitsWidth * this.tileSize;
+      const height = tileUnitsHeight * this.tileSize;
+      const anchorArray = Array.isArray(metadata.anchor) ? metadata.anchor : null;
+      const anchorX = Number.isFinite(object?.anchorX)
+        ? object.anchorX
+        : Number.isFinite(metadata.anchorX)
+          ? metadata.anchorX
+          : anchorArray && Number.isFinite(anchorArray[0])
+            ? anchorArray[0]
+            : 0;
+      const anchorY = Number.isFinite(object?.anchorY)
+        ? object.anchorY
+        : Number.isFinite(metadata.anchorY)
+          ? metadata.anchorY
+          : anchorArray && Number.isFinite(anchorArray[1])
+            ? anchorArray[1]
+            : 0;
 
-        if (!drawTile(ctx, this.atlas, sprite, px, py, width, height, color)) {
-          ctx.fillStyle = color;
-          ctx.fillRect(px, py, width, height);
-        }
+      const baseX = this.offsetX + (object.x + 0.5) * this.tileSize;
+      const baseY = this.offsetY + (object.y + 1) * this.tileSize;
+      const px = baseX - anchorX * width;
+      const py = baseY - anchorY * height;
+
+      const shouldDrawShadow = object?.shadow ?? (metadata.shadow ?? metadata.category === 'props');
+      if (shouldDrawShadow) {
+        this.drawSoftShadow(ctx, baseX, baseY, width, height);
       }
-    });
+
+      if (!drawTile(ctx, this.atlas, sprite, px, py, width, height, color)) {
+        ctx.fillStyle = color;
+        ctx.fillRect(px, py, width, height);
+      }
+    }
   }
 
-  drawNPCs(ctx) {
-    if (!this.npcs.length) return;
-    this.npcs.forEach((npc) => {
-      if (typeof npc?.x !== 'number' || typeof npc?.y !== 'number') return;
-      if (npc.spriteSheet) {
-        const sheetOptions = npc.spriteSheetOptions || npc.spriteOptions;
-        const sheet = this.getSpriteSheetSync(npc.spriteSheet, sheetOptions);
-        if (sheet) {
-          const px = this.offsetX + npc.x * this.tileSize;
-          const py = this.offsetY + npc.y * this.tileSize;
-          const frameKey = npc.spriteFrame || 'player_south_1';
-          const width = typeof npc.spriteWidth === 'number' ? npc.spriteWidth : this.tileSize;
-          const height = typeof npc.spriteHeight === 'number' ? npc.spriteHeight : this.tileSize;
-          if (this.drawSpriteSheetFrame(ctx, sheet, frameKey, px, py, width, height)) {
-            return;
-          }
-        } else {
-          this.requestSpriteSheet(npc.spriteSheet, sheetOptions);
+  drawNPC(ctx, npc) {
+    if (typeof npc?.x !== 'number' || typeof npc?.y !== 'number') return;
+    if (npc.spriteSheet) {
+      const sheetOptions = npc.spriteSheetOptions || npc.spriteOptions;
+      const sheet = this.getSpriteSheetSync(npc.spriteSheet, sheetOptions);
+      if (sheet) {
+        const px = this.offsetX + npc.x * this.tileSize;
+        const py = this.offsetY + npc.y * this.tileSize;
+        const frameKey = npc.spriteFrame || 'player_south_1';
+        const width = typeof npc.spriteWidth === 'number' ? npc.spriteWidth : this.tileSize;
+        const height = typeof npc.spriteHeight === 'number' ? npc.spriteHeight : this.tileSize;
+        if (this.drawSpriteSheetFrame(ctx, sheet, frameKey, px, py, width, height)) {
+          return;
         }
+      } else {
+        this.requestSpriteSheet(npc.spriteSheet, sheetOptions);
       }
-      const sprite = npc?.sprite || npc?.type || 'npc';
-      const color = npc?.color || '#cfa658';
-      this.drawAtlasTile(ctx, sprite, npc.x, npc.y, color);
-    });
+    }
+    const sprite = npc?.sprite || npc?.type || 'npc';
+    const color = npc?.color || '#cfa658';
+    this.drawAtlasTile(ctx, sprite, npc.x, npc.y, color);
   }
 
   drawHighlight(ctx, highlight) {

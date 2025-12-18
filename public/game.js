@@ -1,3 +1,4 @@
+
 // Feature: Village area + transitions (Castle↔Village↔Forest)
 import CharacterCreator from './CharacterCreator.js';
 import Character from './Character.js';
@@ -462,7 +463,7 @@ function getNPCAt(x, y) {
 
 function attemptMove(dx, dy) {
   if (!state.player || state.inCombat) return;
-  if (isPanelOpen() && dialogueEl.classList.contains('hidden')) return; // Allow move if only dialogue is open? No, standard behavior is block.
+  if (isPanelOpen() && dialogueEl.classList.contains('hidden')) return;
 
   const targetX = state.player.position.x + dx;
   const targetY = state.player.position.y + dy;
