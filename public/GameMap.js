@@ -11,6 +11,7 @@ export const TileInfo = {
   path: { name: 'Path', color: '#9f884f', passable: true },
   castle_floor: { name: 'Castle Floor', color: '#555555', passable: true },
   castle_wall: { name: 'Wall', color: '#333333', passable: false },
+  castle_door: { name: 'Door', color: '#885522', passable: true },
   red_carpet: { name: 'Royal Carpet', color: '#8b0000', passable: true },
   courtyard: { name: 'Courtyard', color: '#666', passable: true },
   dungeon_floor: { name: 'Dungeon Floor', color: '#444', passable: true, encounterChance: 0.2 },
@@ -38,7 +39,7 @@ export function createWorld() {
       '#.......RRRR.......#',
       '#.......RRRR.......#',
       '#.......RRRR.......#',
-      '####################'
+      '#########DD#########'
     ],
     legend: { '#': 'castle_wall', '.': 'castle_floor', 'R': 'red_carpet', 'P': 'castle_floor', 'D': 'castle_door' },
     objects: [
