@@ -1,5 +1,5 @@
 {
-  "image": "tiles/athens_tileset.png",
+  "image": "../public/assets/tiles/athens_tileset.png",
   "frames": {
     "grass": { "x": 0, "y": 0, "w": 48, "h": 48 },
     "trees": { "x": 48, "y": 0, "w": 48, "h": 48 },
