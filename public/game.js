@@ -67,7 +67,8 @@ const hud = {
   hp: document.getElementById('hud-hp'),
   mp: document.getElementById('hud-mp'),
   xp: document.getElementById('hud-xp'),
-  area: document.getElementById('hud-area')
+  area: document.getElementById('hud-area'),
+  gold: document.getElementById('hud-gold')
 };
 
 const panels = {
@@ -200,6 +201,7 @@ function updateHUD() {
   hud.mp.textContent = `${state.character.currentMP} / ${state.character.maxMP}`;
   hud.xp.textContent = `${state.character.xp} / ${state.character.xpThreshold}`;
   hud.area.textContent = state.map ? state.map.name : 'Unknown';
+  if (hud.gold) hud.gold.textContent = `${state.character.gold || 0}`;
 }
 
 function isPanelOpen() {
@@ -378,7 +380,11 @@ function attemptMove(dx, dy) {
   // Check NPC Collision
   const npc = getNPCAt(targetX, targetY);
   if (npc) {
-    log(`Blocked by: ${npc.name}.`);
+    const now = Date.now();
+    if (!state.lastBlockedLog || now - state.lastBlockedLog > 1000) {
+      log(`Blocked by: ${npc.name}.`);
+      state.lastBlockedLog = now;
+    }
     // Update facing
     if (dx === 1) state.player.facing = 'east';
     if (dx === -1) state.player.facing = 'west';
@@ -459,21 +465,39 @@ function handleGet() {
 
 function showDialogue(npc) {
   let text = '...';
-  if (typeof npc.dialogue === 'function') {
-      text = npc.dialogue(state);
-      // Auto-update quest state if Lord British talks at stage 0
-      if (npc.id === 'lord_british') {
-          if (state.character.getQuestStage('orb_quest') === 0) {
-              state.character.setQuestStage('orb_quest', 1);
-              log("New Quest Added: The Stolen Orb");
-          } else if (state.character.getQuestStage('orb_quest') === 2) {
-              state.character.setQuestStage('orb_quest', 3);
-              log("Quest Completed!");
-              state.character.gainXP(500);
-          }
+  
+  if (npc.id === 'socrates') {
+      const solved = state.character.getQuestStage('socrates_riddle') === 1;
+      if (solved) {
+          text = "Wealth is not about having many possessions, but having few wants.";
+      } else {
+          text = "I am not an Athenian or a Greek, but a citizen of the world. Can you tell me, what is the only true wisdom?";
       }
+  } else if (typeof npc.dialogue === 'function') {
+      text = npc.dialogue(state);
   } else {
       text = npc.dialogue || 'Greetings.';
+  }
+
+  // Handle Riddle Completion in dialogue UI logic
+  // (We'll add a simple input field or just keyword check)
+  
+  // Quest Milestone Updates
+  if (npc.id === 'lord_british') {
+      const questStage = state.character.getQuestStage('orb_quest');
+      if (questStage === 0) {
+          state.character.setQuestStage('orb_quest', 1);
+          log("New Quest Added: The Stolen Orb");
+          autoSave('quest-start');
+      } else if (questStage === 2) {
+          state.character.setQuestStage('orb_quest', 3);
+          log("Quest Completed! Lord British bestows a gift upon you.");
+          state.character.gainXP(500);
+          const reward = itemGenerator.createWeapon('slayer_sword', 'Slayer Sword', 15, { STR: 5 });
+          state.character.addItem(reward);
+          log(`Received: ${reward.name}`);
+          autoSave('quest-complete');
+      }
   }
 
   dialogueEl.classList.remove('hidden');
@@ -483,11 +507,31 @@ function showDialogue(npc) {
       <div>
         <h3 style="margin: 0 0 10px 0; color: #fe5;">${npc.name}</h3>
         <p>"${text}"</p>
+        ${npc.id === 'socrates' && state.character.getQuestStage('socrates_riddle') === 0 ? 
+          `<div style="margin-top:10px;">
+           <button class="dialogue-opt" onclick="window.answerRiddle('nothing')">Knowing you know nothing</button>
+           <button class="dialogue-opt" onclick="window.answerRiddle('everything')">Knowing everything</button>
+           </div>` : ''}
       </div>
     </div>
     <div style="margin-top: 15px; font-size: 0.8em; color: #888;">[SPACE] to close</div>
   `;
 }
+
+// Global hook for riddle answer
+window.answerRiddle = (answer) => {
+    if (answer === 'nothing') {
+        log("Socrates nods in approval. 'Indeed. You have found the path to wisdom.'");
+        state.character.setQuestStage('socrates_riddle', 1);
+        state.character.applyStatPoints({ INT: 1 });
+        log("Gained +1 Intelligence!");
+        updateHUD();
+        renderCharacterSheet();
+    } else {
+        log("Socrates sighs. 'Perhaps you should reflect more upon this.'");
+    }
+    dialogueEl.classList.add('hidden');
+};
 
 function handleTileEvents() {
   const { x, y } = state.player.position;
@@ -496,12 +540,22 @@ function handleTileEvents() {
     changeMap(transition.map, transition.spawn);
     return;
   }
+
+  // Boss Trigger for Orb Quest
+  if (state.map.id === 'dungeon_1' && x === 13 && y === 8 && state.character.getQuestStage('orb_quest') === 1) {
+      if (!state.guardianDefeated) {
+          log("The air turns cold... The Dungeon Guardian appears!");
+          startSpecialEncounter('dungeon_boss');
+          return;
+      }
+  }
+
   if (!state.map.safe && Math.random() < state.map.getEncounterChance(x, y)) {
     startEncounter();
   }
 }
 
-async function startEncounter() {
+async function startEncounter(category = null) {
   if (state.inCombat) return;
   if (isPanelOpen()) {
     closeAllPanels();
@@ -511,13 +565,23 @@ async function startEncounter() {
     renderer.stopAllMovement();
   }
   state.inCombat = true;
-  // Default to areaLevel 1 if not set
+  
   const level = state.map.areaLevel || 1;
-  const enemy = createEnemy(state.map.id, level);
+  const enemy = createEnemy(category || state.map.id, level);
   const result = await combatEngine.start(state.player, enemy);
   await resolveCombat(result, enemy);
+  
+  // Flag guardian as defeated if victory
+  if (category === 'dungeon_boss' && result.outcome === 'victory') {
+      state.guardianDefeated = true;
+  }
+
   state.inCombat = false;
   renderGame();
+}
+
+async function startSpecialEncounter(category) {
+    await startEncounter(category);
 }
 
 async function resolveCombat(result, enemy) {
@@ -528,7 +592,10 @@ async function resolveCombat(result, enemy) {
     log(`Gained ${xp} experience.`);
     if (result.loot?.length) {
       result.loot.forEach((item) => {
-        if (state.character.addItem(item, item.quantity || 1)) {
+        if (item.type === 'currency') {
+            state.character.gainGold(item.quantity || 0);
+            log(`Found ${item.quantity} ${item.name}.`);
+        } else if (state.character.addItem(item, item.quantity || 1)) {
           log(`Found ${item.name}.`);
         } else {
           log(`${item.name} was too heavy to carry.`);
@@ -556,20 +623,11 @@ async function resolveCombat(result, enemy) {
 
 function saveGame(reason = 'manual', silent = false) {
   if (!state.character || !state.player || !state.map) return false;
-  const payload = {
-    character: {
-      ...state.character.toJSON(),
-      position: { ...state.player.position }
-    },
-    world: {
-      current_map: state.map.id,
-      discovered_areas: Array.from(state.discoveredAreas)
-    }
-  };
-  const success = SaveManager.save(payload);
+  
+  const success = SaveManager.save(state);
+  
   if (success) {
     state.lastSaveTimestamp = Date.now();
-    updateMenuStatus();
     if (!silent) {
       log(`Game saved (${reason}).`);
     }
@@ -589,34 +647,28 @@ function loadGame(manual = false) {
     if (manual) log('No saved game found.');
     return false;
   }
+  
   const character = new Character(data.character);
   const player = new Player(character);
-  const mapId = data.world?.current_map;
-  const currentMap = (mapId && Object.prototype.hasOwnProperty.call(state.world.maps, mapId))
-    ? state.world.maps[mapId]
-    : state.world.startingMap;
+  
+  const mapId = data.mapId;
+  const currentMap = state.world.maps[mapId] || state.world.startingMap;
 
   // Handle position restoration
-  const pos = data.character.position;
-  // Default to spawn if no position or invalid
-  player.setMap(currentMap, 'castle_gate'); // Default spawn
+  const pos = data.playerPosition;
   if (pos && currentMap.isWalkable(pos.x, pos.y)) {
       player.setPosition(pos.x, pos.y);
+  } else {
+      player.setMap(currentMap, 'castle_gate');
   }
 
   state.character = character;
   state.player = player;
   state.map = currentMap;
+  state.guardianDefeated = data.flags?.guardianDefeated || false;
+
   activeMovementDirections.clear();
   renderer.stopAllMovement();
-  state.discoveredAreas = new Set(data.world?.discovered_areas || []);
-  state.discoveredAreas.add(currentMap.id);
-  Object.values(state.world.maps).forEach((map) => {
-    map.discovered = map.safe || state.discoveredAreas.has(map.id);
-  });
-  state.lastSaveTimestamp = data.timestamp || Date.now();
-  state.fx.lastCastleBurst = 0;
-  updateMenuStatus();
   renderInventory();
   renderCharacterSheet();
   updateHUD();
@@ -668,6 +720,7 @@ function setupEventListeners() {
 }
 
 // ... (Bootstrap)
+window.gameApp = { state, renderer, creator, itemGenerator, SaveManager };
 async function bootstrap() {
     try {
         const atlas = await loadAtlas(null, './assets/atlas.json');

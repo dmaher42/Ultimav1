@@ -42,6 +42,18 @@ const ENEMY_ARCHETYPES = {
       defenseBonus: 4,
       lootTags: ['goo', 'herb']
     }
+  ],
+  dungeon_boss: [
+    {
+      id: 'guardian',
+      name: 'Dungeon Guardian',
+      baseLevel: 3,
+      baseStats: { STR: 18, DEX: 12, INT: 10, VIT: 18, LUK: 12 },
+      scaling: { STR: 1.5, VIT: 2.0, LUK: 0.8 },
+      attackBonus: 8,
+      defenseBonus: 10,
+      lootTags: ['rare_weapon', 'gold']
+    }
   ]
 };
 

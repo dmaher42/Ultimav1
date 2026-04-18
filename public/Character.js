@@ -44,11 +44,13 @@ export default class Character {
     currentHP,
     currentMP,
     unspentStatPoints = 0,
-    quests = {}
+    quests = {},
+    gold = 100
   }) {
     this.name = name?.trim() || 'Adventurer';
     this.level = clamp(level, 1);
     this.xp = clamp(xp, 0);
+    this.gold = clamp(gold, 0);
     this.stats = {};
     STAT_KEYS.forEach((key) => {
       const value = Number.isFinite(stats?.[key]) ? stats[key] : 10;
@@ -214,6 +216,17 @@ export default class Character {
     return { leveledUp };
   }
 
+  gainGold(amount) {
+      if (amount <= 0) return;
+      this.gold += Math.floor(amount);
+  }
+
+  spendGold(amount) {
+      if (this.gold < amount) return false;
+      this.gold -= Math.floor(amount);
+      return true;
+  }
+
   applyStatPoints(allocation) {
     if (!allocation) return false;
     let required = 0;
@@ -288,7 +301,8 @@ export default class Character {
       currentHP: this.currentHP,
       currentMP: this.currentMP,
       unspentStatPoints: this.unspentStatPoints,
-      quests: { ...this.quests }
+      quests: { ...this.quests },
+      gold: this.gold
     };
   }
 

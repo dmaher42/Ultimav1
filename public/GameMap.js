@@ -5,22 +5,27 @@ export const AVATAR_SPRITE = 'assets/sprites/avatar.png';
 export const LORD_BRITISH_SPRITE_SHEET = 'assets/sprites/lord_british.png';
 
 export const TileInfo = {
-  grass: { name: 'Meadow', color: '#3b7f3a', passable: true, encounterChance: 0.05 },
-  trees: { name: 'Woodland', color: '#1f3d1b', passable: false },
-  water: { name: 'Stream', color: '#264c7d', passable: false },
-  path: { name: 'Path', color: '#9f884f', passable: true },
-  castle_floor: { name: 'Castle Floor', color: '#555555', passable: true },
-  castle_wall: { name: 'Wall', color: '#333333', passable: false },
-  castle_door: { name: 'Door', color: '#885522', passable: true },
-  red_carpet: { name: 'Royal Carpet', color: '#8b0000', passable: true },
-  courtyard: { name: 'Courtyard', color: '#666', passable: true },
-  dungeon_floor: { name: 'Dungeon Floor', color: '#444', passable: true, encounterChance: 0.2 },
-  dungeon_wall: { name: 'Dungeon Wall', color: '#222', passable: false },
-  cave_entrance: { name: 'Cave Mouth', color: '#000', passable: true }
+  grass: { name: 'Meadow', desc: 'lush green grass', color: '#3b7f3a', passable: true, encounterChance: 0.05 },
+  trees: { name: 'Woodland', desc: 'densely packed trees', color: '#1f3d1b', passable: false },
+  water: { name: 'Stream', desc: 'cool, flowing water', color: '#264c7d', passable: false },
+  path: { name: 'Path', desc: 'a worn dirt road', color: '#9f884f', passable: true },
+  castle_floor: { name: 'Castle Floor', desc: 'sturdy stone blocks', color: '#555555', passable: true },
+  castle_wall: { name: 'Wall', desc: 'thick stone fortifications', color: '#333333', passable: false },
+  castle_door: { name: 'Door', desc: 'a heavy iron-bound door', color: '#885522', passable: true },
+  red_carpet: { name: 'Royal Carpet', desc: 'opulent red velvet', color: '#8b0000', passable: true },
+  courtyard: { name: 'Courtyard', desc: 'flagstones and fresh air', color: '#666', passable: true },
+  dungeon_floor: { name: 'Dungeon Floor', desc: 'cold, damp stone', color: '#444', passable: true, encounterChance: 0.2 },
+  dungeon_wall: { name: 'Dungeon Wall', desc: 'crumbling, dark wall', color: '#222', passable: false },
+  cave_entrance: { name: 'Cave Mouth', desc: 'the opening to darkness', color: '#000', passable: true },
+  athens_marble: { name: 'Marble Floor', desc: 'smooth, white Attic marble', color: '#e0e0e0', passable: true },
+  athens_grass: { name: 'Olive Grove', desc: 'fertile soil and grass', color: '#4a7c44', passable: true, alternate: 'grass' },
+  athens_water: { name: 'Azure Sea', desc: 'deep blue Mediterranean waters', color: '#4da6ff', passable: false, alternate: 'water' },
+  athens_temple_wall: { name: 'Temple Wall', desc: 'fluted marble column base', color: '#d0d0d0', passable: false },
+  athens_roof: { name: 'Temple Roof', desc: 'terracotta tiles', color: '#325aa8', passable: false }
 };
 
 export function createWorld() {
-  // 1. MAIN CASTLE HALL
+  // 1. MAIN CASTLE HALL (Upgraded with Athens Marble)
   const castle = new GameMap({
     id: 'castle',
     name: 'Castle Britannia',
@@ -28,7 +33,7 @@ export function createWorld() {
     layout: [
       '####################',
       '#..................#',
-      'D..PP..........PP..#', // D = Door to Bedroom (West)
+      'D..PP..........PP..#',
       '#..................#',
       '#..PP..........PP..#',
       '#.......RRRR.......#',
@@ -39,15 +44,15 @@ export function createWorld() {
       '#.......RRRR.......#',
       '#.......RRRR.......#',
       '#.......RRRR.......#',
-      '#########DD#########'
+      '#########DD#########',
+      '####################'
     ],
-    legend: { '#': 'castle_wall', '.': 'castle_floor', 'R': 'red_carpet', 'P': 'castle_floor', 'D': 'castle_door' },
+    legend: { '#': 'athens_temple_wall', '.': 'athens_marble', 'R': 'red_carpet', 'P': 'athens_marble', 'D': 'castle_door' },
     objects: [
       { x: 3, y: 2, sprite: 'pillar', height: 2 }, { x: 16, y: 2, sprite: 'pillar', height: 2 },
       { x: 3, y: 9, sprite: 'pillar', height: 2 }, { x: 16, y: 9, sprite: 'pillar', height: 2 },
       { x: 9, y: 2, sprite: 'throne', width: 2, height: 2 },
-      { x: 1, y: 5, sprite: 'torch_wall' }, { x: 18, y: 5, sprite: 'torch_wall' },
-      { x: 15, y: 4, type: 'item', sprite: 'potion', color: '#ff4444', data: { id: 'potion_h1', name: 'Health Elixir', type: 'consumable', effect: {type:'heal', amount:50}, weight: 0.5 } }
+      { x: 1, y: 5, sprite: 'torch_wall' }, { x: 18, y: 5, sprite: 'torch_wall' }
     ],
     npcs: [
       {
@@ -62,11 +67,71 @@ export function createWorld() {
       }
     ],
     transitions: [
-      { x: 9, y: 13, map: 'village', spawn: 'castle_gate' },
-      { x: 10, y: 13, map: 'village', spawn: 'castle_gate' },
-      { x: 0, y: 2, map: 'castle_bedroom', spawn: 'bedroom_door' } // Door West
+      { x: 9, y: 13, map: 'athens_entrance', spawn: 'castle_gate' },
+      { x: 10, y: 13, map: 'athens_entrance', spawn: 'castle_gate' },
+      { x: 0, y: 2, map: 'castle_bedroom', spawn: 'bedroom_door' }
     ],
     spawnPoints: { 'castle_gate': { x: 9, y: 12 }, 'bedroom_door': { x: 1, y: 2 } }
+  });
+
+  // 2. ATHENS ENTRANCE (Showcase Area)
+  const athens_entrance = new GameMap({
+    id: 'athens_entrance',
+    name: 'Athens Entrance',
+    width: 20, height: 20, safe: true,
+    defaultTile: 'athens_grass',
+    layout: [
+      'WWWWWWWWWWWWWWWWWWWW',
+      'W..................W',
+      'W...MMMMMMMMMMMM...W',
+      'W...M..........M...W',
+      'W...M...MMMM...M...W',
+      'W...M...M..M...M...W',
+      'W...M...M..M...M...W',
+      'W...M...MMMM...M...W',
+      'W...M..........M...W',
+      'W...MMMMMMMMMMMM...W',
+      'W..................W',
+      'W..................W',
+      'WWWWWWWWWWWWWWWWWWWW'
+    ],
+    legend: { 'W': 'athens_water', '.': 'athens_grass', 'M': 'athens_marble' },
+    layersData: [
+       {
+         zIndex: 1, // Roof Layer
+         layout: [
+           '                    ',
+           '   RRRRRRRRRRRRRR   ',
+           '   R............R   ',
+           '   R............R   ',
+           '   R............R   ',
+           '   R............R   ',
+           '   R............R   ',
+           '   RRRRRRRRRRRRRR   '
+         ],
+         legend: { 'R': 'athens_roof', '.': 'none' }
+       }
+    ],
+    objects: [
+      { x: 3, y: 3, sprite: 'pillar', height: 2 }, { x: 16, y: 3, sprite: 'pillar', height: 2 },
+      { x: 3, y: 8, sprite: 'pillar', height: 2 }, { x: 16, y: 8, sprite: 'pillar', height: 2 },
+      { x: 9, y: 5, sprite: 'fountain', width: 2, height: 2 },
+      { x: 7, y: 3, sprite: 'statue' }, { x: 12, y: 3, sprite: 'statue' }
+    ],
+    npcs: [
+      {
+        id: 'philosopher_1', name: 'Socrates', x: 10, y: 10,
+        spriteSheet: 'assets/sprites/villager.png',
+        color: '#fff',
+        behavior: 'wander',
+        dialogue: 'The only true wisdom is in knowing you know nothing.'
+      }
+    ],
+    transitions: [
+      { x: 9, y: 12, map: 'castle', spawn: 'castle_gate' },
+      { x: 10, y: 12, map: 'castle', spawn: 'castle_gate' }
+    ],
+    spawnPoints: { 'castle_gate': { x: 9, y: 11 } }
   });
 
   // 2. CASTLE BEDROOM (New Area)
@@ -124,11 +189,14 @@ export function createWorld() {
     ],
     npcs: [
       {
-        id: 'villager_1', name: 'Wandering Merchant', x: 12, y: 16,
+        id: 'alchemist_1', name: 'Wandering Alchemist', x: 15, y: 14,
         spriteSheet: 'assets/sprites/villager.png',
-        color: '#c96',
-        behavior: 'wander',
-        dialogue: 'Beware the cave to the East! I hear strange noises from within.'
+        color: '#4a4',
+        behavior: 'static',
+        dialogue: (state) => {
+            const hasGold = (state.character.gold >= 50);
+            return `Greetings traveler! I sell Health Potions for 50 gold. ${hasGold ? 'Would you like one? (Interact again to buy)' : 'You look a bit short on coin.'}`;
+        }
       }
     ],
     transitions: [
@@ -145,20 +213,26 @@ export function createWorld() {
     layout: [
       '####################',
       '#..................#',
-      '#..####......####..#',
-      '#..#...........#...#',
-      '#..#...........#...#',
-      '#..####......####..#',
+      '#..#######...####..#',
+      '#..#........#...#..#',
+      '#..#..#######...#..#',
+      '#..#..#.........#..#',
+      '#..#..#...#######..#',
+      '#..#..#...#.....#..#',
+      '#..#..#####..O..#..#', // O = Orb Room
+      '#..#.........#..#..#',
+      '#..###########..#..#',
+      '#...............#..#',
+      '#######...#######..#',
       '#..................#',
-      '#.......E..........#', // E = Exit
-      '#..................#',
+      '#.......E..........#',
       '####################'
     ],
-    legend: { '#': 'dungeon_wall', '.': 'dungeon_floor', 'E': 'cave_exit' },
+    legend: { '#': 'dungeon_wall', '.': 'dungeon_floor', 'E': 'cave_exit', 'O': 'dungeon_floor' },
     objects: [
       { x: 10, y: 10, sprite: 'torch_wall' },
-      { x: 2, y: 2, sprite: 'armory_rack' },
-      { x: 15, y: 15, type: 'item', sprite: 'fountain', color: '#88f', data: { id: 'orb_of_moons', name: 'Orb of Moons', type: 'quest_item', weight: 1 } }
+      { x: 13, y: 3, sprite: 'armory_rack' },
+      { x: 13, y: 8, type: 'item', sprite: 'fountain', color: '#88f', data: { id: 'orb_of_moons', name: 'Orb of Moons', type: 'quest_item', weight: 1 } }
     ],
     transitions: [
       { x: 8, y: 7, map: 'village', spawn: 'dungeon_exit' }
@@ -174,18 +248,45 @@ export class GameMap {
     Object.assign(this, data);
     this.npcs = data.npcs || [];
     this.objects = data.objects || [];
-    this.tiles = [];
-    for (let y = 0; y < this.height; y++) {
-      this.tiles.push(new Array(this.width).fill(data.defaultTile || 'grass'));
+    this.layers = data.layers || [];
+    
+    // Initialize primary tiles layer if not provided via layers
+    if (!this.layers.length) {
+        this.tiles = [];
+        for (let y = 0; y < this.height; y++) {
+          this.tiles.push(new Array(this.width).fill(data.defaultTile || 'grass'));
+        }
     }
-    if (data.layout && data.legend) this.applyLayout(data.layout, data.legend);
+
+    if (data.layout && data.legend) {
+        this.applyLayout(data.layout, data.legend);
+    }
+    
+    // Support initialization of specific layers from data
+    if (data.layersData) {
+        data.layersData.forEach(l => {
+            const layerTiles = [];
+            for (let y = 0; y < this.height; y++) {
+                layerTiles.push(new Array(this.width).fill(l.default || 'none'));
+            }
+            if (l.layout && l.legend) {
+                this.applyLayoutToGrid(l.layout, l.legend, layerTiles);
+            }
+            this.layers.push({ zIndex: l.zIndex || 0, tiles: layerTiles });
+        });
+    }
   }
 
   applyLayout(layout, legend) {
+    this.applyLayoutToGrid(layout, legend, this.tiles);
+  }
+
+  applyLayoutToGrid(layout, legend, grid) {
+    if (!grid) return;
     layout.forEach((row, y) => {
       if (y >= this.height) return;
       for (let x = 0; x < this.width && x < row.length; x++) {
-        if (legend[row[x]]) this.tiles[y][x] = legend[row[x]];
+        if (legend[row[x]]) grid[y][x] = legend[row[x]];
       }
     });
   }

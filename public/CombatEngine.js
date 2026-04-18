@@ -126,6 +126,8 @@ export default class CombatEngine {
     this.playerGuard.damage = 1;
     this.enemy.takeDamage(damage);
     this.appendLog(`You strike the ${this.enemy.name} for ${damage} damage.`);
+    this.triggerHitFlash();
+    if (damage > 10) this.triggerScreenShake();
     this.updateStatus();
     if (!this.enemy.isAlive()) {
       this.victory();
@@ -179,6 +181,8 @@ export default class CombatEngine {
     this.playerGuard.defense = 1;
     this.player.character.takeDamage(damage);
     this.appendLog(`The ${this.enemy.name} hits you for ${damage} damage.`);
+    this.triggerHitFlash('rgba(255, 0, 0, 0.4)');
+    if (damage > 10) this.triggerScreenShake();
     this.updateStatus();
     if (!this.player.character.isAlive()) {
       this.defeat();
@@ -217,5 +221,28 @@ export default class CombatEngine {
 
   updateStatus() {
     this.statusElement.textContent = `HP ${this.player.character.currentHP}/${this.player.character.maxHP} · MP ${this.player.character.currentMP}/${this.player.character.maxMP} — ${this.enemy.name}: ${this.enemy.currentHP}/${this.enemy.maxHP}`;
+  }
+
+  triggerHitFlash(color = 'rgba(255, 255, 255, 0.5)') {
+    const flash = document.createElement('div');
+    flash.style.position = 'absolute';
+    flash.style.top = '0';
+    flash.style.left = '0';
+    flash.style.width = '100%';
+    flash.style.height = '100%';
+    flash.style.backgroundColor = color;
+    flash.style.pointerEvents = 'none';
+    flash.style.zIndex = '1000';
+    flash.style.transition = 'opacity 0.2s ease-out';
+    this.root.appendChild(flash);
+    setTimeout(() => {
+      flash.style.opacity = '0';
+      setTimeout(() => flash.remove(), 200);
+    }, 50);
+  }
+
+  triggerScreenShake() {
+    this.root.classList.add('shake');
+    setTimeout(() => this.root.classList.remove('shake'), 400);
   }
 }

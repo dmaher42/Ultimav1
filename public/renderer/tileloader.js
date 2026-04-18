@@ -30,7 +30,6 @@ class TileLoader {
       // Map game tile names to pixelcrawler assets
       'castle_wall': 'wall_00_00',
       'castle_floor': 'floor_00_00',
-      'red_carpet': 'floor_01_01',
       'throne': 'dungeon_00_03',
       'banner': 'dungeon_00_04',
       'torch_wall': 'wall_01_00',

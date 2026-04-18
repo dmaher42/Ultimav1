@@ -110,9 +110,28 @@ export default class ItemGenerator {
     };
   }
 
+  createGold(level = 1) {
+    const min = 5 + (level * 5);
+    const max = 20 + (level * 10);
+    const amount = Math.floor(this.random() * (max - min + 1)) + min;
+    return {
+      id: 'currency-gold',
+      name: 'Gold Pieces',
+      type: 'currency',
+      quantity: amount,
+      weight: 0
+    };
+  }
+
   generateLoot(level = 1, tags = []) {
     const drops = [];
     const roll = this.random();
+
+    // Random Gold Drop
+    if (this.random() < 0.8) {
+        drops.push(this.createGold(level));
+    }
+
     if (roll < 0.3) {
       drops.push(this.createHealthPotion(level));
     }

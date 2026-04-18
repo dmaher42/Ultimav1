@@ -1,57 +1,66 @@
-const STORAGE_KEY = 'britannia-reborn-save';
-
-function hasLocalStorage() {
-  try {
-    const testKey = '__test__';
-    window.localStorage.setItem(testKey, '1');
-    window.localStorage.removeItem(testKey);
-    return true;
-  } catch (error) {
-    console.warn('LocalStorage not available', error);
-    return false;
-  }
-}
-
+/**
+ * SaveManager handles persisting the game state to localStorage.
+ */
 export default class SaveManager {
-  static save(data) {
-    if (!hasLocalStorage()) return false;
-    try {
-      const payload = {
-        ...data,
-        timestamp: Date.now()
-      };
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-      return true;
-    } catch (error) {
-      console.error('Failed to save game', error);
-      return false;
-    }
-  }
+    static STORAGE_KEY = 'ultima_athens_save';
 
-  static load() {
-    if (!hasLocalStorage()) return null;
-    try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
-      if (!raw) return null;
-      return JSON.parse(raw);
-    } catch (error) {
-      console.error('Failed to load save data', error);
-      return null;
-    }
-  }
+    /**
+     * Serializes and saves the game state.
+     * @param {Object} state - The global game state.
+     */
+    static save(state) {
+        if (!state || !state.character) return;
 
-  static clear() {
-    if (!hasLocalStorage()) return;
-    try {
-      window.localStorage.removeItem(STORAGE_KEY);
-    } catch (error) {
-      console.error('Failed to clear save data', error);
+        const saveData = {
+            character: state.character.toJSON(),
+            mapId: state.map.id,
+            playerPosition: state.player.position,
+            flags: {
+                guardianDefeated: state.guardianDefeated || false,
+                worldTime: state.worldTime || 0
+            },
+            timestamp: Date.now()
+        };
+
+        try {
+            localStorage.setItem(this.STORAGE_KEY, JSON.stringify(saveData));
+            console.log('Game saved successfully.');
+            return true;
+        } catch (e) {
+            console.error('Failed to save game:', e);
+            return false;
+        }
     }
-  }
+
+    /**
+     * Loads and deserializes the game state.
+     * @returns {Object|null} The saved data or null if none exists.
+     */
+    static load() {
+        try {
+            const rawData = localStorage.getItem(this.STORAGE_KEY);
+            if (!rawData) return null;
+            return JSON.parse(rawData);
+        } catch (e) {
+            console.error('Failed to load game:', e);
+            return null;
+        }
+    }
+
+    /**
+     * Clears the current save data.
+     */
+    static clearSave() {
+        localStorage.removeItem(this.STORAGE_KEY);
+    }
 }
 
-export function formatTimestamp(timestamp) {
-  if (!timestamp) return 'No saves yet.';
-  const date = new Date(timestamp);
-  return `Last saved ${date.toLocaleString()}`;
+/**
+ * Formats a timestamp into a readable string.
+ */
+export function formatTimestamp(ts) {
+    if (!ts) return 'Never';
+    return new Date(ts).toLocaleString(undefined, {
+        month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+    });
 }

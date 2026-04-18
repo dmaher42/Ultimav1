@@ -426,10 +426,22 @@ export default class RenderEngine {
 
       // Draw sorted entities
       entities.forEach(entity => {
+          // Draw shadows first for all entities
+          this.drawShadow(ctx, entity.data, entity.type);
+          
           if (entity.type === 'object') this.drawObject(ctx, entity.data);
           if (entity.type === 'npc') this.drawNPC(ctx, entity.data);
           if (entity.type === 'player') this.drawPlayer(ctx);
       });
+
+      // 3. Draw Top Layers (Roofs, Canopy, etc.)
+      if (Array.isArray(grid.layers)) {
+        grid.layers.forEach(layer => {
+          if (layer.zIndex > 0) {
+            this.renderLayer(ctx, grid, layer.tiles);
+          }
+        });
+      }
 
       if (this.highlight) {
         this.drawHighlight(ctx, this.highlight);
@@ -440,8 +452,27 @@ export default class RenderEngine {
       }
 
       this.camera.reset(ctx);
+      
+      // 4. Athens Glow Effect (Bloom for Marble)
+      if (grid.id === 'athens_entrance' || grid.id === 'castle') {
+          ctx.save();
+          ctx.globalCompositeOperation = 'screen';
+          ctx.fillStyle = 'rgba(255, 245, 230, 0.08)';
+          ctx.fillRect(0, 0, this.viewportWidth, this.viewportHeight);
+          ctx.restore();
+      }
     }
     ctx.restore();
+
+    // Character sheet glow
+    if (this.characterSheetOpen) {
+      this.drawVignette('rgba(0,0,0,0.6)');
+    }
+
+    // Dungeon Vignette
+    if (grid && !grid.safe) {
+      this.drawVignette('rgba(0,0,40,0.4)'); // Deep blue-black tint for caves
+    }
 
     if (grid) {
         const { tint, vignette: vignetteStrength } = this.timeOfDay.getTint();
@@ -551,20 +582,36 @@ export default class RenderEngine {
   }
 
   drawMap(ctx, grid) {
-    const tiles = grid.tiles;
-    for (let y = 0; y < grid.height; y += 1) {
-      const row = tiles[y];
-      if (!Array.isArray(row)) continue;
-      for (let x = 0; x < grid.width; x += 1) {
-        const tileType = row[x];
-        const fallback = TileInfo[tileType]?.color;
-        this.drawAtlasTile(ctx, tileType, x, y, fallback);
-      }
+    // If the map has multiple layers, draw the ground layers first
+    if (Array.isArray(grid.layers)) {
+      grid.layers.forEach(layer => {
+        // Skip layers that should be drawn after entities (e.g. roofs)
+        if (layer.zIndex < 0 || layer.zIndex === undefined) {
+           this.renderLayer(ctx, grid, layer.tiles);
+        }
+      });
+    } else {
+      // Backwards compatibility for single tiles array
+      this.renderLayer(ctx, grid, grid.tiles);
     }
 
     if (grid.safe) {
       ctx.fillStyle = 'rgba(255, 255, 255, 0.06)';
       ctx.fillRect(this.offsetX, this.offsetY, this.mapPixelWidth, this.mapPixelHeight);
+    }
+  }
+
+  renderLayer(ctx, grid, tiles) {
+    if (!tiles) return;
+    for (let y = 0; y < grid.height; y += 1) {
+      const row = tiles[y];
+      if (!Array.isArray(row)) continue;
+      for (let x = 0; x < grid.width; x += 1) {
+        const tileType = row[x];
+        if (!tileType || tileType === 'empty' || tileType === 'none') continue;
+        const fallback = TileInfo[tileType]?.color;
+        this.drawAtlasTile(ctx, tileType, x, y, fallback);
+      }
     }
   }
 
@@ -667,6 +714,29 @@ export default class RenderEngine {
     ctx.strokeStyle = highlight.color || this.highlightColor;
     ctx.lineWidth = Math.max(2, Math.round(this.tileSize * 0.06));
     ctx.strokeRect(px + 2, py + 2, this.tileSize - 4, this.tileSize - 4);
+    ctx.restore();
+  }
+
+  drawShadow(ctx, data, type) {
+    ctx.save();
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+    
+    let x, y, w, h;
+    if (type === 'player') {
+      x = this.player.position.x * this.tileSize + this.tileSize * 0.5;
+      y = (this.player.position.y + 0.9) * this.tileSize;
+      w = this.tileSize * 0.7;
+      h = this.tileSize * 0.3;
+    } else {
+      x = data.x * this.tileSize + ( (data.width || 1) * this.tileSize * 0.5 );
+      y = (data.y + (data.height || 1) - 0.1) * this.tileSize;
+      w = (data.width || 1) * this.tileSize * 0.8;
+      h = this.tileSize * 0.3;
+    }
+
+    ctx.beginPath();
+    ctx.ellipse(x, y, w * 0.5, h * 0.5, 0, 0, Math.PI * 2);
+    ctx.fill();
     ctx.restore();
   }
 
