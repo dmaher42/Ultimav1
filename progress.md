@@ -1,0 +1,23 @@
+Original prompt: Continue this repo from its current state until there is a playable browser-based game vertical slice that runs locally and can be viewed live in the browser.
+
+## Notes
+
+- Canonical entry: `index.html`
+- Canonical game logic: `public/game.js`
+- Canonical world data: `public/GameMap.js`
+- Runtime path: `node server.js` via `npm start`
+- Duplicate/stale files: `public/index.html` is only a redirect wrapper; `src/` appears to be older experiments and is not the live runtime path
+
+## Current investigation
+
+- Verify the live build in a browser.
+- Confirm throne room exit and progression flow end-to-end.
+- Preserve existing implementation and make the smallest safe fixes only.
+
+## Verification Notes
+
+- Intro ambush now resolves in the throne room, drops loot, and leaves the player able to talk to Lord British.
+- Castle -> Athens -> Village -> Dungeon travel works, and the Orb of Moons can now be picked up and used to choose a destination.
+- Storm Cloak is equipped from loot and blocks Reaper lightning damage.
+- Socrates quest now shows the riddle choices, awards the Tactics Codex, and opens the codex panel.
+- Reloading the page restores the saved state from localStorage.

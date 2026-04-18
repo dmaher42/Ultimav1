@@ -717,6 +717,19 @@ export default class RenderEngine {
     ctx.restore();
   }
 
+  drawVignette(style = 0.35) {
+    const match = typeof style === 'string'
+      ? style.match(/rgba?\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*([0-9.]+)\s*\)/i)
+      : null;
+    const strength = match ? Number(match[1]) : Number(style);
+    vignette(
+      this.ctx,
+      this.viewportWidth,
+      this.viewportHeight,
+      Number.isFinite(strength) ? strength : 0.35
+    );
+  }
+
   drawShadow(ctx, data, type) {
     ctx.save();
     ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';

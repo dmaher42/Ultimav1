@@ -1,4 +1,18 @@
 const ENEMY_ARCHETYPES = {
+  throne_ambush: [
+    {
+      id: 'gargoyle',
+      name: 'Gargoyle Raider',
+      baseLevel: 1,
+      baseStats: { STR: 9, DEX: 10, INT: 6, VIT: 7, LUK: 8 },
+      scaling: { STR: 0.4, DEX: 0.4, VIT: 0.5, LUK: 0.2 },
+      attackBonus: 2,
+      defenseBonus: 0,
+      lootTags: ['cloak', 'gold'],
+      tactic: 'gargoyle',
+      combatStyle: 'aggressive'
+    }
+  ],
   forest: [
     {
       id: 'wolf',
@@ -43,6 +57,56 @@ const ENEMY_ARCHETYPES = {
       lootTags: ['goo', 'herb']
     }
   ],
+  dungeon_1: [
+    {
+      id: 'gargoyle',
+      name: 'Gargoyle',
+      baseLevel: 2,
+      baseStats: { STR: 14, DEX: 10, INT: 6, VIT: 12, LUK: 8 },
+      scaling: { STR: 1.1, DEX: 0.7, VIT: 1.0 },
+      attackBonus: 5,
+      defenseBonus: 2,
+      lootTags: ['weapon', 'gold'],
+      tactic: 'gargoyle',
+      combatStyle: 'aggressive'
+    },
+    {
+      id: 'reaper',
+      name: 'Reaper',
+      baseLevel: 3,
+      baseStats: { STR: 11, DEX: 11, INT: 14, VIT: 11, LUK: 9 },
+      scaling: { INT: 1.3, DEX: 0.7, VIT: 0.9 },
+      attackBonus: 4,
+      defenseBonus: 3,
+      lootTags: ['codex', 'gold'],
+      tactic: 'reaper',
+      combatStyle: 'caster'
+    },
+    {
+      id: 'drake',
+      name: 'Drake',
+      baseLevel: 4,
+      baseStats: { STR: 16, DEX: 9, INT: 8, VIT: 16, LUK: 8 },
+      scaling: { STR: 1.5, VIT: 1.6, DEX: 0.4 },
+      attackBonus: 7,
+      defenseBonus: 5,
+      lootTags: ['weapon', 'material', 'gold'],
+      tactic: 'drake',
+      combatStyle: 'breath'
+    },
+    {
+      id: 'gazer',
+      name: 'Gazer',
+      baseLevel: 3,
+      baseStats: { STR: 10, DEX: 12, INT: 15, VIT: 10, LUK: 10 },
+      scaling: { INT: 1.2, DEX: 1.0, VIT: 0.8 },
+      attackBonus: 4,
+      defenseBonus: 2,
+      lootTags: ['codex', 'material', 'gold'],
+      tactic: 'gazer',
+      combatStyle: 'burst'
+    }
+  ],
   dungeon_boss: [
     {
       id: 'guardian',
@@ -71,6 +135,8 @@ export default class Enemy {
     this.attackBonus = template.attackBonus || 0;
     this.defenseBonus = template.defenseBonus || 0;
     this.lootTags = template.lootTags || [];
+    this.tactic = template.tactic || 'default';
+    this.combatStyle = template.combatStyle || 'default';
     this.stats = {};
     Object.keys(this.baseStats).forEach((key) => {
       const base = this.baseStats[key];

@@ -267,7 +267,7 @@
       <div><strong>MP:</strong> <span id="hud-mp">0 / 0</span></div>
       <div><strong>XP:</strong> <span id="hud-xp">0</span></div>
       <div><strong>Area:</strong> <span id="hud-area">Unknown</span></div>
-      <span class="keys">I: Inventory (Equip) | C: Stats | J: Journal | T: Talk | G: Get</span>
+      <span class="keys">I: Inventory | C: Stats | J: Journal | T: Talk | G: Get | O: Orb</span>
       <div style="margin-top: 8px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 6px; color: #fe5;">
         Gold: <strong id="hud-gold">0</strong>
       </div>
@@ -300,7 +300,9 @@
       <div id="combat-status"></div>
       <div class="combat-log" id="combat-log"></div>
       <div class="combat-actions">
-        <button data-action="attack">Attack</button>
+        <button data-action="melee">Melee</button>
+        <button data-action="bow">Bow</button>
+        <button data-action="spell">Spell</button>
         <button data-action="defend">Defend</button>
         <button data-action="item">Use Item</button>
         <button data-action="flee">Flee</button>
@@ -308,6 +310,16 @@
       <div id="combat-item-list" class="inventory-list hidden"></div>
     </section>
     <section id="character-creator" class="modal hidden"></section>
+    <aside id="codex-panel" class="panel hidden">
+      <h2>Tactics Codex</h2>
+      <div id="codex-content"></div>
+      <button class="close" data-close="codex">Close (X)</button>
+    </aside>
+    <aside id="orb-panel" class="panel hidden">
+      <h2>Orb of Moons</h2>
+      <div id="orb-content"></div>
+      <button class="close" data-close="orb">Close (O)</button>
+    </aside>
     <div id="tooltip" class="hidden"></div>
     <script type="module" src="./public/game.js"></script>
   </body>

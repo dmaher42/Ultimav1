@@ -10,6 +10,16 @@ export const QUESTS = {
         2: "You found it! My gratitude is yours, avatar.",
         3: "Thank you for your service."
     }
+  },
+  'socrates_riddle': {
+    id: 'socrates_riddle',
+    title: 'Wisdom of Athens',
+    description: 'Answer Socrates to earn the Tactics Codex.',
+    stages: {
+      0: 'Socrates asks a simple question of wisdom.',
+      1: 'You answered wisely. Collect your reward.',
+      2: 'The codex is yours.'
+    }
   }
 };
 

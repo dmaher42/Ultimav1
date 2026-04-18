@@ -6,7 +6,8 @@ const WEAPON_BASES = [
   { name: 'Rusty Blade', attack: 3, strReq: 8, weight: 1.4 },
   { name: 'Iron Longsword', attack: 5, strReq: 10, weight: 1.6 },
   { name: 'Oak Mace', attack: 6, strReq: 12, weight: 1.8 },
-  { name: 'Hunter Spear', attack: 7, strReq: 13, weight: 1.7 }
+  { name: 'Hunter Spear', attack: 7, strReq: 13, weight: 1.7 },
+  { name: 'Hunter Bow', attack: 6, strReq: 11, weight: 1.3 }
 ];
 
 const ARMOR_BASES = [
@@ -94,6 +95,39 @@ export default class ItemGenerator {
     };
   }
 
+  createStormCloak(level = 1) {
+    return {
+      id: 'storm_cloak',
+      name: 'Storm Cloak',
+      type: 'accessory',
+      stats: {
+        defense: 2 + Math.floor(level / 2),
+        str_req: 8
+      },
+      effects: {
+        magicShield: 0.5,
+        lightningShield: 1,
+        fireShield: 0.25
+      },
+      value: 70 + level * 12,
+      stackable: false,
+      weight: 1.2
+    };
+  }
+
+  createTacticsCodex() {
+    return {
+      id: 'tactics_codex',
+      name: 'Tactics Codex',
+      type: 'quest_item',
+      stats: {},
+      effect: { type: 'open_codex' },
+      value: 0,
+      stackable: false,
+      weight: 0.8
+    };
+  }
+
   createMaterial(tag = 'material') {
     const list = MATERIALS[tag] || MATERIALS.material;
     const name = list[Math.floor(this.random() * list.length)];
@@ -137,6 +171,13 @@ export default class ItemGenerator {
     }
     if (roll > 0.6) {
       drops.push(this.createManaPotion(level));
+    }
+
+    if (tags.includes('cloak')) {
+      drops.push(this.createStormCloak(level));
+    }
+    if (tags.includes('codex')) {
+      drops.push(this.createTacticsCodex());
     }
     if (tags.includes('weapon') && this.random() < 0.7) {
       drops.push(this.createWeapon(level));

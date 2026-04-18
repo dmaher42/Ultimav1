@@ -97,20 +97,20 @@ export function createWorld() {
     ],
     legend: { 'W': 'athens_water', '.': 'athens_grass', 'M': 'athens_marble' },
     layersData: [
-       {
-         zIndex: 1, // Roof Layer
-         layout: [
-           '                    ',
-           '   RRRRRRRRRRRRRR   ',
-           '   R............R   ',
-           '   R............R   ',
-           '   R............R   ',
-           '   R............R   ',
-           '   R............R   ',
-           '   RRRRRRRRRRRRRR   '
-         ],
-         legend: { 'R': 'athens_roof', '.': 'none' }
-       }
+        {
+          zIndex: 1, // Roof Layer
+          layout: [
+            '                    ',
+            '   RRRRRRRRRRRRRR   ',
+            '   R............R   ',
+            '   R............R   ',
+            '   R............R   ',
+            '   R............R   ',
+            '   R............R   ',
+            '   RRRRRRRRRRRRRR   '
+          ],
+          legend: { 'R': 'athens_roof', '.': 'none' }
+        }
     ],
     objects: [
       { x: 3, y: 3, sprite: 'pillar', height: 2 }, { x: 16, y: 3, sprite: 'pillar', height: 2 },
@@ -120,7 +120,7 @@ export function createWorld() {
     ],
     npcs: [
       {
-        id: 'philosopher_1', name: 'Socrates', x: 10, y: 10,
+        id: 'socrates', name: 'Socrates', x: 10, y: 10,
         spriteSheet: 'assets/sprites/villager.png',
         color: '#fff',
         behavior: 'wander',
@@ -129,7 +129,8 @@ export function createWorld() {
     ],
     transitions: [
       { x: 9, y: 12, map: 'castle', spawn: 'castle_gate' },
-      { x: 10, y: 12, map: 'castle', spawn: 'castle_gate' }
+      { x: 10, y: 12, map: 'castle', spawn: 'castle_gate' },
+      { x: 15, y: 11, map: 'village', spawn: 'castle_gate' }
     ],
     spawnPoints: { 'castle_gate': { x: 9, y: 11 } }
   });
@@ -156,7 +157,7 @@ export function createWorld() {
     objects: [
       { x: 3, y: 2, sprite: 'royal_bed', width: 2, height: 2 },
       { x: 8, y: 4, sprite: 'bookshelf' },
-      { x: 2, y: 2, type: 'item', sprite: 'chest', color: '#d4af37', data: { id: 'gold_pouch', name: 'Royal Treasury', type: 'misc', value: 200, weight: 5 } }
+      { x: 2, y: 2, type: 'item', sprite: 'chest', color: '#d4af37', data: { id: 'storm_cloak', name: 'Storm Cloak', type: 'accessory', stats: { defense: 3, str_req: 8 }, effects: { magicShield: 0.5, lightningShield: 1, fireShield: 0.25 }, value: 120, weight: 1.2 } }
     ],
     transitions: [
       { x: 11, y: 5, map: 'castle', spawn: 'bedroom_door' }
@@ -232,7 +233,7 @@ export function createWorld() {
     objects: [
       { x: 10, y: 10, sprite: 'torch_wall' },
       { x: 13, y: 3, sprite: 'armory_rack' },
-      { x: 13, y: 8, type: 'item', sprite: 'fountain', color: '#88f', data: { id: 'orb_of_moons', name: 'Orb of Moons', type: 'quest_item', weight: 1 } }
+      { x: 13, y: 5, type: 'item', sprite: 'fountain', color: '#88f', data: { id: 'orb_of_moons', name: 'Orb of Moons', type: 'quest_item', weight: 1 } }
     ],
     transitions: [
       { x: 8, y: 7, map: 'village', spawn: 'dungeon_exit' }
@@ -240,7 +241,7 @@ export function createWorld() {
     spawnPoints: { 'entry': { x: 8, y: 6 } }
   });
 
-  return { maps: { castle, castle_bedroom, village, dungeon_1 }, startingMap: castle };
+  return { maps: { castle, athens_entrance, castle_bedroom, village, dungeon_1 }, startingMap: castle };
 }
 
 export class GameMap {
@@ -296,7 +297,9 @@ export class GameMap {
 
   isWalkable(x, y) {
     const tile = this.getTile(x, y);
-    if (!TileInfo[tile]?.passable) return false;
+    const info = TileInfo[tile];
+    if (!info || info.passable === false) return false;
+
     const obj = this.objects.find(o => o.x === x && o.y === y);
     if (obj) {
         if (obj.type === 'item') return true;

@@ -94,6 +94,32 @@ export default class Character {
     return this.stats.VIT + armorDefense + accessoryDefense;
   }
 
+  hasEquippedItem(itemId) {
+    return Object.values(this.equipment).some((item) => item?.id === itemId);
+  }
+
+  getAccessoryEffect(effectName) {
+    const effects = this.equipment.accessory?.effects || {};
+    return effects[effectName] ?? null;
+  }
+
+  getDamageMultiplier(damageType = 'physical') {
+    const effects = this.equipment.accessory?.effects || {};
+    if (effects.magicBlock && damageType !== 'physical') {
+      return 0;
+    }
+    if (damageType === 'lightning' && Number.isFinite(effects.lightningShield)) {
+      return Math.max(0, 1 - effects.lightningShield);
+    }
+    if (damageType === 'magic' && Number.isFinite(effects.magicShield)) {
+      return Math.max(0, 1 - effects.magicShield);
+    }
+    if (damageType === 'fire' && Number.isFinite(effects.fireShield)) {
+      return Math.max(0, 1 - effects.fireShield);
+    }
+    return 1;
+  }
+
   get xpThreshold() {
     return this.level ** 2 * 100;
   }

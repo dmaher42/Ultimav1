@@ -9,6 +9,50 @@ function calculateDamage(attacker, defender, attackerGuard = 1, defenderGuard = 
   return Math.max(1, Math.round(damage * attackerGuard));
 }
 
+const MODE_CONFIG = {
+  melee: {
+    label: 'Melee',
+    stat: 'STR',
+    multiplier: 1,
+    defenseFactor: 1,
+    mpCost: 0,
+    damageType: 'physical',
+    verb: 'strike'
+  },
+  bow: {
+    label: 'Bow',
+    stat: 'DEX',
+    multiplier: 0.95,
+    defenseFactor: 0.85,
+    mpCost: 0,
+    damageType: 'physical',
+    verb: 'loose an arrow at'
+  },
+  spell: {
+    label: 'Spell',
+    stat: 'INT',
+    multiplier: 1.1,
+    defenseFactor: 0.65,
+    mpCost: 8,
+    damageType: 'magic',
+    verb: 'cast a spell at'
+  }
+};
+
+function getModeConfig(mode) {
+  return MODE_CONFIG[mode] || MODE_CONFIG.melee;
+}
+
+function getMatchupMultiplier(enemy, mode) {
+  const tactic = enemy?.tactic || enemy?.id || 'default';
+  const table = {
+    melee: { gargoyle: 1.1, reaper: 0.95, drake: 0.9, gazer: 0.85, default: 1 },
+    bow: { gargoyle: 1.15, reaper: 1, drake: 0.9, gazer: 1.05, default: 1 },
+    spell: { gargoyle: 0.9, reaper: 1.15, drake: 1.15, gazer: 1.1, default: 1 }
+  };
+  return table[mode]?.[tactic] ?? table[mode]?.default ?? 1;
+}
+
 export default class CombatEngine {
   constructor(root) {
     this.root = root;
@@ -32,11 +76,14 @@ export default class CombatEngine {
     this.enemy = enemy;
     this.playerGuard = { defense: 1, damage: 1 };
     this.enemyGuard = { defense: 1, damage: 1 };
+    this.turnCount = 0;
     this.turn = 'player';
     this.active = true;
+    this.playerMode = 'melee';
     this.logElement.innerHTML = '';
     this.itemList.classList.add('hidden');
     this.root.classList.remove('hidden');
+    this.renderActionButtons();
     this.appendLog(`A ${enemy.name} emerges!`);
     this.updateStatus();
     return new Promise((resolve) => {
@@ -54,12 +101,23 @@ export default class CombatEngine {
     }
   }
 
+  renderActionButtons() {
+    this.actionsElement.innerHTML = `
+      <button data-action="melee">Melee</button>
+      <button data-action="bow">Bow</button>
+      <button data-action="spell">Spell</button>
+      <button data-action="defend">Defend</button>
+      <button data-action="item">Item</button>
+      <button data-action="flee">Flee</button>
+    `;
+  }
+
   handleAction(event) {
     const button = event.target.closest('button[data-action]');
     if (!button || !this.active || this.turn !== 'player') return;
     const action = button.dataset.action;
-    if (action === 'attack') {
-      this.playerAttack();
+    if (action === 'melee' || action === 'bow' || action === 'spell') {
+      this.playerAttack(action);
     } else if (action === 'defend') {
       this.playerDefend();
     } else if (action === 'item') {
@@ -114,18 +172,36 @@ export default class CombatEngine {
     this.enemyTurn();
   }
 
-  playerAttack() {
+  getPlayerAttackPower(mode) {
+    const config = getModeConfig(mode);
+    const stat = this.player.character.stats?.[config.stat] || 10;
+    const weapon = this.player.character.equipment.weapon;
+    const weaponAttack = weapon?.stats?.attack || 0;
+    const bowBonus = mode === 'bow' && weapon?.name?.toLowerCase().includes('bow') ? 4 : 0;
+    const spellBonus = mode === 'spell' ? this.player.character.level * 2 : 0;
+    return Math.max(1, Math.round((stat + weaponAttack + bowBonus + spellBonus) * config.multiplier));
+  }
+
+  playerAttack(mode = 'melee') {
     this.itemList.classList.add('hidden');
-    const damage = calculateDamage(
-      this.player.character,
-      this.enemy,
-      this.playerGuard.damage,
-      this.enemyGuard.defense
-    );
+    this.playerMode = mode;
+    const config = getModeConfig(mode);
+    if (config.mpCost > 0 && !this.player.character.useMana(config.mpCost)) {
+      this.appendLog('Not enough MP for that spell.');
+      this.updateStatus();
+      return;
+    }
+
+    const attackPower = this.getPlayerAttackPower(mode);
+    const variance = 0.85 + Math.random() * 0.3;
+    const baseDefense = this.enemy.defense * this.enemyGuard.defense * config.defenseFactor;
+    const raw = (attackPower * this.playerGuard.damage - baseDefense) * variance;
+    const damage = Math.max(1, Math.round(raw * getMatchupMultiplier(this.enemy, mode)));
+
     this.enemyGuard.defense = 1;
     this.playerGuard.damage = 1;
     this.enemy.takeDamage(damage);
-    this.appendLog(`You strike the ${this.enemy.name} for ${damage} damage.`);
+    this.appendLog(`You ${config.verb} the ${this.enemy.name} for ${damage} damage.`);
     this.triggerHitFlash();
     if (damage > 10) this.triggerScreenShake();
     this.updateStatus();
@@ -162,6 +238,32 @@ export default class CombatEngine {
 
   enemyTurn() {
     if (!this.enemy.isAlive()) return;
+    this.turnCount += 1;
+    const tactic = this.enemy?.tactic || this.enemy?.id || 'default';
+    if (tactic === 'gargoyle') {
+      this.enemyAggressiveStrike();
+      return;
+    }
+    if (tactic === 'reaper') {
+      this.enemyLightning();
+      return;
+    }
+    if (tactic === 'drake') {
+      if (this.turnCount % 3 === 0) {
+        this.enemyBreath();
+      } else {
+        this.enemyPressure();
+      }
+      return;
+    }
+    if (tactic === 'gazer') {
+      if (this.turnCount % 2 === 0) {
+        this.enemyBurst();
+      } else {
+        this.enemyPressure();
+      }
+      return;
+    }
     const decision = Math.random();
     if (decision < 0.7 || this.enemyGuard.defense > 1) {
       this.enemyAttack();
@@ -171,30 +273,81 @@ export default class CombatEngine {
   }
 
   enemyAttack() {
-    const damage = calculateDamage(
-      this.enemy,
-      this.player.character,
-      this.enemyGuard.damage,
-      this.playerGuard.defense
-    );
+    this.resolveIncomingAttack({
+      label: `The ${this.enemy.name} hits you`,
+      damageType: 'physical',
+      multiplier: 1
+    });
+  }
+
+  enemyPressure() {
+    this.resolveIncomingAttack({
+      label: `The ${this.enemy.name} presses in`,
+      damageType: 'physical',
+      multiplier: 1.05
+    });
+  }
+
+  enemyAggressiveStrike() {
+    this.resolveIncomingAttack({
+      label: `The ${this.enemy.name} dives at you in a savage rush`,
+      damageType: 'physical',
+      multiplier: 1.2
+    });
+  }
+
+  enemyLightning() {
+    this.resolveIncomingAttack({
+      label: `The ${this.enemy.name} hurls lightning`,
+      damageType: 'lightning',
+      multiplier: 1.15
+    });
+  }
+
+  enemyBreath() {
+    this.resolveIncomingAttack({
+      label: `The ${this.enemy.name} breathes a cone of fire`,
+      damageType: 'fire',
+      multiplier: 1.35
+    });
+  }
+
+  enemyBurst() {
+    this.resolveIncomingAttack({
+      label: `The ${this.enemy.name} unleashes a burst of force`,
+      damageType: 'magic',
+      multiplier: 1.2
+    }, 2);
+  }
+
+  resolveIncomingAttack({ label, damageType = 'physical', multiplier = 1 }, hits = 1) {
+    const resistance = this.player.character.getDamageMultiplier(damageType);
+    let totalDamage = 0;
+
+    for (let i = 0; i < hits; i += 1) {
+      const variance = 0.85 + Math.random() * 0.3;
+      const defenseFactor = damageType === 'magic' ? 0.7 : 1;
+      const raw = (this.enemy.attack * this.enemyGuard.damage * multiplier - this.player.character.defense * this.playerGuard.defense * defenseFactor) * variance;
+      const damage = resistance <= 0 ? 0 : Math.max(1, Math.round(raw * resistance));
+      totalDamage += damage;
+    }
+
     this.enemyGuard.damage = 1;
     this.playerGuard.defense = 1;
-    this.player.character.takeDamage(damage);
-    this.appendLog(`The ${this.enemy.name} hits you for ${damage} damage.`);
-    this.triggerHitFlash('rgba(255, 0, 0, 0.4)');
-    if (damage > 10) this.triggerScreenShake();
+
+    if (totalDamage <= 0) {
+      this.appendLog('The Storm Cloak repels the attack.');
+    } else {
+      this.player.character.takeDamage(totalDamage);
+      this.appendLog(`${label} for ${totalDamage} damage.`);
+      this.triggerHitFlash(damageType === 'physical' ? 'rgba(255, 0, 0, 0.4)' : 'rgba(120, 180, 255, 0.45)');
+      if (totalDamage > 10) this.triggerScreenShake();
+    }
     this.updateStatus();
     if (!this.player.character.isAlive()) {
       this.defeat();
       return;
     }
-    this.turn = 'player';
-  }
-
-  enemyDefend() {
-    this.enemyGuard.defense = 1.5;
-    this.enemyGuard.damage = 0.5;
-    this.appendLog(`The ${this.enemy.name} guards cautiously.`);
     this.turn = 'player';
   }
 
@@ -220,7 +373,8 @@ export default class CombatEngine {
   }
 
   updateStatus() {
-    this.statusElement.textContent = `HP ${this.player.character.currentHP}/${this.player.character.maxHP} · MP ${this.player.character.currentMP}/${this.player.character.maxMP} — ${this.enemy.name}: ${this.enemy.currentHP}/${this.enemy.maxHP}`;
+    const mode = getModeConfig(this.playerMode)?.label || 'Melee';
+    this.statusElement.textContent = `HP ${this.player.character.currentHP}/${this.player.character.maxHP} - MP ${this.player.character.currentMP}/${this.player.character.maxMP} - ${this.enemy.name}: ${this.enemy.currentHP}/${this.enemy.maxHP} - Mode: ${mode}`;
   }
 
   triggerHitFlash(color = 'rgba(255, 255, 255, 0.5)') {

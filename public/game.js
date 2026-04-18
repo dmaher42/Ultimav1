@@ -75,7 +75,9 @@ const panels = {
   inventory: document.getElementById('inventory-panel'),
   character: document.getElementById('character-panel'),
   menu: document.getElementById('menu-panel'),
-  journal: journalEl
+  journal: journalEl,
+  codex: document.getElementById('codex-panel'),
+  orb: document.getElementById('orb-panel')
 };
 
 const inventoryList = document.getElementById('inventory-list');
@@ -87,6 +89,14 @@ const statAllocation = document.getElementById('stat-allocation');
 const menuLastSave = document.getElementById('menu-last-save');
 const messageLogEl = document.getElementById('message-log');
 const tooltip = document.getElementById('tooltip');
+const codexContent = document.getElementById('codex-content');
+const orbContent = document.getElementById('orb-content');
+
+inventoryList.addEventListener('click', (event) => {
+  const button = event.target.closest('button[data-item-action]');
+  if (!button) return;
+  handleInventoryAction(button.dataset.itemAction, button.dataset.itemId);
+});
 
 const state = {
   world: createWorld(),
@@ -98,6 +108,8 @@ const state = {
   messageLog: [],
   inCombat: false,
   lastSaveTimestamp: null,
+  throneIntroTriggered: false,
+  throneIntroComplete: false,
   fx: {
     lastCastleBurst: 0
   }
@@ -220,6 +232,8 @@ function openPanel(name) {
   if (name === 'character') renderCharacterSheet();
   if (name === 'menu') updateMenuStatus();
   if (name === 'journal') renderJournal();
+  if (name === 'codex') renderCodex();
+  if (name === 'orb') renderOrbChooser();
   panels[name].classList.remove('hidden');
 }
 
@@ -288,6 +302,54 @@ function renderGame() {
   });
 }
 
+function renderCodex() {
+  if (!codexContent) return;
+  codexContent.innerHTML = `
+    <p style="margin-top: 0;">The codex records how to survive Britannia's deeper threats.</p>
+    <ul style="margin: 0; padding-left: 18px; line-height: 1.6;">
+      <li><strong>Gargoyle:</strong> aggressive melee pressure. Use bow shots to keep distance.</li>
+      <li><strong>Reaper:</strong> lightning bolts. A Storm Cloak can nullify the shock.</li>
+      <li><strong>Drake:</strong> high HP and fire breath. Spell damage works best when safe.</li>
+      <li><strong>Gazer:</strong> burst magic. Defend if it starts charging.</li>
+    </ul>
+  `;
+}
+
+function renderOrbChooser() {
+  if (!orbContent) return;
+  const destinations = getOrbDestinations();
+  if (!destinations.length) {
+    orbContent.innerHTML = '<p>No destinations are currently attuned.</p>';
+    return;
+  }
+  orbContent.innerHTML = `
+    <p style="margin-top: 0;">Choose a moon gate destination.</p>
+    <div class="inventory-list">
+      ${destinations.map((dest) => `
+        <div class="inventory-item">
+          <div class="inventory-item-header">
+            <strong>${dest.label}</strong>
+            <span>${dest.mapId === state.map?.id ? 'Here' : 'Go'}</span>
+          </div>
+          <div style="font-size: 12px; color: #cdd9ff;">${dest.note}</div>
+          <button data-orb-destination="${dest.mapId}">Travel</button>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+function getOrbDestinations() {
+  const mapList = [
+    { mapId: 'castle', label: 'Castle Britannia', spawn: 'castle_gate', note: 'Return to Lord British.' },
+    { mapId: 'castle_bedroom', label: 'Royal Quarters', spawn: 'bedroom_door', note: 'Search the bedroom for supplies.' },
+    { mapId: 'village', label: 'Britanny Bay', spawn: 'castle_gate', note: 'Visit the village and the cave path.' },
+    { mapId: 'athens_entrance', label: 'Athens Entrance', spawn: 'castle_gate', note: 'Speak with Socrates.' },
+    { mapId: 'dungeon_1', label: 'Dark Caverns', spawn: 'entry', note: 'Challenge the dungeon denizens.' }
+  ];
+  return mapList.filter((entry) => state.world.maps[entry.mapId]);
+}
+
 function celebrateCastle(force = false) {
   if (!state.map || state.map.id !== 'castle' || !state.player) return;
   const now = performance.now();
@@ -324,26 +386,145 @@ function showTooltip(event, text) {
   tooltip.style.top = `${event.clientY + 10}px`;
 }
 function hideTooltip() { tooltip.classList.add('hidden'); }
-function getItemTooltip(item) { return `${item.name}\n${item.type}`; } // Simplified for brevity
+function getItemTooltip(item) {
+  const lines = [item.name, item.type];
+  if (item.stats) {
+    const stats = Object.entries(item.stats)
+      .filter(([, value]) => Number.isFinite(value) && value !== 0)
+      .map(([key, value]) => `${key}: ${value}`);
+    if (stats.length) lines.push(stats.join(', '));
+  }
+  if (item.effect?.type) lines.push(`Effect: ${item.effect.type}`);
+  if (item.effects) lines.push('Special effect');
+  return lines.join('\n');
+}
 
 function renderInventory() {
-    inventoryList.innerHTML = '';
-    state.character.inventory.forEach(item => {
-        const div = document.createElement('div');
-        div.className = 'inventory-item';
-        div.innerHTML = `<span>${item.name} x${item.quantity || 1}</span>`;
-        // Equip/Use buttons would go here (same as before)
-        inventoryList.appendChild(div);
-    });
-    inventoryCapacity.textContent = `${state.character.backpackWeight.toFixed(1)} / ${(state.character.stats.STR * 2).toFixed(1)}`;
+  if (!state.character) return;
+  inventoryList.innerHTML = '';
+  state.character.inventory.forEach((item) => {
+    const div = document.createElement('div');
+    div.className = 'inventory-item';
+    const equipped = state.character.equipment[item.type] && state.character.equipment[item.type].id === item.id;
+    const canEquip = ['weapon', 'armor', 'accessory'].includes(item.type);
+    const canUse = Boolean(item.effect?.type || item.useAction || item.type === 'consumable' || item.id === 'orb_of_moons' || item.id === 'tactics_codex');
+    div.innerHTML = `
+      <div class="inventory-item-header">
+        <strong>${item.name}</strong>
+        <span>x${item.quantity || 1}${equipped ? ' equipped' : ''}</span>
+      </div>
+      <div style="font-size: 12px; color: #cdd9ff; white-space: pre-wrap;">${getItemTooltip(item)}</div>
+      <div class="inventory-item-actions">
+        ${canEquip ? `<button data-item-action="equip" data-item-id="${item.id}">${equipped ? 'Equipped' : 'Equip'}</button>` : ''}
+        ${canUse ? `<button data-item-action="use" data-item-id="${item.id}">Use</button>` : ''}
+      </div>
+    `;
+    inventoryList.appendChild(div);
+  });
+  inventoryCapacity.textContent = `${state.character.backpackWeight.toFixed(1)} / ${(state.character.stats.STR * 2).toFixed(1)}`;
 }
 
 function renderCharacterSheet() {
-    // Standard rendering (same as previous versions)
-    characterSummary.innerHTML = `Lvl ${state.character.level} ${state.character.name}`;
+  if (!state.character) return;
+  const eq = state.character.equipment;
+  characterSummary.innerHTML = `
+    <div style="font-weight: bold; margin-bottom: 8px;">Lvl ${state.character.level} ${state.character.name}</div>
+    <div style="margin-bottom: 8px;">HP ${state.character.currentHP}/${state.character.maxHP} | MP ${state.character.currentMP}/${state.character.maxMP}</div>
+    <div style="margin-bottom: 8px;">Gold ${state.character.gold || 0}</div>
+    <div style="font-size: 12px; color: #cdd9ff;">
+      Weapon: ${eq.weapon?.name || 'None'}<br />
+      Armor: ${eq.armor?.name || 'None'}<br />
+      Accessory: ${eq.accessory?.name || 'None'}
+    </div>
+  `;
 }
-function updateMenuStatus() { menuLastSave.textContent = formatTimestamp(state.lastSaveTimestamp); }
-function useConsumable(item) { /* Same as before */ }
+
+function updateMenuStatus() {
+  if (menuLastSave) menuLastSave.textContent = formatTimestamp(state.lastSaveTimestamp);
+}
+
+function useConsumable(item) {
+  if (!item || !state.character) return false;
+  if (item.effect?.type === 'heal') {
+    state.character.heal(item.effect.amount);
+    log(`You drink ${item.name} and recover ${item.effect.amount} HP.`);
+    state.character.removeItem(item.id, 1);
+    updateHUD();
+    renderInventory();
+    renderCharacterSheet();
+    autoSave('item-used');
+    return true;
+  }
+  if (item.effect?.type === 'restore_mana') {
+    state.character.restoreMana(item.effect.amount);
+    log(`You drink ${item.name} and recover ${item.effect.amount} MP.`);
+    state.character.removeItem(item.id, 1);
+    updateHUD();
+    renderInventory();
+    renderCharacterSheet();
+    autoSave('item-used');
+    return true;
+  }
+  return false;
+}
+
+function equipInventoryItem(itemId) {
+  if (!state.character) return;
+  const result = state.character.equipItem(itemId);
+  if (!result.success) {
+    log(result.reason || 'Could not equip item.');
+  } else {
+    log('Item equipped.');
+    updateHUD();
+    renderInventory();
+    renderCharacterSheet();
+    autoSave('item-equipped');
+  }
+}
+
+function openCodexFromItem() {
+  closeAllPanels();
+  openPanel('codex');
+}
+
+function openOrbFromItem() {
+  closeAllPanels();
+  openPanel('orb');
+}
+
+function handleInventoryAction(action, itemId) {
+  if (!state.character) return;
+  const item = state.character.findItem(itemId);
+  if (!item) return;
+
+  if (action === 'equip') {
+    equipInventoryItem(itemId);
+    return;
+  }
+
+  if (item.effect?.type === 'heal' || item.effect?.type === 'restore_mana') {
+    if (useConsumable(item)) {
+      return;
+    }
+  }
+
+  if (item.id === 'storm_cloak' || item.type === 'accessory') {
+    equipInventoryItem(itemId);
+    return;
+  }
+
+  if (item.id === 'tactics_codex' || item.effect?.type === 'open_codex' || item.useAction === 'open_codex') {
+    openCodexFromItem();
+    return;
+  }
+
+  if (item.id === 'orb_of_moons' || item.effect?.type === 'orb_travel' || item.useAction === 'orb_travel') {
+    openOrbFromItem();
+    return;
+  }
+
+  log('Nothing happens.');
+}
 
 // ... (Map Management)
 
@@ -467,9 +648,11 @@ function showDialogue(npc) {
   let text = '...';
   
   if (npc.id === 'socrates') {
-      const solved = state.character.getQuestStage('socrates_riddle') === 1;
-      if (solved) {
-          text = "Wealth is not about having many possessions, but having few wants.";
+      const stage = state.character.getQuestStage('socrates_riddle');
+      if (stage >= 2) {
+          text = 'Keep the codex close and you will survive deeper trials.';
+      } else if (stage === 1) {
+          text = QuestManager.resolveDialogue('socrates_riddle', 1);
       } else {
           text = "I am not an Athenian or a Greek, but a citizen of the world. Can you tell me, what is the only true wisdom?";
       }
@@ -493,10 +676,17 @@ function showDialogue(npc) {
           state.character.setQuestStage('orb_quest', 3);
           log("Quest Completed! Lord British bestows a gift upon you.");
           state.character.gainXP(500);
-          const reward = itemGenerator.createWeapon('slayer_sword', 'Slayer Sword', 15, { STR: 5 });
+          const reward = itemGenerator.createWeapon(state.character.level + 2);
           state.character.addItem(reward);
           log(`Received: ${reward.name}`);
           autoSave('quest-complete');
+      }
+  } else if (npc.id === 'socrates') {
+      const questStage = state.character.getQuestStage('socrates_riddle');
+      if (questStage === 0) {
+          state.character.setQuestStage('socrates_riddle', 1);
+          log('New Quest Added: Wisdom of Athens');
+          autoSave('quest-start');
       }
   }
 
@@ -507,7 +697,7 @@ function showDialogue(npc) {
       <div>
         <h3 style="margin: 0 0 10px 0; color: #fe5;">${npc.name}</h3>
         <p>"${text}"</p>
-        ${npc.id === 'socrates' && state.character.getQuestStage('socrates_riddle') === 0 ? 
+        ${npc.id === 'socrates' && state.character.getQuestStage('socrates_riddle') <= 1 ?
           `<div style="margin-top:10px;">
            <button class="dialogue-opt" onclick="window.answerRiddle('nothing')">Knowing you know nothing</button>
            <button class="dialogue-opt" onclick="window.answerRiddle('everything')">Knowing everything</button>
@@ -522,11 +712,16 @@ function showDialogue(npc) {
 window.answerRiddle = (answer) => {
     if (answer === 'nothing') {
         log("Socrates nods in approval. 'Indeed. You have found the path to wisdom.'");
-        state.character.setQuestStage('socrates_riddle', 1);
+        state.character.setQuestStage('socrates_riddle', 2);
         state.character.applyStatPoints({ INT: 1 });
+        const codex = itemGenerator.createTacticsCodex();
+        state.character.addItem(codex);
+        log(`Received: ${codex.name}`);
         log("Gained +1 Intelligence!");
         updateHUD();
         renderCharacterSheet();
+        renderInventory();
+        autoSave('quest-complete');
     } else {
         log("Socrates sighs. 'Perhaps you should reflect more upon this.'");
     }
@@ -535,6 +730,14 @@ window.answerRiddle = (answer) => {
 
 function handleTileEvents() {
   const { x, y } = state.player.position;
+
+  if (state.map.id === 'castle' && !state.throneIntroComplete && !state.throneIntroTriggered && x === 9 && y === 11) {
+    state.throneIntroTriggered = true;
+    log('A gargoyle bursts into the throne room!');
+    startSpecialEncounter('throne_ambush');
+    return;
+  }
+
   const transition = state.map.getTransition(x, y);
   if (transition) {
     changeMap(transition.map, transition.spawn);
@@ -567,13 +770,16 @@ async function startEncounter(category = null) {
   state.inCombat = true;
   
   const level = state.map.areaLevel || 1;
-  const enemy = createEnemy(category || state.map.id, level);
+  const enemy = createEnemy(category || state.map.encounterGroup || state.map.id, level);
   const result = await combatEngine.start(state.player, enemy);
   await resolveCombat(result, enemy);
   
   // Flag guardian as defeated if victory
   if (category === 'dungeon_boss' && result.outcome === 'victory') {
       state.guardianDefeated = true;
+  }
+  if (category === 'throne_ambush' && result.outcome === 'victory') {
+      state.throneIntroComplete = true;
   }
 
   state.inCombat = false;
@@ -609,12 +815,17 @@ async function resolveCombat(result, enemy) {
       log(`Level up! You reached level ${state.character.level}.`);
       autoSave('level-up');
     }
+    if (enemy.id === 'gargoyle' && state.map?.id === 'castle') {
+      state.throneIntroComplete = true;
+      log('The throne room is clear. Lord British is safe to address.');
+      autoSave('throne-ambush');
+    }
   } else if (result.outcome === 'defeat') {
     log('You awaken at the village, bruised but alive.');
     state.character.applyDeathPenalty();
     state.character.currentHP = Math.max(state.character.currentHP, Math.floor(state.character.maxHP * 0.6));
     state.character.currentMP = Math.max(state.character.currentMP, Math.floor(state.character.maxMP * 0.4));
-    changeMap('village', 'castle_gate'); // Fallback to village since forest might be missing
+    changeMap(state.map?.id === 'castle' ? 'castle' : 'village', 'castle_gate');
   } else if (result.outcome === 'fled') {
     log('You fled from battle.');
   }
@@ -658,6 +869,7 @@ function loadGame(manual = false) {
   const pos = data.playerPosition;
   if (pos && currentMap.isWalkable(pos.x, pos.y)) {
       player.setPosition(pos.x, pos.y);
+      player.map = currentMap; // Ensure map reference is set!
   } else {
       player.setMap(currentMap, 'castle_gate');
   }
@@ -709,6 +921,8 @@ function setupEventListeners() {
       case 'c': togglePanel('character'); break;
       case 'm': togglePanel('menu'); break;
       case 'j': togglePanel('journal'); break;
+      case 'o': togglePanel('orb'); break;
+      case 'x': togglePanel('codex'); break;
       case 'escape': closeAllPanels(); break;
     }
   });
@@ -716,6 +930,23 @@ function setupEventListeners() {
   document.addEventListener('keyup', (e) => {
       const dir = KEY_TO_DIRECTION[e.key.toLowerCase()];
       if (dir) renderer.setPlayerMovement(dir, false);
+  });
+
+  document.addEventListener('click', (event) => {
+    const closeButton = event.target.closest('[data-close]');
+    if (closeButton) {
+      closeAllPanels();
+      return;
+    }
+    const orbButton = event.target.closest('button[data-orb-destination]');
+    if (orbButton && !orbButton.disabled) {
+      const mapId = orbButton.dataset.orbDestination;
+      const destination = getOrbDestinations().find((entry) => entry.mapId === mapId);
+      if (!destination) return;
+      changeMap(destination.mapId, destination.spawn);
+      closeAllPanels();
+      log(`The Orb of Moons carries you to ${destination.label}.`);
+    }
   });
 }
 
@@ -741,6 +972,28 @@ async function bootstrap() {
     if(char) {
         state.character = char;
         state.player = new Player(char);
+        let starterWeapon = null;
+        for (let i = 0; i < 8 && !starterWeapon; i += 1) {
+          const candidate = itemGenerator.createWeapon(1);
+          if (state.character.canEquip(candidate)) {
+            starterWeapon = candidate;
+          }
+        }
+        if (!starterWeapon) {
+          starterWeapon = {
+            id: 'starter-rusty-blade',
+            name: 'Rusty Blade',
+            type: 'weapon',
+            stats: { attack: 4, str_req: 8 },
+            value: 0,
+            stackable: false,
+            weight: 1.4
+          };
+        }
+        if (state.character.addItem(starterWeapon)) {
+          state.character.equipItem(starterWeapon.id);
+          log(`You begin with ${starterWeapon.name}.`);
+        }
         state.map = state.world.startingMap;
         changeMap('castle', 'castle_gate');
         // Give starter items
@@ -750,3 +1003,33 @@ async function bootstrap() {
 }
 
 bootstrap();
+
+window.render_game_to_text = () => {
+  const player = state.player;
+  const enemy = combatEngine.enemy;
+  return JSON.stringify({
+    origin: 'top-left',
+    mapId: state.map?.id || null,
+    mapName: state.map?.name || null,
+    player: player ? {
+      x: player.position.x,
+      y: player.position.y,
+      facing: player.facing,
+      hp: state.character?.currentHP ?? null,
+      mp: state.character?.currentMP ?? null,
+      level: state.character?.level ?? null
+    } : null,
+    combat: state.inCombat ? {
+      active: true,
+      enemy: enemy ? { name: enemy.name, hp: enemy.currentHP, maxHp: enemy.maxHP } : null,
+      mode: combatEngine.playerMode || 'melee'
+    } : { active: false },
+    quests: state.character?.quests || {},
+    inventory: state.character?.inventory?.map((item) => ({ id: item.id, name: item.name, type: item.type, quantity: item.quantity || 1 })) || []
+  });
+};
+
+window.advanceTime = (ms = 0) => {
+  renderGame();
+  return Promise.resolve(ms);
+};
