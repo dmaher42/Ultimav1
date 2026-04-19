@@ -18,9 +18,10 @@ export const QUESTS = {
     stages: {
       0: "Lord British has tasked me with investigating the missing Orb in the Dark Caverns.",
       1: "Travel to the Lycaeum to seek scholarly guidance on the moonstone disturbance.",
-      2: "I have discovered that the problem is deeper than a simple raid. The Gargoyles are acting with purpose.",
-      3: "A key object or clue has been recovered. The truth is starting to emerge.",
-      4: "The next story path has been unlocked. Suspicion and doubt grow."
+      2: "I have recovered the Orb of Moons, but the air in the caverns feels heavy with a truth I do not yet grasp.",
+      3: "Investigation task: I have found a Gargoyle Tablet. I must take it to Mariah at the Lycaeum for translation.",
+      4: "The truth is revealed: The Gargoyles believe I am a 'False Prophet'. The conflict is more than a simple raid.",
+      5: "Objective: Discuss the 'Misunderstanding' with Lord British. Can war be averted?"
     }
   },
   'wisdom_of_lycaeum': {
@@ -29,10 +30,10 @@ export const QUESTS = {
     description: 'Seek the guidance of Mariah at the Lycaeum to interpret the strange omens.',
     stages: {
       0: 'Mariah offers her guidance, but first I must demonstrate my understanding of truth.',
-      1: 'I must answer, retrieve, or reason through the scholar\'s challenge.',
-      2: 'The challenge is met. Strategic understanding of the Codex is gained.',
-      3: 'New insights into the prophecy are now accessible.',
-      4: 'Quest complete. The scrolls of the Lycaeum have revealed a crack in the official story.'
+      1: 'I must answer the scholar\'s challenge regarding the nature of Truth.',
+      2: 'The challenge is met. I have gained Mariah\'s trust.',
+      3: 'I am helping Mariah translate the Gargoyle Tablet discovered in the caverns.',
+      4: 'Quest complete. The scrolls of the Lycaeum have revealed that our "enemies" may be victims of their own prophecy.'
     }
   }
 };

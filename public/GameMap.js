@@ -75,7 +75,9 @@ export function createWorld() {
           'ORB': 'The Orb of Moons is a powerful relic that governs travel. Its theft has disrupted the sacred Moongates.',
           'SHRINES': 'The Shrines of Virtue have been seized by the attackers. Their disruption is an affront to all that we hold sacred.',
           'MOONSTONES': 'Small pieces of the moons themselves, used to ground the Moongates. They have been disturbed.',
-          'LYCAEUM': 'To the West lies the Keep of Truth. Speak with Mariah there; she is the foremost scholar in the realm.'
+          'LYCAEUM': 'To the West lies the Keep of Truth. Speak with Mariah there; she is the foremost scholar in the realm.',
+          'TABLET': 'A Gargoyle tablet? This... this contradicts everything we thought we knew. If they act out of sacrifice, what does that make our "defense"?',
+          'MISUNDERSTANDING': 'I have always strove for Justice. If our actions have caused their world to bleed, then we are not the heroes of this tale.'
         },
         dialogue: (state) => {
           const stage = state.character.getQuestStage('orb_quest');
@@ -169,7 +171,9 @@ export function createWorld() {
           'GARGOYLES': 'There are reports they carry an ancient prophecy of their own, one that speaks of a "False Prophet" who brings ruin to their world.',
           'PROPHECY': 'The Gargoyles believe in a savior who will rescue them from destruction, yet their scrolls describe this savior\'s shadow as a doom-bringer to others.',
           'MOONSTONES': 'They are harmonic oscillators. The theft of the Orb suggests they are trying to realign the Moongates for their own purposes.',
-          'SHRINES': 'They are focusing on the Shrines because the Shrines are the gateways to the Codex.'
+          'SHRINES': 'They are focusing on the Shrines because the Shrines are the gateways to the Codex.',
+          'TABLET': 'Let me see that... these runes speak of a "Great Dissolution" and a "Sacrifice" needed to save their world. They think we are the monsters, Avatar.',
+          'FALSE PROPHET': 'It is a title they give to the one who takes their light. If you have the Orb, you are that prophet in their eyes.'
         },
         dialogue: 'The wisdom of Britannia is ancient, yet ever new. Seek the TRUTH, and the path will open.'
       }
@@ -257,7 +261,7 @@ export function createWorld() {
           'GARGOYLES': 'They say the shrines were glowing red before the attack. My cousin in the North saw a winged beast carry away a sacred stone.',
           'SHRINE': 'The Shrine of Compassion lies nearby, but none dare visit it since the shadows appeared.',
           'TOWN': 'Britanny is a quiet place usually, but the fear is palpable now.',
-          'RUMORS': 'Some say the Gargoyles aren\'t just attacking—they\'re looking for something. Or someone.'
+          'RUMORS': 'I saw a wounded Gargoyle near the woods. It didn\'t attack; it just looked at me with such... sadness. I didn\'t tell the guards.'
         },
         dialogue: "It is a dark time for Britannia, is it not?"
       }
@@ -361,7 +365,8 @@ export function createWorld() {
     ],
     legend: { 'X': 'dungeon_wall', '.': 'dungeon_floor', 'E': 'cave_exit', 'O': 'dungeon_floor', 'G': 'dungeon_floor' },
     objects: [
-        { x: 25, y: 7, type: 'item', data: { id: 'orb_of_moons', name: 'Orb of Moons', type: 'quest', lore: 'A glowing stone that resonates with the moons.' } }
+        { x: 25, y: 7, type: 'item', data: { id: 'orb_of_moons', name: 'Orb of Moons', type: 'quest', lore: 'A glowing stone that resonates with the moons.' } },
+        { x: 23, y: 7, type: 'item', data: { id: 'gargoyle_tablet', name: 'Gargoyle Tablet', type: 'quest', lore: 'A heavy stone slab covered in unreadable, geometric runes.' } }
     ],
     npcs: [
       {
@@ -375,9 +380,11 @@ export function createWorld() {
           'SHRINE': 'The stones belong to our world. You have stolen them for your own glory.',
           'STONE': 'The stones must be returned if both worlds are to survive.',
           'PEOPLE': 'My people have suffered enough. We only seek to preserve what remains of our history.',
-          'WAR': 'This is a war for survival. Do you not see the destruction your people have wrought?'
+          'WAR': 'This is a war for survival. Do you not see the destruction your people have wrought?',
+          'TABLET': 'You hold our history in your hands. Do you seek to destroy it as you have destroyed our peace?',
+          'SACRIFICE': 'The prophecy demands a sacrifice to balance the scales. One world must fade so the other may breathe.'
         },
-        dialogue: "Stay back, False Prophet! You shall not take the Orb while I still draw breath... unless you seek the path of understanding."
+        dialogue: "Stay back, False Prophet! You shall not take the Orb while I still draw breath... unless you truly seek UNDERSTANDING of our plight."
       }
     ],
     transitions: [
@@ -386,7 +393,7 @@ export function createWorld() {
     spawnPoints: { 'entry': { x: 1, y: 18 } }
   });
 
-  return { maps: { castle, lycaeum_entrance, castle_bedroom, village, dungeon_1, overworld }, startingMap: castle };
+  return { maps: { castle, lycaeum_entrance: lycaeum, castle_bedroom, village, dungeon_1, overworld }, startingMap: castle };
 }
 
 export class GameMap {

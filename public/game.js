@@ -48,9 +48,6 @@ dialogueEl.style.cssText = `
     document.body.appendChild(dialogueEl);
     
     const dialogueText = dialogueEl.querySelector('#dialogue-text');
-    const dialogueInputContainer = dialogueEl.querySelector('#dialogue-input-container');
-    const dialogueInput = dialogueEl.querySelector('#dialogue-input');
-    const dialogueSubmit = dialogueEl.querySelector('#dialogue-submit');
     const dialogueKeywords = dialogueEl.querySelector('#dialogue-keywords');
 
 // --- JOURNAL UI SETUP ---
@@ -860,6 +857,12 @@ function handleGet() {
          autoSave('quest-progress');
     }
 
+    if (itemData.id === 'gargoyle_tablet') {
+         setQuestStageAndRefresh('orb_quest', 3);
+         log("Journal Updated! You found a cryptic Gargoyle Tablet.");
+         autoSave('quest-progress');
+    }
+
     // Add to inventory
     const added = state.character.addItem(itemData);
     if (added) {
@@ -884,7 +887,11 @@ function showDialogue(npc) {
   if (npc.id === 'mariah') {
       const stage = state.character.getQuestStage('wisdom_of_lycaeum');
       if (stage >= 2) {
-          initialText = 'The scrolls of Truth contain mysteries yet to be unraveled.';
+          if (state.character.hasItem('gargoyle_tablet')) {
+              initialText = "I see you have found a relic from the Dark Caverns. Use the keyword TABLET and I shall translate it for you.";
+          } else {
+              initialText = 'The scrolls of Truth contain mysteries yet to be unraveled. Seek evidence of the Gargoyles\' purpose.';
+          }
       } else {
           initialText = "I am Mariah. Many in the Lycaeum speak of your arrival. It is said the 'False Prophet' has come to Britannia... but I see only an Avatar who seeks Truth. Tell me, what lies at the heart of our wisdom?";
       }
@@ -962,6 +969,13 @@ function handleDialogueSubmit(selectedKeyword) {
             response = "Indeed. Truth is the bedrock of our virtue. You have proven your commitment to understanding. Take this Codex of Wisdom.";
             completeMariahQuest();
         }
+        
+        if (input === 'TABLET' && state.character.hasItem('gargoyle_tablet')) {
+            response = "Let me see... 'Dune-sa-Sacrifice... The Book of Light... The Prophet brings death.' Good heavens, Avatar. They believe you are here to destroy their world! They stole the Orb only to prevent us from reaching their home.";
+            setQuestStageAndRefresh('orb_quest', 4);
+            setQuestStageAndRefresh('wisdom_of_lycaeum', 3);
+            log("Journal Updated: The 'False Prophet' prophecy revealed.");
+        }
     }
 
     // Quest Milestone Starters (Traditional Ultima Style)
@@ -983,6 +997,15 @@ function handleDialogueSubmit(selectedKeyword) {
                 response = "The Orb of Moons is a sacred relic, yet it was taken by creatures of muscle and wing. Go to the Lycaeum and speak with Mariah; she may interpret the purpose behind this theft.";
             }
         }
+
+        if (input === 'MISUNDERSTANDING') {
+            const stage = state.character.getQuestStage('orb_quest');
+            if (stage === 4) {
+                setQuestStageAndRefresh('orb_quest', 5);
+                log("Quest Objective Updated: Contemplate the future of Britannia.");
+                autoSave('quest-doubt');
+            }
+        }
     }
 
     if (npc.id === 'gargoyle_guardian') {
@@ -993,7 +1016,7 @@ function handleDialogueSubmit(selectedKeyword) {
                 state.guardianDefeated = true; // Non-violent resolution
                 log("The Guardian lowers their weapon. 'Perhaps you are not the one the scrolls foretold.'");
                 log("Moral Achievement: Path of Understanding.");
-                response = "If you speak the Truth, then take the Orb. But know that our world bleeds as yours does. We only wish to stop the fading of our sun.";
+                response = "If you speak the Truth, then take the Orb. But know that our world bleeds as yours does. We only wish to stop the fading of our sun. Look to the TABLET for the full tale.";
             }
         }
     }
@@ -1015,11 +1038,7 @@ function completeMariahQuest() {
     autoSave('quest-complete');
 }
 
-// Attach event listeners for dialogue
-dialogueSubmit.onclick = handleDialogueSubmit;
-dialogueInput.onkeydown = (e) => {
-    if (e.key === 'Enter') handleDialogueSubmit();
-};
+// Dialogue is now keyword-driven via button chips
 
 
 
