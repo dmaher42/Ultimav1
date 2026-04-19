@@ -100,6 +100,7 @@ const tooltip = document.getElementById('tooltip');
 const objectivePanel = document.getElementById('objective-panel');
 const objectiveText = document.getElementById('objective-text');
 const objectiveTip = document.getElementById('objective-tip');
+const dungeonNavEl = document.getElementById('dungeon-nav');
 const codexContent = document.getElementById('codex-content');
 const orbContent = document.getElementById('orb-content');
 
@@ -121,6 +122,7 @@ const state = {
   lastSaveTimestamp: null,
   throneIntroTriggered: false,
   throneIntroComplete: false,
+  pendingTransition: null,
   fx: {
     lastCastleBurst: 0
   }
@@ -232,6 +234,7 @@ function updateHUD() {
   hud.area.textContent = state.map ? state.map.name : 'Unknown';
   if (hud.gold) hud.gold.textContent = `${state.character.gold || 0}`;
   updateObjectivePanel();
+  updateDungeonNavigator();
 }
 
 function getObjectiveState() {
@@ -310,14 +313,81 @@ function updateObjectivePanel() {
   objectiveTip.textContent = objective.tip;
 }
 
+function getDungeonExitTransition() {
+  if (!state.map || state.map.id !== 'dungeon_1') return null;
+  return state.map.transitions?.find((transition) => transition.map === 'village') || null;
+}
+
+function getDungeonExitHint() {
+  const exit = getDungeonExitTransition();
+  if (!exit || !state.player) return null;
+  const dx = exit.x - state.player.position.x;
+  const dy = exit.y - state.player.position.y;
+  const horizontal = dx > 0 ? 'east' : dx < 0 ? 'west' : '';
+  const vertical = dy > 0 ? 'south' : dy < 0 ? 'north' : '';
+  const direction = horizontal && vertical ? `${vertical}-${horizontal}` : (horizontal || vertical || 'here');
+  return {
+    direction,
+    onExit: dx === 0 && dy === 0
+  };
+}
+
+function updateDungeonNavigator() {
+  if (!dungeonNavEl) return;
+  const hint = getDungeonExitHint();
+  if (!hint) {
+    dungeonNavEl.classList.add('hidden');
+    dungeonNavEl.innerHTML = '';
+    return;
+  }
+  dungeonNavEl.classList.remove('hidden');
+  const prompt = state.pendingTransition || hint.onExit
+    ? 'Press Enter to leave for Britanny Bay.'
+    : `Exit is ${hint.direction}. Move carefully.`;
+  dungeonNavEl.innerHTML = `<strong>Dark Caverns Exit</strong><div class="subtle">${prompt}</div>`;
+}
+
+function refreshQuestViews() {
+  updateObjectivePanel();
+  if (!panels.journal.classList.contains('hidden')) {
+    renderJournal();
+  }
+}
+
+function setQuestStageAndRefresh(questId, stage) {
+  if (!state.character) return;
+  state.character.setQuestStage(questId, stage);
+  refreshQuestViews();
+}
+
 function isPanelOpen() {
   return Object.values(panels).some(p => !p.classList.contains('hidden')) || !dialogueEl.classList.contains('hidden');
 }
 
 function closeAllPanels() {
+  if (typeof combatEngine?.closeItemMenu === 'function') {
+    combatEngine.closeItemMenu();
+  }
   Object.values(panels).forEach(p => p.classList.add('hidden'));
   dialogueEl.classList.add('hidden');
   hideTooltip();
+}
+
+function closeTopOverlay() {
+  if (state.inCombat && typeof combatEngine?.isItemMenuOpen === 'function' && combatEngine.isItemMenuOpen()) {
+    combatEngine.closeItemMenu();
+    return true;
+  }
+  if (!dialogueEl.classList.contains('hidden')) {
+    dialogueEl.classList.add('hidden');
+    return true;
+  }
+  const openPanel = Object.entries(panels).find(([, panel]) => !panel.classList.contains('hidden'));
+  if (openPanel) {
+    openPanel[1].classList.add('hidden');
+    return true;
+  }
+  return false;
 }
 
 function openPanel(name) {
@@ -345,11 +415,21 @@ function renderJournal() {
             const questData = QuestManager.getQuest(questId);
             if (questData) {
                 const entry = document.createElement('div');
-                entry.style.marginBottom = '20px';
+                entry.className = 'quest-entry';
+                const stageText = questData.stages?.[stage] || questData.stages?.[0] || 'Unknown progress.';
+                const stageKeys = Object.keys(questData.stages || {}).map((key) => Number(key)).filter((key) => Number.isFinite(key));
+                const completionStage = stageKeys.length ? Math.max(...stageKeys) : 0;
                 entry.innerHTML = `
-                    <h3 style="margin: 0 0 5px 0; color: #4a2c10;">${questData.title}</h3>
-                    <p style="margin: 0; font-style: italic;">${questData.description}</p>
-                    <p style="margin: 5px 0 0 0; font-weight: bold; font-size: 0.9em;">Status: ${stage >= 3 ? 'Completed' : 'In Progress'}</p>
+                    <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start;">
+                      <div>
+                        <h3 style="margin: 0 0 4px 0; color: #4a2c10;">${questData.title}</h3>
+                        <p style="margin: 0; font-style: italic; color: #5a4326;">${questData.description}</p>
+                      </div>
+                      <span style="font-size: 11px; font-weight: bold; color: ${stage >= completionStage ? '#2f6b36' : '#7a5a22'};">${stage >= completionStage ? 'Completed' : 'Active'}</span>
+                    </div>
+                    <div style="margin-top: 8px; padding: 10px; border-radius: 8px; background: rgba(255,255,255,0.3); border: 1px solid rgba(92, 60, 30, 0.18); font-size: 0.92em; line-height: 1.45;">
+                      ${stageText}
+                    </div>
                 `;
                 content.appendChild(entry);
             }
@@ -357,7 +437,7 @@ function renderJournal() {
     });
 
     if (!hasQuests) {
-        content.innerHTML = '<p style="text-align: center; color: #666;">No active quests.</p>';
+        content.innerHTML = '<p style="text-align: center; color: #666; margin-top: 32px;">No active quests.</p>';
     }
 }
 
@@ -395,6 +475,7 @@ function renderGame() {
     }
   });
   updateObjectivePanel();
+  updateDungeonNavigator();
 }
 
 function renderCodex() {
@@ -629,6 +710,7 @@ function changeMap(mapId, spawnTag) {
   state.map = map;
   state.discoveredAreas.add(mapId);
   state.player.setMap(map, spawnTag);
+  state.pendingTransition = null;
   activeMovementDirections.clear();
   renderer.stopAllMovement();
   updateHUD();
@@ -721,8 +803,9 @@ function handleGet() {
 
     // Handle Quest Item Logic
     if (itemData.id === 'orb_of_moons') {
-         state.character.setQuestStage('orb_quest', 2);
+         setQuestStageAndRefresh('orb_quest', 2);
          log("Journal Updated! You found the Orb.");
+         autoSave('quest-progress');
     }
 
     // Add to inventory
@@ -765,11 +848,11 @@ function showDialogue(npc) {
   if (npc.id === 'lord_british') {
       const questStage = state.character.getQuestStage('orb_quest');
       if (questStage === 0) {
-          state.character.setQuestStage('orb_quest', 1);
+          setQuestStageAndRefresh('orb_quest', 1);
           log("New Quest Added: The Stolen Orb");
           autoSave('quest-start');
       } else if (questStage === 2) {
-          state.character.setQuestStage('orb_quest', 3);
+          setQuestStageAndRefresh('orb_quest', 3);
           log("Quest Completed! Lord British bestows a gift upon you.");
           state.character.gainXP(500);
           const reward = itemGenerator.createWeapon(state.character.level + 2);
@@ -780,7 +863,7 @@ function showDialogue(npc) {
   } else if (npc.id === 'socrates') {
       const questStage = state.character.getQuestStage('socrates_riddle');
       if (questStage === 0) {
-          state.character.setQuestStage('socrates_riddle', 1);
+          setQuestStageAndRefresh('socrates_riddle', 1);
           log('New Quest Added: Wisdom of Athens');
           autoSave('quest-start');
       }
@@ -810,7 +893,7 @@ function showDialogue(npc) {
 window.answerRiddle = (answer) => {
     if (answer === 'nothing') {
         log("Socrates nods in approval. 'Indeed. You have found the path to wisdom.'");
-        state.character.setQuestStage('socrates_riddle', 2);
+        setQuestStageAndRefresh('socrates_riddle', 2);
         state.character.applyStatPoints({ INT: 1 });
         const codex = itemGenerator.createTacticsCodex();
         state.character.addItem(codex);
@@ -839,8 +922,18 @@ function handleTileEvents() {
 
   const transition = state.map.getTransition(x, y);
   if (transition) {
+    if (state.map.id === 'dungeon_1') {
+      state.pendingTransition = transition;
+      updateDungeonNavigator();
+      return;
+    }
     changeMap(transition.map, transition.spawn);
     return;
+  }
+
+  if (state.pendingTransition) {
+    state.pendingTransition = null;
+    updateDungeonNavigator();
   }
 
   // Boss Trigger for Orb Quest
@@ -992,17 +1085,39 @@ function loadGame(manual = false) {
 function setupEventListeners() {
   document.addEventListener('keydown', (event) => {
     if (event.target instanceof HTMLInputElement) return;
+    const key = event.key.toLowerCase();
 
     if (!dialogueEl.classList.contains('hidden')) {
-        if (['escape',' ','enter'].includes(event.key.toLowerCase())) {
+        if (['escape',' ','enter'].includes(key)) {
             event.preventDefault();
             dialogueEl.classList.add('hidden');
         }
         return;
     }
 
-    if (state.inCombat) return;
-    const key = event.key.toLowerCase();
+    if (state.inCombat) {
+      if (key === 'escape' && combatEngine.isItemMenuOpen()) {
+        event.preventDefault();
+        combatEngine.closeItemMenu();
+      }
+      return;
+    }
+
+    if (key === 'escape') {
+      event.preventDefault();
+      if (closeTopOverlay()) {
+        return;
+      }
+      return;
+    }
+
+    if (key === 'enter' && state.pendingTransition && !isPanelOpen()) {
+      event.preventDefault();
+      const transition = state.pendingTransition;
+      changeMap(transition.map, transition.spawn);
+      log('You deliberately leave the Dark Caverns.');
+      return;
+    }
 
     if (KEY_TO_DIRECTION[key]) {
         event.preventDefault();
@@ -1022,7 +1137,6 @@ function setupEventListeners() {
       case 'j': togglePanel('journal'); break;
       case 'o': togglePanel('orb'); break;
       case 'x': togglePanel('codex'); break;
-      case 'escape': closeAllPanels(); break;
     }
   });
 

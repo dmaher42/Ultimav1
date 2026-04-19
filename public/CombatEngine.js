@@ -1,4 +1,4 @@
-import ItemGenerator from './ItemGenerator.js';
+﻿import ItemGenerator from './ItemGenerator.js';
 
 function calculateDamage(attacker, defender, attackerGuard = 1, defenderGuard = 1) {
   const baseAttack = attacker.attack;
@@ -63,6 +63,14 @@ export default class CombatEngine {
     this.generator = new ItemGenerator();
     this.boundActionHandler = (event) => this.handleAction(event);
     this.actionsElement.addEventListener('click', this.boundActionHandler);
+    this.root.addEventListener('click', (event) => {
+      if (!this.active || !this.isItemMenuOpen()) return;
+      const clickedAction = event.target.closest('button[data-action]');
+      const clickedItem = event.target.closest('#combat-item-list');
+      if (!clickedAction && !clickedItem) {
+        this.closeItemMenu();
+      }
+    });
     this.itemList.addEventListener('click', (event) => {
       const button = event.target.closest('button[data-item]');
       if (!button) return;
@@ -86,6 +94,7 @@ export default class CombatEngine {
     this.renderActionButtons();
     this.appendLog(`A ${enemy.name} emerges!`);
     this.updateStatus();
+    this.syncActionButtonStates();
     return new Promise((resolve) => {
       this.resolve = resolve;
     });
@@ -94,7 +103,7 @@ export default class CombatEngine {
   end(result) {
     this.active = false;
     this.root.classList.add('hidden');
-    this.itemList.classList.add('hidden');
+    this.closeItemMenu();
     if (this.resolve) {
       this.resolve(result);
       this.resolve = null;
@@ -103,13 +112,14 @@ export default class CombatEngine {
 
   renderActionButtons() {
     this.actionsElement.innerHTML = `
-      <button data-action="melee">Melee</button>
-      <button data-action="bow">Bow</button>
-      <button data-action="spell">Spell</button>
-      <button data-action="defend">Defend</button>
-      <button data-action="item">Item</button>
-      <button data-action="flee">Flee</button>
+      <button class="combat-action" data-action="melee">Melee</button>
+      <button class="combat-action" data-action="bow">Bow</button>
+      <button class="combat-action" data-action="spell">Spell</button>
+      <button class="combat-action" data-action="defend">Defend</button>
+      <button class="combat-action" data-action="item">Item</button>
+      <button class="combat-action" data-action="flee">Flee</button>
     `;
+    this.syncActionButtonStates();
   }
 
   handleAction(event) {
@@ -117,35 +127,73 @@ export default class CombatEngine {
     if (!button || !this.active || this.turn !== 'player') return;
     const action = button.dataset.action;
     if (action === 'melee' || action === 'bow' || action === 'spell') {
+      this.closeItemMenu();
       this.playerAttack(action);
     } else if (action === 'defend') {
+      this.closeItemMenu();
       this.playerDefend();
     } else if (action === 'item') {
-      this.showItems();
+      this.toggleItemMenu();
     } else if (action === 'flee') {
+      this.closeItemMenu();
       this.playerFlee();
     }
   }
 
-  showItems() {
+  isItemMenuOpen() {
+    return !this.itemList.classList.contains('hidden');
+  }
+
+  syncActionButtonStates() {
+    const buttons = this.actionsElement.querySelectorAll('button[data-action]');
+    buttons.forEach((button) => {
+      const action = button.dataset.action;
+      const isItem = action === 'item';
+      const isActive = isItem && this.isItemMenuOpen();
+      button.classList.toggle('is-active', isActive);
+      button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+      if (isItem) {
+        button.textContent = isActive ? 'Item (Open)' : 'Item';
+      }
+    });
+  }
+
+  openItemMenu() {
     const consumables = this.player.character.inventory.filter((item) => item.type === 'consumable');
+    this.itemList.innerHTML = '';
     if (consumables.length === 0) {
-      this.appendLog('No consumables available.');
+      const empty = document.createElement('div');
+      empty.className = 'combat-item-empty';
+      empty.textContent = 'No consumables available. Press Item again or Esc to close.';
+      this.itemList.appendChild(empty);
+    } else {
+      consumables.forEach((item) => {
+        const element = document.createElement('div');
+        element.className = 'inventory-item';
+        element.innerHTML = `
+          <div class="inventory-item-header">
+            <strong>${item.name}</strong>
+            <span>x${item.quantity || 1}</span>
+          </div>
+          <button data-item="${item.id}">Use</button>`;
+        this.itemList.appendChild(element);
+      });
+    }
+    this.itemList.classList.remove('hidden');
+    this.syncActionButtonStates();
+  }
+
+  closeItemMenu() {
+    this.itemList.classList.add('hidden');
+    this.syncActionButtonStates();
+  }
+
+  toggleItemMenu() {
+    if (this.isItemMenuOpen()) {
+      this.closeItemMenu();
       return;
     }
-    this.itemList.innerHTML = '';
-    consumables.forEach((item) => {
-      const element = document.createElement('div');
-      element.className = 'inventory-item';
-      element.innerHTML = `
-        <div class="inventory-item-header">
-          <strong>${item.name}</strong>
-          <span>x${item.quantity || 1}</span>
-        </div>
-        <button data-item="${item.id}">Use</button>`;
-      this.itemList.appendChild(element);
-    });
-    this.itemList.classList.remove('hidden');
+    this.openItemMenu();
   }
 
   consumeItem(itemId) {
@@ -166,7 +214,7 @@ export default class CombatEngine {
       this.appendLog(`You drink ${entry.name}, restoring ${entry.effect.amount} MP.`);
     }
     this.player.character.removeItem(entry.id, 1);
-    this.itemList.classList.add('hidden');
+    this.closeItemMenu();
     this.updateStatus();
     this.turn = 'enemy';
     this.enemyTurn();
@@ -183,7 +231,7 @@ export default class CombatEngine {
   }
 
   playerAttack(mode = 'melee') {
-    this.itemList.classList.add('hidden');
+    this.closeItemMenu();
     this.playerMode = mode;
     const config = getModeConfig(mode);
     if (config.mpCost > 0 && !this.player.character.useMana(config.mpCost)) {
@@ -214,7 +262,7 @@ export default class CombatEngine {
   }
 
   playerDefend() {
-    this.itemList.classList.add('hidden');
+    this.closeItemMenu();
     this.playerGuard.defense = 1.5;
     this.playerGuard.damage = 0.5;
     this.appendLog('You brace yourself for the next attack.');
@@ -223,7 +271,7 @@ export default class CombatEngine {
   }
 
   playerFlee() {
-    this.itemList.classList.add('hidden');
+    this.closeItemMenu();
     const chance = 0.4 + this.player.character.stats.LUK / 100;
     if (Math.random() < chance) {
       this.appendLog('You successfully retreat!');
@@ -387,12 +435,14 @@ export default class CombatEngine {
     flash.style.backgroundColor = color;
     flash.style.pointerEvents = 'none';
     flash.style.zIndex = '1000';
-    flash.style.transition = 'opacity 0.2s ease-out';
+    flash.style.opacity = '0.1';
+    flash.style.mixBlendMode = 'screen';
+    flash.style.transition = 'opacity 0.09s ease-out';
     this.root.appendChild(flash);
     setTimeout(() => {
       flash.style.opacity = '0';
-      setTimeout(() => flash.remove(), 200);
-    }, 50);
+      setTimeout(() => flash.remove(), 90);
+    }, 30);
   }
 
   triggerScreenShake() {
