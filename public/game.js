@@ -43,11 +43,7 @@ dialogueEl.style.cssText = `
     dialogueEl.innerHTML = `
         <div id="dialogue-text" style="margin-bottom: 16px; min-height: 1.2em; font-size: 1.1em; line-height: 1.5;"></div>
         <div id="dialogue-keywords" style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px;"></div>
-        <div id="dialogue-input-container" class="hidden" style="margin-top: 16px; display: flex; gap: 8px; border-top: 1px solid rgba(220,182,120,0.2); padding-top: 12px;">
-            <input type="text" id="dialogue-input" placeholder="Type keyword..." 
-                style="flex: 1; background: rgba(0,0,0,0.3); border: 1px solid rgba(220,182,120,0.3); color: #fff; padding: 6px 10px; border-radius: 4px; font-family: inherit;">
-            <button id="dialogue-submit" style="background: #4a3c2a; color: #f3efe3; border: 1px solid #7a5a22; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-weight: bold;">Ask</button>
-        </div>
+        <div id="dialogue-input-container" class="hidden"></div>
     `;
     document.body.appendChild(dialogueEl);
     
@@ -272,7 +268,7 @@ function getObjectiveState() {
   }
 
   const orbStage = state.character.getQuestStage('orb_quest');
-  const codexStage = state.character.getQuestStage('socrates_riddle');
+  const codexStage = state.character.getQuestStage('wisdom_of_lycaeum');
 
   if (!state.throneIntroComplete) {
     return {
@@ -900,8 +896,6 @@ function showDialogue(npc) {
 
   dialogueText.innerHTML = `"${initialText}"`;
   updateDialogueKeywords(npc);
-  dialogueInput.value = '';
-  dialogueInput.focus();
 }
 
 function updateDialogueKeywords(npc) {
@@ -934,19 +928,17 @@ function updateDialogueKeywords(npc) {
             btn.style.borderColor = 'rgba(220,182,120,0.4)';
         };
         btn.onclick = () => {
-            dialogueInput.value = kw;
-            handleDialogueSubmit();
+            handleDialogueSubmit(kw);
         };
         dialogueKeywords.appendChild(btn);
     });
 }
 
-function handleDialogueSubmit() {
+function handleDialogueSubmit(selectedKeyword) {
     const npc = state.currentConversationPartner;
-    const input = dialogueInput.value.trim().toUpperCase();
+    const input = (selectedKeyword || '').toUpperCase();
     if (!npc || !input) return;
 
-    dialogueInput.value = '';
     let response = "I do not know of that.";
 
     // Universal Keywords

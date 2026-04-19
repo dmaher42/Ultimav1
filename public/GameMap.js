@@ -22,7 +22,7 @@ export const TileInfo = {
   dungeon_wall: { name: 'Dungeon Wall', desc: 'crumbling, dark wall', color: '#222', passable: false },
   cave_entrance: { name: 'Cave Mouth', desc: 'the opening to darkness', color: '#000', passable: true },
   marble_wall: { name: 'White Marble Wall', desc: 'fluted marble column base', color: '#d0d0d0', passable: false },
-  marble_floor: { name: 'Marble Floor', desc: 'smooth, white Attic marble', color: '#e0e0e0', passable: true },
+  marble_floor: { name: 'Marble Floor', desc: 'smooth, white marble', color: '#e0e0e0', passable: true },
   meadow: { 
     name: 'Meadow', desc: 'fertile soil and lush grass', color: '#4a7c44', passable: true, alternate: 'grass',
     variations: ['meadow', 'meadow_1', 'meadow_2', 'meadow_3']
@@ -310,7 +310,7 @@ export function createWorld() {
     ],
     legend: { 'T': 'trees', '.': 'grass', 'M': 'marble_floor', 'C': 'castle_wall', 'V': 'path' },
     objects: [
-      { x: 25, y: 4, sprite: 'pillar', height: 2 }, { x: 28, y: 4, sprite: 'pillar', height: 2 }, // Athens Entrance markers
+      { x: 25, y: 4, sprite: 'pillar', height: 2 }, { x: 28, y: 4, sprite: 'pillar', height: 2 }, // Lycaeum Entrance markers
       { x: 23, y: 13, sprite: 'statue' }, { x: 30, y: 13, sprite: 'statue' }, // Castle Entrance markers
       { x: 40, y: 25, sprite: 'fountain' } // Village road marker
     ],
