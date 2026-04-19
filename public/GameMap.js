@@ -93,7 +93,7 @@ export function createWorld() {
       'W...MMMMMMMMMMMM...W',
       'W..................W',
       'W..................W',
-      'WWWWWWWWWWWWWWWWWWWW'
+      'WWWWWWWWW..WWWWWWWWW'
     ],
     legend: { 'W': 'athens_water', '.': 'athens_grass', 'M': 'athens_marble' },
     layersData: [
