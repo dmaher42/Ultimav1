@@ -21,14 +21,14 @@ export const TileInfo = {
   dungeon_floor: { name: 'Dungeon Floor', desc: 'cold, damp stone', color: '#444', passable: true, encounterChance: 0.2 },
   dungeon_wall: { name: 'Dungeon Wall', desc: 'crumbling, dark wall', color: '#222', passable: false },
   cave_entrance: { name: 'Cave Mouth', desc: 'the opening to darkness', color: '#000', passable: true },
-  athens_marble: { name: 'Marble Floor', desc: 'smooth, white Attic marble', color: '#e0e0e0', passable: true },
-  athens_grass: { 
-    name: 'Olive Grove', desc: 'fertile soil and grass', color: '#4a7c44', passable: true, alternate: 'grass',
-    variations: ['athens_grass', 'athens_grass_1', 'athens_grass_2', 'athens_grass_3']
+  marble_wall: { name: 'White Marble Wall', desc: 'fluted marble column base', color: '#d0d0d0', passable: false },
+  marble_floor: { name: 'Marble Floor', desc: 'smooth, white Attic marble', color: '#e0e0e0', passable: true },
+  meadow: { 
+    name: 'Meadow', desc: 'fertile soil and lush grass', color: '#4a7c44', passable: true, alternate: 'grass',
+    variations: ['meadow', 'meadow_1', 'meadow_2', 'meadow_3']
   },
-  athens_water: { name: 'Azure Sea', desc: 'deep blue Mediterranean waters', color: '#4da6ff', passable: false, alternate: 'water' },
-  athens_temple_wall: { name: 'Temple Wall', desc: 'fluted marble column base', color: '#d0d0d0', passable: false },
-  athens_roof: { name: 'Temple Roof', desc: 'terracotta tiles', color: '#325aa8', passable: false }
+  azure_water: { name: 'Azure Sea', desc: 'deep blue Mediterranean waters', color: '#4da6ff', passable: false, alternate: 'water' },
+  lycaeum_roof: { name: 'Lycaeum Roof', desc: 'terracotta tiles', color: '#325aa8', passable: false }
 };
 
 export function createWorld() {
@@ -54,7 +54,7 @@ export function createWorld() {
       '#########DD#########',
       '####################'
     ],
-    legend: { '#': 'athens_temple_wall', '.': 'athens_marble', 'R': 'red_carpet', 'P': 'athens_marble', 'D': 'castle_door' },
+    legend: { '#': 'marble_wall', '.': 'marble_floor', 'R': 'red_carpet', 'P': 'marble_floor', 'D': 'castle_door' },
     objects: [
       { x: 3, y: 2, sprite: 'pillar', height: 2 }, { x: 16, y: 2, sprite: 'pillar', height: 2 },
       { x: 3, y: 9, sprite: 'pillar', height: 2 }, { x: 16, y: 9, sprite: 'pillar', height: 2 },
@@ -62,17 +62,25 @@ export function createWorld() {
       { x: 1, y: 5, sprite: 'torch_wall' }, { x: 18, y: 5, sprite: 'torch_wall' }
     ],
     npcs: [
-      {
         id: 'lord_british', name: 'Lord British', x: 9, y: 3,
         spriteSheet: LORD_BRITISH_SPRITE_SHEET, spriteFrame: 'player_south_1',
         color: '#ffdd00',
         behavior: 'static',
+        job: 'I rule this land with the help of the Eight Virtues.',
+        responses: {
+          'BRITANNIA': 'Our land is troubled by the Gargoyle incursions.',
+          'GARGOYLE': 'They are a strange race from the underworld. Their motives are hidden from me.',
+          'VIRTUE': 'Compassion, Honesty, Honor, Humility, Justice, Sacrifice, Spirituality, and Valor.',
+          'ORB': 'The Orb of Moons is a powerful relic. It allows one to step through the moon gates.'
+        },
         dialogue: (state) => {
           const stage = state.character.getQuestStage('orb_quest');
-          return QuestManager.resolveDialogue('orb_quest', stage);
+          if (stage === 2) return "You have returned! Use the keyword ORB to discuss our next steps.";
+          return "Welcome, Avatar. Britain is safe for now, but the world at large is in peril.";
         }
       }
     ],
+    adjacencies: { south: 'overworld' }, // Seamless exit to south
     transitions: [
       { x: 9, y: 13, map: 'overworld', spawn: 'castle_entrance' },
       { x: 10, y: 13, map: 'overworld', spawn: 'castle_entrance' },
@@ -83,12 +91,12 @@ export function createWorld() {
     spawnPoints: { 'castle_gate': { x: 9, y: 12 }, 'bedroom_door': { x: 1, y: 2 } }
   });
 
-  // 2. ATHENS ENTRANCE (Showcase Area)
-  const athens_entrance = new GameMap({
-    id: 'athens_entrance',
-    name: 'Athens Entrance',
+  // 2. LYCAEUM ENTRANCE (Formerly Athens Entrance)
+  const lycaeum = new GameMap({
+    id: 'lycaeum_entrance',
+    name: 'Lycaeum Entrance',
     width: 20, height: 20, safe: true,
-    defaultTile: 'athens_grass',
+    defaultTile: 'meadow',
     layout: [
       'WWWWWWWWWWWWWWWWWWWW',
       'W..................W',
@@ -104,7 +112,7 @@ export function createWorld() {
       'W..................W',
       'WWWWWWWWW..WWWWWWWWW'
     ],
-    legend: { 'W': 'athens_water', '.': 'athens_grass', 'M': 'athens_marble' },
+    legend: { 'W': 'azure_water', '.': 'meadow', 'M': 'marble_floor' },
     layersData: [
         {
           zIndex: 1, // Roof Layer
@@ -118,7 +126,7 @@ export function createWorld() {
             '   R............R   ',
             '   RRRRRRRRRRRRRR   '
           ],
-          legend: { 'R': 'athens_roof', '.': 'none' }
+          legend: { 'R': 'lycaeum_roof', '.': 'none' }
         }
     ],
     objects: [
@@ -129,19 +137,27 @@ export function createWorld() {
     ],
     npcs: [
       {
-        id: 'socrates', name: 'Socrates', x: 10, y: 10,
+        id: 'mariah', name: 'Mariah', x: 10, y: 10,
         spriteSheet: 'assets/sprites/villager.png',
         color: '#fff',
         behavior: 'wander',
-        dialogue: 'The only true wisdom is in knowing you know nothing.'
+        job: 'I am a scholar of the Lycaeum. I study the mysteries of the Codex.',
+        responses: {
+          'LYCAEUM': 'This is the Keep of Truth, where all knowledge is preserved.',
+          'CODEX': 'The Codex of Ultimate Wisdom is the greatest prize any seeker can find.',
+          'WISDOM': 'True wisdom often begins with an admission of its absence.',
+          'NOTHING': 'Ah, you have understood the riddle. The only true wisdom is knowing that you know nothing.'
+        },
+        dialogue: 'The wisdom of Britannia is ancient, yet ever new.'
       }
     ],
+    adjacencies: { south: 'overworld' },
     transitions: [
-      { x: 9, y: 12, map: 'overworld', spawn: 'athens_gateway' },
-      { x: 10, y: 12, map: 'overworld', spawn: 'athens_gateway' },
+      { x: 9, y: 12, map: 'overworld', spawn: 'lycaeum_gateway' },
+      { x: 10, y: 12, map: 'overworld', spawn: 'lycaeum_gateway' },
       { x: 15, y: 11, map: 'village', spawn: 'castle_gate' }
     ],
-    spawnPoints: { 'castle_gate': { x: 9, y: 11 }, 'athens_gateway': { x: 9, y: 11 } }
+    spawnPoints: { 'castle_gate': { x: 9, y: 11 }, 'lycaeum_gateway': { x: 9, y: 11 } }
   });
 
   // 2. CASTLE BEDROOM (New Area)
@@ -209,6 +225,7 @@ export function createWorld() {
         }
       }
     ],
+    adjacencies: { north: 'overworld' },
     transitions: [
       { x: 15, y: 4, map: 'overworld', spawn: 'village_road' },
       { x: 24, y: 8, map: 'dungeon_1', spawn: 'entry' } // Cave Entrance
@@ -254,24 +271,27 @@ export function createWorld() {
       '   T....................................................T   ',
       '   TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT   '
     ],
-    legend: { 'T': 'trees', '.': 'grass', 'M': 'athens_marble', 'C': 'castle_wall', 'V': 'path' },
+    legend: { 'T': 'trees', '.': 'grass', 'M': 'marble_floor', 'C': 'castle_wall', 'V': 'path' },
     objects: [
       { x: 25, y: 4, sprite: 'pillar', height: 2 }, { x: 28, y: 4, sprite: 'pillar', height: 2 }, // Athens Entrance markers
       { x: 23, y: 13, sprite: 'statue' }, { x: 30, y: 13, sprite: 'statue' }, // Castle Entrance markers
       { x: 40, y: 25, sprite: 'fountain' } // Village road marker
     ],
+    adjacencies: {
+        north: 'castle',
+        south: 'village',
+        west: 'lycaeum_entrance'
+    },
     transitions: [
-      { x: 26, y: 4, map: 'athens_entrance', spawn: 'athens_gateway' },
-      { x: 27, y: 4, map: 'athens_entrance', spawn: 'athens_gateway' },
-      { x: 26, y: 16, map: 'castle', spawn: 'castle_gate' },
-      { x: 27, y: 16, map: 'castle', spawn: 'castle_gate' },
-      { x: 41, y: 24, map: 'village', spawn: 'village_road' },
-      { x: 41, y: 26, map: 'village', spawn: 'village_road' }
+      { x: 25, y: 4, map: 'castle', spawn: 'castle_entrance' },
+      { x: 26, y: 4, map: 'castle', spawn: 'castle_entrance' },
+      { x: 10, y: 7, map: 'lycaeum_entrance', spawn: 'lycaeum_gateway' },
+      { x: 25, y: 55, map: 'village', spawn: 'village_road' }
     ],
-    spawnPoints: { 
-        'athens_gateway': { x: 26, y: 5 }, 
-        'castle_entrance': { x: 26, y: 15 }, 
-        'village_road': { x: 40, y: 25 } 
+    spawnPoints: {
+      'castle_entrance': { x: 25, y: 5 },
+      'lycaeum_gateway': { x: 11, y: 7 },
+      'village_road': { x: 25, y: 54 }
     }
   });
 
@@ -309,7 +329,7 @@ export function createWorld() {
     spawnPoints: { 'entry': { x: 8, y: 6 } }
   });
 
-  return { maps: { castle, athens_entrance, castle_bedroom, village, dungeon_1, overworld }, startingMap: castle };
+  return { maps: { castle, lycaeum_entrance, castle_bedroom, village, dungeon_1, overworld }, startingMap: castle };
 }
 
 export class GameMap {
@@ -318,7 +338,7 @@ export class GameMap {
     this.npcs = data.npcs || [];
     this.objects = data.objects || [];
     this.layers = data.layers || [];
-    
+    this.adjacencies = data.adjacencies || {}; // For seamless exploration
     // Initialize primary tiles layer if not provided via layers
     if (!this.layers.length) {
         this.tiles = [];

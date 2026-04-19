@@ -40,7 +40,22 @@ dialogueEl.style.cssText = `
     border-radius: 18px;
     backdrop-filter: blur(12px);
 `;
-document.body.appendChild(dialogueEl);
+    dialogueEl.innerHTML = `
+        <div id="dialogue-text" style="margin-bottom: 12px; min-height: 1.2em;"></div>
+        <div id="dialogue-input-container" class="hidden" style="display: flex; gap: 8px;">
+            <input type="text" id="dialogue-input" placeholder="Type keyword (name, job, bye)..." 
+                style="flex: 1; background: rgba(0,0,0,0.3); border: 1px solid rgba(220,182,120,0.3); color: #fff; padding: 6px 10px; border-radius: 4px; font-family: inherit;">
+            <button id="dialogue-submit" style="background: #4a3c2a; color: #f3efe3; border: 1px solid #7a5a22; padding: 4px 12px; border-radius: 4px; cursor: pointer;">Ask</button>
+        </div>
+        <div id="dialogue-keywords" style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; font-size: 0.85em; color: #dcb678;"></div>
+    `;
+    document.body.appendChild(dialogueEl);
+    
+    const dialogueText = dialogueEl.querySelector('#dialogue-text');
+    const dialogueInputContainer = dialogueEl.querySelector('#dialogue-input-container');
+    const dialogueInput = dialogueEl.querySelector('#dialogue-input');
+    const dialogueSubmit = dialogueEl.querySelector('#dialogue-submit');
+    const dialogueKeywords = dialogueEl.querySelector('#dialogue-keywords');
 
 // --- JOURNAL UI SETUP ---
 const journalEl = document.createElement('div');
@@ -122,6 +137,7 @@ const state = {
   lastSaveTimestamp: null,
   throneIntroTriggered: false,
   throneIntroComplete: false,
+  currentConversationPartner: null,
   pendingTransition: null,
   fx: {
     lastCastleBurst: 0
@@ -293,7 +309,7 @@ function getObjectiveState() {
   if (codexStage < 2) {
     return {
       hidden: false,
-      text: 'Visit Socrates in Athens and answer his riddle to earn the Tactics Codex.',
+      text: 'Visit Mariah in the Lycaeum and answer her riddle to earn the Tactics Codex.',
       tip: 'The journal (J) tracks quest progress.'
     };
   }
@@ -520,7 +536,7 @@ function getOrbDestinations() {
     { mapId: 'castle', label: 'Castle Britannia', spawn: 'castle_gate', note: 'Return to Lord British.' },
     { mapId: 'castle_bedroom', label: 'Royal Quarters', spawn: 'bedroom_door', note: 'Search the bedroom for supplies.' },
     { mapId: 'village', label: 'Britanny Bay', spawn: 'castle_gate', note: 'Visit the village and the cave path.' },
-    { mapId: 'athens_entrance', label: 'Athens Entrance', spawn: 'castle_gate', note: 'Speak with Socrates.' },
+    { mapId: 'athens_entrance', label: 'Lycaeum Entrance', spawn: 'lycaeum_gateway', note: 'Speak with Mariah.' },
     { mapId: 'dungeon_1', label: 'Dark Caverns', spawn: 'entry', note: 'Challenge the dungeon denizens.' }
   ];
   return mapList.filter((entry) => state.world.maps[entry.mapId]);
@@ -735,6 +751,12 @@ function attemptMove(dx, dy) {
   const targetX = state.player.position.x + dx;
   const targetY = state.player.position.y + dy;
 
+  // Check Bounds (Edge Warping)
+  if (!state.map.inBounds(targetX, targetY)) {
+      handleEdgeWarp(dx, dy);
+      return;
+  }
+
   // Check NPC Collision
   const npc = getNPCAt(targetX, targetY);
   if (npc) {
@@ -771,6 +793,33 @@ function attemptMove(dx, dy) {
   renderGame();
   updateHUD();
   handleTileEvents();
+}
+
+function handleEdgeWarp(dx, dy) {
+    let direction = null;
+    if (dy === -1) direction = 'north';
+    if (dy === 1) direction = 'south';
+    if (dx === -1) direction = 'west';
+    if (dx === 1) direction = 'east';
+
+    const targetMapId = state.map.adjacencies?.[direction];
+    if (!targetMapId) return;
+
+    // Determine spawn tag based on context
+    let spawnTag = 'castle_gate'; // Default
+    if (state.map.id === 'castle') spawnTag = 'castle_entrance';
+    if (state.map.id === 'lycaeum_entrance') spawnTag = 'lycaeum_gateway';
+    if (state.map.id === 'village') spawnTag = 'village_road';
+    
+    // When entering a city from overworld
+    if (state.map.id === 'overworld') {
+        if (targetMapId === 'castle') spawnTag = 'castle_gate';
+        if (targetMapId === 'lycaeum_entrance') spawnTag = 'lycaeum_gateway';
+        if (targetMapId === 'village') spawnTag = 'village_road';
+    }
+
+    log(`You travel ${direction} towards ${targetMapId === 'overworld' ? 'the wilderness' : targetMapId}.`);
+    changeMap(targetMapId, spawnTag);
 }
 
 function handleTalk() {
@@ -824,91 +873,116 @@ function handleGet() {
 }
 
 function showDialogue(npc) {
-  let text = '...';
+  state.currentConversationPartner = npc;
+  dialogueEl.classList.remove('hidden');
+  dialogueInputContainer.classList.remove('hidden');
   
-  if (npc.id === 'socrates') {
+  let initialText = '...';
+  if (npc.id === 'mariah') {
       const stage = state.character.getQuestStage('socrates_riddle');
       if (stage >= 2) {
-          text = 'Keep the codex close and you will survive deeper trials.';
-      } else if (stage === 1) {
-          text = QuestManager.resolveDialogue('socrates_riddle', 1);
+          initialText = 'Keep the codex close and you will survive deeper trials.';
       } else {
-          text = "I am not an Athenian or a Greek, but a citizen of the world. Can you tell me, what is the only true wisdom?";
+          initialText = "I am Mariah. I seek a citizen of the world. Can you tell me, what is the only true wisdom?";
       }
   } else if (typeof npc.dialogue === 'function') {
-      text = npc.dialogue(state);
+      initialText = npc.dialogue(state);
   } else {
-      text = npc.dialogue || 'Greetings.';
+      initialText = npc.dialogue || 'Greetings.';
   }
 
-  // Handle Riddle Completion in dialogue UI logic
-  // (We'll add a simple input field or just keyword check)
-  
-  // Quest Milestone Updates
-  if (npc.id === 'lord_british') {
-      const questStage = state.character.getQuestStage('orb_quest');
-      if (questStage === 0) {
-          setQuestStageAndRefresh('orb_quest', 1);
-          log("New Quest Added: The Stolen Orb");
-          autoSave('quest-start');
-      } else if (questStage === 2) {
-          setQuestStageAndRefresh('orb_quest', 3);
-          log("Quest Completed! Lord British bestows a gift upon you.");
-          state.character.gainXP(500);
-          const reward = itemGenerator.createWeapon(state.character.level + 2);
-          state.character.addItem(reward);
-          log(`Received: ${reward.name}`);
-          autoSave('quest-complete');
-      }
-  } else if (npc.id === 'socrates') {
-      const questStage = state.character.getQuestStage('socrates_riddle');
-      if (questStage === 0) {
-          setQuestStageAndRefresh('socrates_riddle', 1);
-          log('New Quest Added: Wisdom of Athens');
-          autoSave('quest-start');
-      }
-  }
-  updateObjectivePanel();
-
-  dialogueEl.classList.remove('hidden');
-  dialogueEl.innerHTML = `
-  <div style="display: flex; gap: 16px; align-items: flex-start;">
-      <div style="width: 64px; height: 64px; background: ${npc.color || '#555'}; border: 1px solid rgba(255, 220, 150, 0.45); box-shadow: 0 8px 18px rgba(0,0,0,0.28); border-radius: 12px;"></div>
-      <div>
-        <div style="font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: #b8c4f2; margin-bottom: 6px;">Dialogue</div>
-        <h3 style="margin: 0 0 10px 0; color: #ffe0a3; font-size: 18px;">${npc.name}</h3>
-        <p style="margin: 0; line-height: 1.65; color: #f4ead4;">"${text}"</p>
-        ${npc.id === 'socrates' && state.character.getQuestStage('socrates_riddle') <= 1 ?
-          `<div style="margin-top:14px; display:flex; flex-wrap:wrap; gap:10px;">
-           <button class="dialogue-opt" onclick="window.answerRiddle('nothing')">Knowing you know nothing</button>
-           <button class="dialogue-opt" onclick="window.answerRiddle('everything')">Knowing everything</button>
-           </div>` : ''}
-      </div>
-    </div>
-    <div style="margin-top: 16px; font-size: 0.75em; color: #b8c4f2; letter-spacing: 0.05em;">[SPACE] to close</div>
-  `;
+  dialogueText.innerHTML = `"${initialText}"`;
+  updateDialogueKeywords(npc);
+  dialogueInput.value = '';
+  dialogueInput.focus();
 }
 
-// Global hook for riddle answer
-window.answerRiddle = (answer) => {
-    if (answer === 'nothing') {
-        log("Socrates nods in approval. 'Indeed. You have found the path to wisdom.'");
-        setQuestStageAndRefresh('socrates_riddle', 2);
-        state.character.applyStatPoints({ INT: 1 });
-        const codex = itemGenerator.createTacticsCodex();
-        state.character.addItem(codex);
-        log(`Received: ${codex.name}`);
-        log("Gained +1 Intelligence!");
-        updateHUD();
-        renderCharacterSheet();
-        renderInventory();
-        autoSave('quest-complete');
-    } else {
-        log("Socrates sighs. 'Perhaps you should reflect more upon this.'");
+function updateDialogueKeywords(npc) {
+    dialogueKeywords.innerHTML = '';
+    const defaults = ['NAME', 'JOB', 'BYE'];
+    const npcKeywords = npc.responses ? Object.keys(npc.responses) : [];
+    
+    [...defaults, ...npcKeywords].forEach(kw => {
+        const span = document.createElement('span');
+        span.textContent = kw;
+        span.style.cssText = 'cursor: pointer; text-decoration: underline; padding: 2px 4px;';
+        span.onclick = () => {
+            dialogueInput.value = kw;
+            handleDialogueSubmit();
+        };
+        dialogueKeywords.appendChild(span);
+    });
+}
+
+function handleDialogueSubmit() {
+    const npc = state.currentConversationPartner;
+    const input = dialogueInput.value.trim().toUpperCase();
+    if (!npc || !input) return;
+
+    dialogueInput.value = '';
+    let response = "I do not know of that.";
+
+    // Universal Keywords
+    if (input === 'BYE') {
+        dialogueEl.classList.add('hidden');
+        state.currentConversationPartner = null;
+        return;
     }
-    updateObjectivePanel();
-    dialogueEl.classList.add('hidden');
+    if (input === 'NAME') {
+        response = `I am called ${npc.name}.`;
+    } else if (input === 'JOB') {
+        response = npc.job || "I have no specific trade to speak of.";
+    } else if (npc.responses && npc.responses[input]) {
+        response = npc.responses[input];
+    }
+
+    // Quest Specific Transitions
+    if (npc.id === 'mariah') {
+        const stage = state.character.getQuestStage('socrates_riddle');
+        if (stage < 2 && (input === 'NOTHING' || input === 'KNOWING NOTHING')) {
+            response = "Indeed. You have found the path to wisdom. Take this Codex.";
+            completeMariahQuest();
+        }
+    }
+
+    // Quest Milestone Starters (Traditional Ultima Style)
+    if (npc.id === 'lord_british') {
+        if (input === 'ORB' || input === 'QUEST') {
+            const stage = state.character.getQuestStage('orb_quest');
+            if (stage === 0) {
+                setQuestStageAndRefresh('orb_quest', 1);
+                log("New Quest Added: The Stolen Orb");
+                autoSave('quest-start');
+                response = "My Orb of Moons has been taken to the Dark Caverns... will you retrieve it?";
+            }
+        }
+    }
+
+    dialogueText.innerHTML = `"${response}"`;
+}
+
+function completeMariahQuest() {
+    log("Mariah nods in approval. 'The path to wisdom is yours.'");
+    setQuestStageAndRefresh('socrates_riddle', 2);
+    state.character.applyStatPoints({ INT: 1 });
+    const codex = itemGenerator.createTacticsCodex();
+    state.character.addItem(codex);
+    log(`Received: ${codex.name}`);
+    log("Gained +1 Intelligence!");
+    updateHUD();
+    renderCharacterSheet();
+    renderInventory();
+    autoSave('quest-complete');
+}
+
+// Attach event listeners for dialogue
+dialogueSubmit.onclick = handleDialogueSubmit;
+dialogueInput.onkeydown = (e) => {
+    if (e.key === 'Enter') handleDialogueSubmit();
 };
+
+
+
 
 function handleTileEvents() {
   const { x, y } = state.player.position;

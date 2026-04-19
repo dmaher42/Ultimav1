@@ -11,9 +11,9 @@ const CORE_TILES = [
 
   // --- CASTLE ARCHITECTURE ---
   { name: 'castle_floor', category: 'architecture', src: 'assets/tiles/terrain/castle_floor.png' },
-  { name: 'athens_temple_wall', category: 'architecture', src: 'assets/tiles/athens_temple_wall.png' },
+  { name: 'marble_wall', category: 'architecture', src: 'assets/tiles/athens_temple_wall.png' },
   { name: 'red_carpet', category: 'architecture', src: 'assets/tiles/red_carpet.png' },
-  { name: 'athens_marble', category: 'architecture', src: 'assets/tiles/athens_marble.png' },
+  { name: 'marble_floor', category: 'architecture', src: 'assets/tiles/athens_marble.png' },
 
   // --- PROPS & DECOR ---
   { name: 'throne', category: 'props', src: 'assets/tiles/props/throne.png' },
