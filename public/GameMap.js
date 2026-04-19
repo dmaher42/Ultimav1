@@ -3,9 +3,13 @@ import QuestManager from './QuestManager.js';
 
 export const AVATAR_SPRITE = 'assets/sprites/avatar.png';
 export const LORD_BRITISH_SPRITE_SHEET = 'assets/sprites/lord_british.png';
+export const CHEST_SPRITE_SHEET = 'assets/sprites/chest.png';
 
 export const TileInfo = {
-  grass: { name: 'Meadow', desc: 'lush green grass', color: '#3b7f3a', passable: true, encounterChance: 0.05 },
+  grass: { 
+    name: 'Grass', desc: 'green fields', color: '#3b7f3a', passable: true,
+    variations: ['grass', 'grass_1', 'grass_2', 'grass_3']
+  },
   trees: { name: 'Woodland', desc: 'densely packed trees', color: '#1f3d1b', passable: false },
   water: { name: 'Stream', desc: 'cool, flowing water', color: '#264c7d', passable: false },
   path: { name: 'Path', desc: 'a worn dirt road', color: '#9f884f', passable: true },
@@ -18,7 +22,10 @@ export const TileInfo = {
   dungeon_wall: { name: 'Dungeon Wall', desc: 'crumbling, dark wall', color: '#222', passable: false },
   cave_entrance: { name: 'Cave Mouth', desc: 'the opening to darkness', color: '#000', passable: true },
   athens_marble: { name: 'Marble Floor', desc: 'smooth, white Attic marble', color: '#e0e0e0', passable: true },
-  athens_grass: { name: 'Olive Grove', desc: 'fertile soil and grass', color: '#4a7c44', passable: true, alternate: 'grass' },
+  athens_grass: { 
+    name: 'Olive Grove', desc: 'fertile soil and grass', color: '#4a7c44', passable: true, alternate: 'grass',
+    variations: ['athens_grass', 'athens_grass_1', 'athens_grass_2', 'athens_grass_3']
+  },
   athens_water: { name: 'Azure Sea', desc: 'deep blue Mediterranean waters', color: '#4da6ff', passable: false, alternate: 'water' },
   athens_temple_wall: { name: 'Temple Wall', desc: 'fluted marble column base', color: '#d0d0d0', passable: false },
   athens_roof: { name: 'Temple Roof', desc: 'terracotta tiles', color: '#325aa8', passable: false }
@@ -67,8 +74,10 @@ export function createWorld() {
       }
     ],
     transitions: [
-      { x: 9, y: 13, map: 'athens_entrance', spawn: 'castle_gate' },
-      { x: 10, y: 13, map: 'athens_entrance', spawn: 'castle_gate' },
+      { x: 9, y: 13, map: 'overworld', spawn: 'castle_entrance' },
+      { x: 10, y: 13, map: 'overworld', spawn: 'castle_entrance' },
+      { x: 9, y: 14, map: 'overworld', spawn: 'castle_entrance' },
+      { x: 10, y: 14, map: 'overworld', spawn: 'castle_entrance' },
       { x: 0, y: 2, map: 'castle_bedroom', spawn: 'bedroom_door' }
     ],
     spawnPoints: { 'castle_gate': { x: 9, y: 12 }, 'bedroom_door': { x: 1, y: 2 } }
@@ -128,11 +137,11 @@ export function createWorld() {
       }
     ],
     transitions: [
-      { x: 9, y: 12, map: 'castle', spawn: 'castle_gate' },
-      { x: 10, y: 12, map: 'castle', spawn: 'castle_gate' },
+      { x: 9, y: 12, map: 'overworld', spawn: 'athens_gateway' },
+      { x: 10, y: 12, map: 'overworld', spawn: 'athens_gateway' },
       { x: 15, y: 11, map: 'village', spawn: 'castle_gate' }
     ],
-    spawnPoints: { 'castle_gate': { x: 9, y: 11 } }
+    spawnPoints: { 'castle_gate': { x: 9, y: 11 }, 'athens_gateway': { x: 9, y: 11 } }
   });
 
   // 2. CASTLE BEDROOM (New Area)
@@ -201,10 +210,69 @@ export function createWorld() {
       }
     ],
     transitions: [
-      { x: 15, y: 4, map: 'castle', spawn: 'castle_gate' },
+      { x: 15, y: 4, map: 'overworld', spawn: 'village_road' },
       { x: 24, y: 8, map: 'dungeon_1', spawn: 'entry' } // Cave Entrance
     ],
-    spawnPoints: { 'castle_gate': { x: 15, y: 6 }, 'dungeon_exit': { x: 23, y: 8 } }
+    spawnPoints: { 'castle_gate': { x: 15, y: 6 }, 'dungeon_exit': { x: 23, y: 8 }, 'village_road': { x: 15, y: 6 } }
+  });
+
+  // 4. OVERWORLD (The Great Wilderness)
+  const overworld = new GameMap({
+    id: 'overworld',
+    name: 'Wilderness',
+    width: 60, height: 60, safe: false, encounterRate: 0.1,
+    defaultTile: 'grass',
+    layout: [
+      '                                                            ',
+      '   TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT   ',
+      '   T....................................................T   ',
+      '   T........................MMMM........................T   ',
+      '   T........................M..M........................T   ',
+      '   T.........TTTT...........MMMM........................T   ',
+      '   T.........T..T.......................................T   ',
+      '   T.........TTTT.......................................T   ',
+      '   T....................................................T   ',
+      '   T....................................................T   ',
+      '   T....................................................T   ',
+      '   T....................................................T   ',
+      '   T....................................................T   ',
+      '   T.......................CCCCCC.......................T   ',
+      '   T.......................C....C.......................T   ',
+      '   T.......................C....C.......................T   ',
+      '   T.......................CCCCCC.......................T   ',
+      '   T....................................................T   ',
+      '   T....................................................T   ',
+      '   T....................................................T   ',
+      '   T....................................................T   ',
+      '   T....................................................T   ',
+      '   T....................................................T   ',
+      '   T....................................................T   ',
+      '   T.....................................VVVV...........T   ',
+      '   T.....................................V..V...........T   ',
+      '   T.....................................VVVV...........T   ',
+      '   T....................................................T   ',
+      '   T....................................................T   ',
+      '   TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT   '
+    ],
+    legend: { 'T': 'trees', '.': 'grass', 'M': 'athens_marble', 'C': 'castle_wall', 'V': 'path' },
+    objects: [
+      { x: 25, y: 4, sprite: 'pillar', height: 2 }, { x: 28, y: 4, sprite: 'pillar', height: 2 }, // Athens Entrance markers
+      { x: 23, y: 13, sprite: 'statue' }, { x: 30, y: 13, sprite: 'statue' }, // Castle Entrance markers
+      { x: 40, y: 25, sprite: 'fountain' } // Village road marker
+    ],
+    transitions: [
+      { x: 26, y: 4, map: 'athens_entrance', spawn: 'athens_gateway' },
+      { x: 27, y: 4, map: 'athens_entrance', spawn: 'athens_gateway' },
+      { x: 26, y: 16, map: 'castle', spawn: 'castle_gate' },
+      { x: 27, y: 16, map: 'castle', spawn: 'castle_gate' },
+      { x: 41, y: 24, map: 'village', spawn: 'village_road' },
+      { x: 41, y: 26, map: 'village', spawn: 'village_road' }
+    ],
+    spawnPoints: { 
+        'athens_gateway': { x: 26, y: 5 }, 
+        'castle_entrance': { x: 26, y: 15 }, 
+        'village_road': { x: 40, y: 25 } 
+    }
   });
 
   // 4. DUNGEON LEVEL 1 (Combat Area)
@@ -241,7 +309,7 @@ export function createWorld() {
     spawnPoints: { 'entry': { x: 8, y: 6 } }
   });
 
-  return { maps: { castle, athens_entrance, castle_bedroom, village, dungeon_1 }, startingMap: castle };
+  return { maps: { castle, athens_entrance, castle_bedroom, village, dungeon_1, overworld }, startingMap: castle };
 }
 
 export class GameMap {

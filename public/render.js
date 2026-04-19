@@ -609,8 +609,20 @@ export default class RenderEngine {
       for (let x = 0; x < grid.width; x += 1) {
         const tileType = row[x];
         if (!tileType || tileType === 'empty' || tileType === 'none') continue;
-        const fallback = TileInfo[tileType]?.color;
-        this.drawAtlasTile(ctx, tileType, x, y, fallback);
+        
+        const info = TileInfo[tileType];
+        const fallback = info?.color;
+        let spriteToDraw = tileType;
+
+        // Implement tile variations to break up repetitive patterns (like grass)
+        if (info?.variations && info.variations.length > 0) {
+          // Stable random pick based on coordinates
+          const hash = (Math.abs(x * 374761393 + y * 668265263) ^ 0x9e3779b9);
+          const index = (hash >>> 0) % info.variations.length;
+          spriteToDraw = info.variations[index];
+        }
+
+        this.drawAtlasTile(ctx, spriteToDraw, x, y, fallback);
       }
     }
   }

@@ -53,7 +53,15 @@ class TileLoader {
       'stable_hay': 'floor_03_00',
       'water': 'water_00_00',
       'trees': 'wall_05_00',
+      'chest': 'dungeon_03_02', // Map missing chest to a suitable pixelcrawler tile
+      'athens_grass': 'floor_04_00', // Use grass for olive grove
+      'athens_grass_1': 'floor_04_01',
+      'athens_grass_2': 'floor_04_02',
+      'athens_grass_3': 'floor_04_03',
       'grass': 'floor_04_00',
+      'grass_1': 'floor_04_01',
+      'grass_2': 'floor_04_02',
+      'grass_3': 'floor_04_03',
       'path': 'floor_05_00'
     };
 
