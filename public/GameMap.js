@@ -62,22 +62,41 @@ export function createWorld() {
       { x: 1, y: 5, sprite: 'torch_wall' }, { x: 18, y: 5, sprite: 'torch_wall' }
     ],
     npcs: [
+      {
         id: 'lord_british', name: 'Lord British', x: 9, y: 3,
         spriteSheet: LORD_BRITISH_SPRITE_SHEET, spriteFrame: 'player_south_1',
         color: '#ffdd00',
         behavior: 'static',
         job: 'I rule this land with the help of the Eight Virtues.',
         responses: {
-          'BRITANNIA': 'Our land is troubled by the Gargoyle incursions.',
-          'GARGOYLE': 'They are a strange race from the underworld. Their motives are hidden from me.',
-          'VIRTUE': 'Compassion, Honesty, Honor, Humility, Justice, Sacrifice, Spirituality, and Valor.',
-          'ORB': 'The Orb of Moons is a powerful relic. It allows one to step through the moon gates.'
+          'BRITANNIA': 'Our land is troubled by the Gargoyle incursions. They strike with a precision that suggests a deep-seated grievance.',
+          'GARGOYLE': 'Winged creatures of the underworld. They were once thought simple beasts, but they coordinate their attacks around our Shrines.',
+          'VIRTUE': 'The Eight Virtues are the foundation of our civilization: Compassion, Honesty, Honor, Humility, Justice, Sacrifice, Spirituality, and Valor.',
+          'ORB': 'The Orb of Moons is a powerful relic that governs travel. Its theft has disrupted the sacred Moongates.',
+          'SHRINES': 'The Shrines of Virtue have been seized by the attackers. Their disruption is an affront to all that we hold sacred.',
+          'MOONSTONES': 'Small pieces of the moons themselves, used to ground the Moongates. They have been disturbed.',
+          'LYCAEUM': 'To the West lies the Keep of Truth. Speak with Mariah there; she is the foremost scholar in the realm.'
         },
         dialogue: (state) => {
           const stage = state.character.getQuestStage('orb_quest');
-          if (stage === 2) return "You have returned! Use the keyword ORB to discuss our next steps.";
+          if (stage === 1) return "Go to the Lycaeum, Avatar. Seek Mariah and ask her about the PROPHECY.";
+          if (stage >= 2) return "You have returned! Use the keyword ORB to discuss our next steps.";
           return "Welcome, Avatar. Britain is safe for now, but the world at large is in peril.";
         }
+      },
+      {
+        id: 'castle_guard', name: 'Sentinal', x: 10, y: 11,
+        spriteSheet: 'assets/sprites/villager.png',
+        color: '#777',
+        behavior: 'static',
+        job: 'I stand watch over the gates of Castle Britannia.',
+        responses: {
+          'GARGOYLES': 'I saw them with my own eyes during the raid. They fly faster than any bird and strike with the strength of ten men.',
+          'CASTLE': 'This castle is the heart of the realm. We will hold it, no matter the cost.',
+          'LORD BRITISH': 'His Majesty is concerned for the people. He has spent many nights in the upper library, searching for answers.',
+          'DANGER': 'The roads are no longer safe, traveler. Stick to the paths and keep your sword sharp.'
+        },
+        dialogue: "Stand back, citizen. The castle is on high alert."
       }
     ],
     adjacencies: { south: 'overworld' }, // Seamless exit to south
@@ -141,14 +160,18 @@ export function createWorld() {
         spriteSheet: 'assets/sprites/villager.png',
         color: '#fff',
         behavior: 'wander',
-        job: 'I am a scholar of the Lycaeum. I study the mysteries of the Codex.',
+        job: 'I am a scholar of the Lycaeum. I study the mysteries of the Codex and the lore of our land.',
         responses: {
-          'LYCAEUM': 'This is the Keep of Truth, where all knowledge is preserved.',
-          'CODEX': 'The Codex of Ultimate Wisdom is the greatest prize any seeker can find.',
-          'WISDOM': 'True wisdom often begins with an admission of its absence.',
-          'NOTHING': 'Ah, you have understood the riddle. The only true wisdom is knowing that you know nothing.'
+          'LYCAEUM': 'This is the Keep of Truth, where all knowledge is preserved and protected.',
+          'CODEX': 'The Codex of Ultimate Wisdom is the greatest prize any seeker can find, though its location remains a mystery.',
+          'WISDOM': 'True wisdom often begins with an admission of its absence, and the pursuit of Truth above all else.',
+          'TRUTH': 'Ah, you have understood the challenge. Truth is the bedrock of our virtue. Knowing that we know nothing is the first step toward true understanding.',
+          'GARGOYLES': 'There are reports they carry an ancient prophecy of their own, one that speaks of a "False Prophet" who brings ruin to their world.',
+          'PROPHECY': 'The Gargoyles believe in a savior who will rescue them from destruction, yet their scrolls describe this savior\'s shadow as a doom-bringer to others.',
+          'MOONSTONES': 'They are harmonic oscillators. The theft of the Orb suggests they are trying to realign the Moongates for their own purposes.',
+          'SHRINES': 'They are focusing on the Shrines because the Shrines are the gateways to the Codex.'
         },
-        dialogue: 'The wisdom of Britannia is ancient, yet ever new.'
+        dialogue: 'The wisdom of Britannia is ancient, yet ever new. Seek the TRUTH, and the path will open.'
       }
     ],
     adjacencies: { south: 'overworld' },
@@ -223,6 +246,20 @@ export function createWorld() {
             const hasGold = (state.character.gold >= 50);
             return `Greetings traveler! I sell Health Potions for 50 gold. ${hasGold ? 'Would you like one? (Interact again to buy)' : 'You look a bit short on coin.'}`;
         }
+      },
+      {
+        id: 'villager_1', name: 'Citizen', x: 5, y: 15,
+        spriteSheet: 'assets/sprites/villager.png',
+        color: '#966',
+        behavior: 'wander',
+        job: 'I am but a simple resident of Britanny Bay.',
+        responses: {
+          'GARGOYLES': 'They say the shrines were glowing red before the attack. My cousin in the North saw a winged beast carry away a sacred stone.',
+          'SHRINE': 'The Shrine of Compassion lies nearby, but none dare visit it since the shadows appeared.',
+          'TOWN': 'Britanny is a quiet place usually, but the fear is palpable now.',
+          'RUMORS': 'Some say the Gargoyles aren\'t just attacking—they\'re looking for something. Or someone.'
+        },
+        dialogue: "It is a dark time for Britannia, is it not?"
       }
     ],
     adjacencies: { north: 'overworld' },
@@ -295,38 +332,58 @@ export function createWorld() {
     }
   });
 
-  // 4. DUNGEON LEVEL 1 (Combat Area)
+  // 4. DUNGEON LEVEL 1 (Dark Caverns)
   const dungeon_1 = new GameMap({
-    id: 'dungeon_1', name: 'Dark Caverns', width: 20, height: 20, safe: false, areaLevel: 1, encounterRate: 0.15,
+    id: 'dungeon_1', name: 'Dark Caverns', width: 30, height: 20, safe: false, areaLevel: 3, 
+    encounterGroup: 'dungeon',
     defaultTile: 'dungeon_floor',
     layout: [
-      '####################',
-      '#..................#',
-      '#..#######...####..#',
-      '#..#........#...#..#',
-      '#..#..#######...#..#',
-      '#..#..#.........#..#',
-      '#..#..#...#######..#',
-      '#..#..#...#.....#..#',
-      '#..#..#####..O..#..#', // O = Orb Room
-      '#..#.........#..#..#',
-      '#..###########..#..#',
-      '#...............#..#',
-      '#######...#######..#',
-      '#..................#',
-      '#.......E..........#',
-      '####################'
+      'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
+      'X..............X.............X',
+      'X..............X.............X',
+      'X...XXXXXX.....X.............X',
+      'X...X....X.....X.............X',
+      'X...X....X.....X...XXXXXX....X',
+      'X...X....X.....X...X....X....X',
+      'X...X.G..X.....X...X.O..X....X', // G = Guardian, O = Orb Chamber
+      'X...X....X.....XXXXXXXXXX....X',
+      'X...XXXXXX...................X',
+      'X............................X',
+      'X............................X',
+      'X............................X',
+      'X............................X',
+      'X............................X',
+      'X............................X',
+      'X............................X',
+      'X............................X',
+      'E............................X', // E = Entry/Exit
+      'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
     ],
-    legend: { '#': 'dungeon_wall', '.': 'dungeon_floor', 'E': 'cave_exit', 'O': 'dungeon_floor' },
+    legend: { 'X': 'dungeon_wall', '.': 'dungeon_floor', 'E': 'cave_exit', 'O': 'dungeon_floor', 'G': 'dungeon_floor' },
     objects: [
-      { x: 10, y: 10, sprite: 'torch_wall' },
-      { x: 13, y: 3, sprite: 'armory_rack' },
-      { x: 13, y: 5, type: 'item', sprite: 'fountain', color: '#88f', data: { id: 'orb_of_moons', name: 'Orb of Moons', type: 'quest_item', weight: 1 } }
+        { x: 25, y: 7, type: 'item', data: { id: 'orb_of_moons', name: 'Orb of Moons', type: 'quest', lore: 'A glowing stone that resonates with the moons.' } }
+    ],
+    npcs: [
+      {
+        id: 'gargoyle_guardian', name: 'Guardian', x: 6, y: 7,
+        spriteSheet: 'assets/sprites/villager.png',
+        color: '#f44',
+        behavior: 'static',
+        job: 'I protect the sacred artifact from the reach of the Doom-Bringer.',
+        responses: {
+          'PROPHET': 'The prophecy speaks of one who appears from a red moongate to destroy our home. We call them the False Prophet.',
+          'SHRINE': 'The stones belong to our world. You have stolen them for your own glory.',
+          'STONE': 'The stones must be returned if both worlds are to survive.',
+          'PEOPLE': 'My people have suffered enough. We only seek to preserve what remains of our history.',
+          'WAR': 'This is a war for survival. Do you not see the destruction your people have wrought?'
+        },
+        dialogue: "Stay back, False Prophet! You shall not take the Orb while I still draw breath... unless you seek the path of understanding."
+      }
     ],
     transitions: [
-      { x: 8, y: 7, map: 'village', spawn: 'dungeon_exit' }
+      { x: 0, y: 18, map: 'village', spawn: 'dungeon_exit' }
     ],
-    spawnPoints: { 'entry': { x: 8, y: 6 } }
+    spawnPoints: { 'entry': { x: 1, y: 18 } }
   });
 
   return { maps: { castle, lycaeum_entrance, castle_bedroom, village, dungeon_1, overworld }, startingMap: castle };

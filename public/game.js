@@ -41,13 +41,13 @@ dialogueEl.style.cssText = `
     backdrop-filter: blur(12px);
 `;
     dialogueEl.innerHTML = `
-        <div id="dialogue-text" style="margin-bottom: 12px; min-height: 1.2em;"></div>
-        <div id="dialogue-input-container" class="hidden" style="display: flex; gap: 8px;">
-            <input type="text" id="dialogue-input" placeholder="Type keyword (name, job, bye)..." 
+        <div id="dialogue-text" style="margin-bottom: 16px; min-height: 1.2em; font-size: 1.1em; line-height: 1.5;"></div>
+        <div id="dialogue-keywords" style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px;"></div>
+        <div id="dialogue-input-container" class="hidden" style="margin-top: 16px; display: flex; gap: 8px; border-top: 1px solid rgba(220,182,120,0.2); padding-top: 12px;">
+            <input type="text" id="dialogue-input" placeholder="Type keyword..." 
                 style="flex: 1; background: rgba(0,0,0,0.3); border: 1px solid rgba(220,182,120,0.3); color: #fff; padding: 6px 10px; border-radius: 4px; font-family: inherit;">
-            <button id="dialogue-submit" style="background: #4a3c2a; color: #f3efe3; border: 1px solid #7a5a22; padding: 4px 12px; border-radius: 4px; cursor: pointer;">Ask</button>
+            <button id="dialogue-submit" style="background: #4a3c2a; color: #f3efe3; border: 1px solid #7a5a22; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-weight: bold;">Ask</button>
         </div>
-        <div id="dialogue-keywords" style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; font-size: 0.85em; color: #dcb678;"></div>
     `;
     document.body.appendChild(dialogueEl);
     
@@ -306,11 +306,18 @@ function getObjectiveState() {
     };
   }
 
-  if (codexStage < 2) {
+  if (state.character.getQuestStage('castle_crisis') < 4) {
     return {
       hidden: false,
-      text: 'Visit Mariah in the Lycaeum and answer her riddle to earn the Tactics Codex.',
+      text: 'Survive the attack and speak with Lord British in the throne room.',
       tip: 'The journal (J) tracks quest progress.'
+    };
+  }
+  if (state.character.getQuestStage('wisdom_of_lycaeum') < 2) {
+    return {
+      hidden: false,
+      text: 'Visit Mariah in the Lycaeum and answer her challenge to gain strategic wisdom.',
+      tip: 'Look for the Lycaeum to the West of the castle.'
     };
   }
 
@@ -879,16 +886,16 @@ function showDialogue(npc) {
   
   let initialText = '...';
   if (npc.id === 'mariah') {
-      const stage = state.character.getQuestStage('socrates_riddle');
+      const stage = state.character.getQuestStage('wisdom_of_lycaeum');
       if (stage >= 2) {
-          initialText = 'Keep the codex close and you will survive deeper trials.';
+          initialText = 'The scrolls of Truth contain mysteries yet to be unraveled.';
       } else {
-          initialText = "I am Mariah. I seek a citizen of the world. Can you tell me, what is the only true wisdom?";
+          initialText = "I am Mariah. Many in the Lycaeum speak of your arrival. It is said the 'False Prophet' has come to Britannia... but I see only an Avatar who seeks Truth. Tell me, what lies at the heart of our wisdom?";
       }
   } else if (typeof npc.dialogue === 'function') {
       initialText = npc.dialogue(state);
   } else {
-      initialText = npc.dialogue || 'Greetings.';
+      initialText = npc.dialogue || 'Greetings traveler.';
   }
 
   dialogueText.innerHTML = `"${initialText}"`;
@@ -903,14 +910,34 @@ function updateDialogueKeywords(npc) {
     const npcKeywords = npc.responses ? Object.keys(npc.responses) : [];
     
     [...defaults, ...npcKeywords].forEach(kw => {
-        const span = document.createElement('span');
-        span.textContent = kw;
-        span.style.cssText = 'cursor: pointer; text-decoration: underline; padding: 2px 4px;';
-        span.onclick = () => {
+        const btn = document.createElement('button');
+        btn.textContent = kw;
+        btn.style.cssText = `
+            background: rgba(74, 60, 42, 0.6);
+            color: #dcb678;
+            border: 1px solid rgba(220,182,120,0.4);
+            padding: 4px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85em;
+            font-family: inherit;
+            transition: all 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        `;
+        btn.onmouseover = () => {
+            btn.style.background = 'rgba(220,182,120,0.2)';
+            btn.style.borderColor = 'rgba(220,182,120,0.8)';
+        };
+        btn.onmouseout = () => {
+            btn.style.background = 'rgba(74, 60, 42, 0.6)';
+            btn.style.borderColor = 'rgba(220,182,120,0.4)';
+        };
+        btn.onclick = () => {
             dialogueInput.value = kw;
             handleDialogueSubmit();
         };
-        dialogueKeywords.appendChild(span);
+        dialogueKeywords.appendChild(btn);
     });
 }
 
@@ -938,22 +965,43 @@ function handleDialogueSubmit() {
 
     // Quest Specific Transitions
     if (npc.id === 'mariah') {
-        const stage = state.character.getQuestStage('socrates_riddle');
-        if (stage < 2 && (input === 'NOTHING' || input === 'KNOWING NOTHING')) {
-            response = "Indeed. You have found the path to wisdom. Take this Codex.";
+        const stage = state.character.getQuestStage('wisdom_of_lycaeum');
+        if (stage < 2 && (input === 'TRUTH' || input === 'KNOWING NOTHING')) {
+            response = "Indeed. Truth is the bedrock of our virtue. You have proven your commitment to understanding. Take this Codex of Wisdom.";
             completeMariahQuest();
         }
     }
 
     // Quest Milestone Starters (Traditional Ultima Style)
     if (npc.id === 'lord_british') {
-        if (input === 'ORB' || input === 'QUEST') {
+        const crisisStage = state.character.getQuestStage('castle_crisis');
+        if (crisisStage === 2) {
+            setQuestStageAndRefresh('castle_crisis', 4); // Saved LB
+            log("Lord British nods. 'I am deeply in your debt, Avatar.'");
+            state.character.applyStatPoints({ STR: 1, DEX: 1 });
+            log("Gained +1 Strength and +1 Dexterity for your valor!");
+        }
+
+        if (input === 'ORB' || input === 'QUEST' || input === 'GARGOYLES') {
             const stage = state.character.getQuestStage('orb_quest');
             if (stage === 0) {
                 setQuestStageAndRefresh('orb_quest', 1);
-                log("New Quest Added: The Stolen Orb");
+                log("Quest Objective Updated: Seek the Lycaeum.");
                 autoSave('quest-start');
-                response = "My Orb of Moons has been taken to the Dark Caverns... will you retrieve it?";
+                response = "The Orb of Moons is a sacred relic, yet it was taken by creatures of muscle and wing. Go to the Lycaeum and speak with Mariah; she may interpret the purpose behind this theft.";
+            }
+        }
+    }
+
+    if (npc.id === 'gargoyle_guardian') {
+        if (input === 'PROPHET' || input === 'UNDERSTANDING') {
+            const stage = state.character.getQuestStage('orb_quest');
+            if (stage < 3) {
+                setQuestStageAndRefresh('orb_quest', 3);
+                state.guardianDefeated = true; // Non-violent resolution
+                log("The Guardian lowers their weapon. 'Perhaps you are not the one the scrolls foretold.'");
+                log("Moral Achievement: Path of Understanding.");
+                response = "If you speak the Truth, then take the Orb. But know that our world bleeds as yours does. We only wish to stop the fading of our sun.";
             }
         }
     }
@@ -962,13 +1010,13 @@ function handleDialogueSubmit() {
 }
 
 function completeMariahQuest() {
-    log("Mariah nods in approval. 'The path to wisdom is yours.'");
-    setQuestStageAndRefresh('socrates_riddle', 2);
-    state.character.applyStatPoints({ INT: 1 });
+    log("Mariah smiles. 'The path to Truth is yours to walk.'");
+    setQuestStageAndRefresh('wisdom_of_lycaeum', 2);
+    state.character.applyStatPoints({ INT: 2 });
     const codex = itemGenerator.createTacticsCodex();
     state.character.addItem(codex);
     log(`Received: ${codex.name}`);
-    log("Gained +1 Intelligence!");
+    log("Gained +2 Intelligence!");
     updateHUD();
     renderCharacterSheet();
     renderInventory();
@@ -987,8 +1035,9 @@ dialogueInput.onkeydown = (e) => {
 function handleTileEvents() {
   const { x, y } = state.player.position;
 
-  if (state.map.id === 'castle' && !state.throneIntroComplete && !state.throneIntroTriggered && x === 9 && y === 11) {
-    state.throneIntroTriggered = true;
+  // Castle Crisis Stage 1 Trigger (Throne Room Ambush)
+  if (state.map.id === 'castle' && state.character.getQuestStage('castle_crisis') === 0 && x === 9 && y === 11) {
+    setQuestStageAndRefresh('castle_crisis', 1);
     log('A gargoyle bursts into the throne room!');
     startSpecialEncounter('throne_ambush');
     return;
@@ -1010,10 +1059,11 @@ function handleTileEvents() {
     updateDungeonNavigator();
   }
 
-  // Boss Trigger for Orb Quest
-  if (state.map.id === 'dungeon_1' && x === 13 && y === 8 && state.character.getQuestStage('orb_quest') === 1) {
+  // Boss Trigger for Orb Quest (Moral Crack: The Guardian)
+  if (state.map.id === 'dungeon_1' && x === 6 && y === 8 && state.character.getQuestStage('orb_quest') === 1) {
       if (!state.guardianDefeated) {
-          log("The air turns cold... The Dungeon Guardian appears!");
+          log("The air turns cold... The Guardian blocks your path!");
+          log("You may attempt to TALK or FIGHT.");
           startSpecialEncounter('dungeon_boss');
           return;
       }
@@ -1082,9 +1132,16 @@ async function resolveCombat(result, enemy) {
       autoSave('level-up');
     }
     if (enemy.id === 'gargoyle' && state.map?.id === 'castle') {
-      state.throneIntroComplete = true;
-      log('The throne room is clear. Lord British is safe to address.');
+      setQuestStageAndRefresh('castle_crisis', 2);
+      log('The throne room is clear. You should speak with Lord British.');
+      renderGame();
       autoSave('throne-ambush');
+    }
+    
+    if (enemy.id === 'gargoyle_guardian' || category === 'dungeon_boss') {
+        state.guardianDefeated = true;
+        setQuestStageAndRefresh('orb_quest', 3);
+        log('The Guardian falls. The Orb is within reach.');
     }
   } else if (result.outcome === 'defeat') {
     log('You awaken at the village, bruised but alive.');

@@ -1,24 +1,38 @@
 export const QUESTS = {
+  'castle_crisis': {
+    id: 'castle_crisis',
+    title: "Castle Crisis",
+    description: "The Avatar has arrived during a desperate attack on Castle Britannia.",
+    stages: {
+      0: "Survive the initial attack! Defend the throne room.",
+      1: "The castle is secure, but the air is thick with alarm. Lord British awaits.",
+      2: "Speak with Lord British to understand your duty.",
+      3: "Investigation task received. The path ahead is clear.",
+      4: "Introduction phase complete. Britannia needs its champion."
+    }
+  },
   'orb_quest': {
     id: 'orb_quest',
     title: "The Stolen Orb",
-    description: "Lord British has tasked me with retrieving the Orb of Moons from the Dungeon.",
+    description: "Investigate the missing Orb of Moons and the strange disturbance in the sacred order.",
     stages: {
-        0: "Retrieve my Orb of Moons! It lies within the Dark Caverns to the East.",
-        1: "The dungeon is to the East... Lord British seems desperate, but why would a Gargoyle take it?",
-        2: "I have recovered the Orb. The Guardian spoke of their own need for its power. Was Lord British fully honest?",
-        3: "Quest complete. Lord British has the Orb, but the cycle of conflict continues.",
-        4: "Quest complete. I have mediated a truce; the Orb is shared between the kingdoms."
+      0: "Lord British has tasked me with investigating the missing Orb in the Dark Caverns.",
+      1: "Travel to the Lycaeum to seek scholarly guidance on the moonstone disturbance.",
+      2: "I have discovered that the problem is deeper than a simple raid. The Gargoyles are acting with purpose.",
+      3: "A key object or clue has been recovered. The truth is starting to emerge.",
+      4: "The next story path has been unlocked. Suspicion and doubt grow."
     }
   },
-  'socrates_riddle': {
-    id: 'socrates_riddle',
-    title: 'Wisdom of Athens',
-    description: 'Answer Socrates to earn the Tactics Codex.',
+  'wisdom_of_lycaeum': {
+    id: 'wisdom_of_lycaeum',
+    title: 'Wisdom of the Lycaeum',
+    description: 'Seek the guidance of Mariah at the Lycaeum to interpret the strange omens.',
     stages: {
-      0: 'Socrates asks a simple question of wisdom.',
-      1: 'You answered wisely. Collect your reward.',
-      2: 'The codex is yours.'
+      0: 'Mariah offers her guidance, but first I must demonstrate my understanding of truth.',
+      1: 'I must answer, retrieve, or reason through the scholar\'s challenge.',
+      2: 'The challenge is met. Strategic understanding of the Codex is gained.',
+      3: 'New insights into the prophecy are now accessible.',
+      4: 'Quest complete. The scrolls of the Lycaeum have revealed a crack in the official story.'
     }
   }
 };
