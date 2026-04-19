@@ -256,6 +256,39 @@
         max-width: 240px;
         white-space: pre-wrap;
       }
+      #objective-panel {
+        position: fixed;
+        top: 12px;
+        right: 12px;
+        width: min(320px, calc(100vw - 24px));
+        padding: 12px 14px;
+        background: rgba(10, 14, 26, 0.88);
+        border: 1px solid rgba(170, 145, 95, 0.4);
+        border-radius: 10px;
+        box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
+        backdrop-filter: blur(8px);
+        color: #f4ead4;
+        z-index: 11;
+      }
+      #objective-panel h3 {
+        margin: 0 0 6px 0;
+        font-size: 13px;
+        color: #ffde9a;
+        letter-spacing: 0.03em;
+      }
+      #objective-panel p {
+        margin: 0;
+        font-size: 12px;
+        line-height: 1.45;
+        color: #d7e0fb;
+      }
+      #objective-panel .objective-tip {
+        margin-top: 8px;
+        padding-top: 8px;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+        font-size: 11px;
+        color: #b8c4f2;
+      }
     </style>
   </head>
   <body>
@@ -272,6 +305,11 @@
         Gold: <strong id="hud-gold">0</strong>
       </div>
     </section>
+    <aside id="objective-panel" class="hidden">
+      <h3>Current Objective</h3>
+      <p id="objective-text">Create your hero to begin.</p>
+      <div class="objective-tip" id="objective-tip">WASD to move. T to talk. G to get. O for Orb. X for Codex.</div>
+    </aside>
     <section id="message-log"></section>
     <aside id="inventory-panel" class="panel hidden">
       <h2>Inventory</h2>

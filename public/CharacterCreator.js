@@ -39,7 +39,7 @@ export default class CharacterCreator {
     this.form.innerHTML = `
       <h2>Create Your Hero</h2>
       <label for="character-name">Name</label>
-      <input id="character-name" name="name" type="text" maxlength="24" required placeholder="Briton" />
+      <input id="character-name" name="name" type="text" maxlength="24" value="Briton" placeholder="Briton" />
       <div class="creator-stats"></div>
       <div class="creator-remaining">Remaining points: <strong id="creator-remaining"></strong></div>
       <div class="creator-derived"></div>

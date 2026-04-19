@@ -89,6 +89,9 @@ const statAllocation = document.getElementById('stat-allocation');
 const menuLastSave = document.getElementById('menu-last-save');
 const messageLogEl = document.getElementById('message-log');
 const tooltip = document.getElementById('tooltip');
+const objectivePanel = document.getElementById('objective-panel');
+const objectiveText = document.getElementById('objective-text');
+const objectiveTip = document.getElementById('objective-tip');
 const codexContent = document.getElementById('codex-content');
 const orbContent = document.getElementById('orb-content');
 
@@ -214,6 +217,83 @@ function updateHUD() {
   hud.xp.textContent = `${state.character.xp} / ${state.character.xpThreshold}`;
   hud.area.textContent = state.map ? state.map.name : 'Unknown';
   if (hud.gold) hud.gold.textContent = `${state.character.gold || 0}`;
+  updateObjectivePanel();
+}
+
+function getObjectiveState() {
+  if (!state.character || !state.map) {
+    return {
+      hidden: true,
+      text: 'Create your hero to begin.',
+      tip: 'WASD to move. T to talk. G to get. O for Orb. X for Codex.'
+    };
+  }
+
+  if (state.inCombat) {
+    const enemyName = combatEngine.enemy?.name || 'your foe';
+    return {
+      hidden: false,
+      text: `Battle ${enemyName}. Use melee, bow, spell, defend, or an item to survive.`,
+      tip: 'Combat buttons are available during battle. Storm Cloak blocks Reaper lightning.'
+    };
+  }
+
+  const orbStage = state.character.getQuestStage('orb_quest');
+  const codexStage = state.character.getQuestStage('socrates_riddle');
+
+  if (!state.throneIntroComplete) {
+    return {
+      hidden: false,
+      text: 'Clear the throne room ambush, then speak to Lord British.',
+      tip: 'Move with WASD. Stand on items and press G to get.'
+    };
+  }
+
+  if (orbStage === 0) {
+    return {
+      hidden: false,
+      text: 'Talk to Lord British in Castle Britannia to begin the Orb of the Moons quest.',
+      tip: 'Press T while facing an NPC to talk.'
+    };
+  }
+
+  if (orbStage === 1) {
+    return {
+      hidden: false,
+      text: 'Travel east to the Dark Caverns and recover the Orb of Moons.',
+      tip: 'Use map exits or the Orb once it is unlocked.'
+    };
+  }
+
+  if (orbStage === 2) {
+    return {
+      hidden: false,
+      text: 'Return the Orb of Moons to Lord British in Castle Britannia.',
+      tip: 'Press O to open the Orb travel menu when it is ready.'
+    };
+  }
+
+  if (codexStage < 2) {
+    return {
+      hidden: false,
+      text: 'Visit Socrates in Athens and answer his riddle to earn the Tactics Codex.',
+      tip: 'The journal (J) tracks quest progress.'
+    };
+  }
+
+  return {
+    hidden: false,
+    text: 'Use the Orb of Moons to travel between Castle Britannia, Athens, Britanny Bay, and the Dark Caverns.',
+    tip: 'I opens inventory, C opens the character sheet, X opens the Codex.'
+  };
+}
+
+function updateObjectivePanel() {
+  if (!objectivePanel || !objectiveText || !objectiveTip) return;
+  const objective = getObjectiveState();
+  objectivePanel.classList.toggle('hidden', objective.hidden);
+  objectiveText.textContent = objective.text;
+  objectiveTip.textContent = objective.tip;
 }
 
 function isPanelOpen() {
@@ -300,6 +380,7 @@ function renderGame() {
       castleLevel: state.character?.level || 1
     }
   });
+  updateObjectivePanel();
 }
 
 function renderCodex() {
@@ -639,6 +720,7 @@ function handleGet() {
         renderGame();
         updateHUD();
         renderInventory(); // update if open
+        updateObjectivePanel();
     } else {
         log("You cannot carry that.");
     }
@@ -689,6 +771,7 @@ function showDialogue(npc) {
           autoSave('quest-start');
       }
   }
+  updateObjectivePanel();
 
   dialogueEl.classList.remove('hidden');
   dialogueEl.innerHTML = `
@@ -725,6 +808,7 @@ window.answerRiddle = (answer) => {
     } else {
         log("Socrates sighs. 'Perhaps you should reflect more upon this.'");
     }
+    updateObjectivePanel();
     dialogueEl.classList.add('hidden');
 };
 
@@ -1007,6 +1091,7 @@ bootstrap();
 window.render_game_to_text = () => {
   const player = state.player;
   const enemy = combatEngine.enemy;
+  const objective = state.character ? getObjectiveState() : null;
   return JSON.stringify({
     origin: 'top-left',
     mapId: state.map?.id || null,
@@ -1024,6 +1109,10 @@ window.render_game_to_text = () => {
       enemy: enemy ? { name: enemy.name, hp: enemy.currentHP, maxHp: enemy.maxHP } : null,
       mode: combatEngine.playerMode || 'melee'
     } : { active: false },
+    objective: objective ? {
+      text: objective.text,
+      tip: objective.tip
+    } : null,
     quests: state.character?.quests || {},
     inventory: state.character?.inventory?.map((item) => ({ id: item.id, name: item.name, type: item.type, quantity: item.quantity || 1 })) || []
   });
