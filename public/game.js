@@ -28,10 +28,17 @@ const dialogueEl = document.createElement('div');
 dialogueEl.id = 'dialogue-ui';
 dialogueEl.className = 'panel hidden';
 dialogueEl.style.cssText = `
-    position: absolute; bottom: 80px; left: 50%; transform: translateX(-50%);
-    width: 600px; background: rgba(16, 22, 40, 0.95); border: 2px solid #8c7853;
-    color: #f3efe3; padding: 20px; font-family: 'Trebuchet MS', monospace;
-    z-index: 100; box-shadow: 0 4px 10px rgba(0,0,0,0.5); border-radius: 4px;
+    position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%);
+    width: min(720px, calc(100vw - 48px));
+    background: linear-gradient(180deg, rgba(16, 22, 40, 0.97), rgba(10, 14, 25, 0.95));
+    border: 1px solid rgba(220, 182, 120, 0.45);
+    color: #f3efe3;
+    padding: 18px 20px;
+    font-family: 'Trebuchet MS', monospace;
+    z-index: 100;
+    box-shadow: 0 24px 48px rgba(0,0,0,0.55);
+    border-radius: 18px;
+    backdrop-filter: blur(12px);
 `;
 document.body.appendChild(dialogueEl);
 
@@ -41,9 +48,10 @@ journalEl.id = 'journal-panel';
 journalEl.className = 'panel hidden';
 journalEl.style.cssText = `
     position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-    width: 400px; height: 500px; background: #e8dcb5; color: #2e1d0e;
-    border: 4px solid #5c3c1e; padding: 25px; font-family: 'Times New Roman', serif;
-    box-shadow: 10px 10px 30px rgba(0,0,0,0.6); z-index: 100; border-radius: 2px;
+    width: min(440px, 92vw); height: min(540px, 76vh); background: linear-gradient(180deg, #f1e2b9, #ddc690);
+    color: #2e1d0e; border: 1px solid rgba(92, 60, 30, 0.72); padding: 24px;
+    font-family: 'Times New Roman', serif; box-shadow: 16px 16px 40px rgba(0,0,0,0.58);
+    z-index: 100; border-radius: 10px;
     overflow-y: auto;
 `;
 journalEl.innerHTML = `
@@ -775,19 +783,20 @@ function showDialogue(npc) {
 
   dialogueEl.classList.remove('hidden');
   dialogueEl.innerHTML = `
-    <div style="display: flex; gap: 20px;">
-      <div style="width: 64px; height: 64px; background: ${npc.color || '#555'}; border: 2px solid #8c7853;"></div>
+  <div style="display: flex; gap: 16px; align-items: flex-start;">
+      <div style="width: 64px; height: 64px; background: ${npc.color || '#555'}; border: 1px solid rgba(255, 220, 150, 0.45); box-shadow: 0 8px 18px rgba(0,0,0,0.28); border-radius: 12px;"></div>
       <div>
-        <h3 style="margin: 0 0 10px 0; color: #fe5;">${npc.name}</h3>
-        <p>"${text}"</p>
+        <div style="font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: #b8c4f2; margin-bottom: 6px;">Dialogue</div>
+        <h3 style="margin: 0 0 10px 0; color: #ffe0a3; font-size: 18px;">${npc.name}</h3>
+        <p style="margin: 0; line-height: 1.65; color: #f4ead4;">"${text}"</p>
         ${npc.id === 'socrates' && state.character.getQuestStage('socrates_riddle') <= 1 ?
-          `<div style="margin-top:10px;">
+          `<div style="margin-top:14px; display:flex; flex-wrap:wrap; gap:10px;">
            <button class="dialogue-opt" onclick="window.answerRiddle('nothing')">Knowing you know nothing</button>
            <button class="dialogue-opt" onclick="window.answerRiddle('everything')">Knowing everything</button>
            </div>` : ''}
       </div>
     </div>
-    <div style="margin-top: 15px; font-size: 0.8em; color: #888;">[SPACE] to close</div>
+    <div style="margin-top: 16px; font-size: 0.75em; color: #b8c4f2; letter-spacing: 0.05em;">[SPACE] to close</div>
   `;
 }
 

@@ -37,7 +37,9 @@ export default class CharacterCreator {
     this.form = document.createElement('form');
     this.form.autocomplete = 'off';
     this.form.innerHTML = `
+      <div class="creator-brand">Britannia Reborn</div>
       <h2>Create Your Hero</h2>
+      <p class="creator-intro">Name your avatar, shape your virtues, and step into Lord British's court.</p>
       <label for="character-name">Name</label>
       <input id="character-name" name="name" type="text" maxlength="24" value="Briton" placeholder="Briton" />
       <div class="creator-stats"></div>
@@ -46,6 +48,9 @@ export default class CharacterCreator {
       <div class="creator-actions">
         <button type="button" id="creator-reroll">Reroll</button>
         <button type="submit">Begin Adventure</button>
+      </div>
+      <div style="margin-top: 10px; font-size: 11px; color: #b8c4f2; line-height: 1.5;">
+        WASD move. T talks. G picks up. I opens inventory. O opens the Orb. X opens the Codex.
       </div>`;
     this.root.appendChild(this.form);
     this.statsContainer = this.form.querySelector('.creator-stats');
