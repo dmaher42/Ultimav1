@@ -210,6 +210,12 @@ function buildResourcePanel() {
 
 function log(message) {
   const stamp = new Date().toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const now = Date.now();
+  if (state.lastLogMessage === message && now - (state.lastLogAt || 0) < 900) {
+    return;
+  }
+  state.lastLogMessage = message;
+  state.lastLogAt = now;
   state.messageLog.push(`${stamp} — ${message}`);
   if (state.messageLog.length > 12) state.messageLog.shift();
   messageLogEl.innerHTML = state.messageLog.map(line => `<div>${line}</div>`).join('');
