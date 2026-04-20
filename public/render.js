@@ -453,12 +453,56 @@ export default class RenderEngine {
 
       this.camera.reset(ctx);
       
-      // 4. Athens Glow Effect (Bloom for Marble)
-      if (grid.id === 'athens_entrance' || grid.id === 'castle') {
+      // 4. Throne Room Special Effects (Showcase Upgrade)
+      if (grid.id === 'castle') {
+          // A. Focal God-Ray (Radial gradient centered on Lord British)
+          const throneX = this.offsetX + 9.5 * this.tileSize;
+          const throneY = this.offsetY + 3 * this.tileSize;
+          const grad = ctx.createRadialGradient(throneX, throneY, this.tileSize, throneX, throneY, this.tileSize * 10);
+          grad.addColorStop(0, 'rgba(255, 240, 180, 0.15)');
+          grad.addColorStop(0.3, 'rgba(255, 240, 180, 0.05)');
+          grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+          
           ctx.save();
           ctx.globalCompositeOperation = 'screen';
-          ctx.fillStyle = 'rgba(255, 245, 230, 0.08)';
+          ctx.fillStyle = grad;
           ctx.fillRect(0, 0, this.viewportWidth, this.viewportHeight);
+          ctx.restore();
+
+          // B. Material Specular Shine (Subtle horizontal glint on marble tiles)
+          const time = Date.now() * 0.001;
+          ctx.save();
+          ctx.globalCompositeOperation = 'overlay';
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+          ctx.lineWidth = 1;
+          for (let y = 0; y < grid.height; y++) {
+            for (let x = 0; x < grid.width; x++) {
+              if (grid.tiles[y][x].includes('marble')) {
+                const px = this.offsetX + x * this.tileSize;
+                const py = this.offsetY + y * this.tileSize;
+                const shift = Math.sin(time + x * 0.5 + y * 0.3) * (this.tileSize * 0.3);
+                ctx.beginPath();
+                ctx.moveTo(px + shift, py);
+                ctx.lineTo(px + shift + 10, py + this.tileSize);
+                ctx.stroke();
+              }
+            }
+          }
+          ctx.restore();
+
+          // C. Golden Motes (Particle system emulation near throne)
+          ctx.save();
+          ctx.globalCompositeOperation = 'screen';
+          for (let i = 0; i < 12; i++) {
+            const seed = (Math.sin(time * 0.5 + i) * 1000) % 1;
+            const mx = throneX + (Math.sin(time * 0.2 + i * 1.5) * this.tileSize * 6);
+            const my = throneY + (Math.cos(time * 0.1 + i * 2) * this.tileSize * 4);
+            const size = 1 + Math.abs(Math.sin(time + i)) * 2;
+            ctx.fillStyle = `rgba(255, 215, 0, ${0.1 + Math.abs(Math.sin(time * 0.5 + i)) * 0.3})`;
+            ctx.beginPath();
+            ctx.arc(mx, my, size, 0, Math.PI * 2);
+            ctx.fill();
+          }
           ctx.restore();
       }
     }

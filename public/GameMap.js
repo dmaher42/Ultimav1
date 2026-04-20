@@ -21,14 +21,21 @@ export const TileInfo = {
   dungeon_floor: { name: 'Dungeon Floor', desc: 'cold, damp stone', color: '#444', passable: true, encounterChance: 0.2 },
   dungeon_wall: { name: 'Dungeon Wall', desc: 'crumbling, dark wall', color: '#222', passable: false },
   cave_entrance: { name: 'Cave Mouth', desc: 'the opening to darkness', color: '#000', passable: true },
-  marble_wall: { name: 'White Marble Wall', desc: 'fluted marble column base', color: '#d0d0d0', passable: false },
-  marble_floor: { name: 'Marble Floor', desc: 'smooth, white marble', color: '#e0e0e0', passable: true },
+  marble_wall: { 
+    name: 'Royal Marble Wall', desc: 'polished white marble with gold veins', color: '#fcfcfc', passable: false,
+    variations: ['marble_wall', 'marble_wall_trim', 'marble_wall_ornate']
+  },
+  marble_floor: { 
+    name: 'Marble Floor', desc: 'smooth, reflective marble', color: '#f0f0f0', passable: true,
+    variations: ['marble_floor', 'marble_floor_1', 'marble_floor_2']
+  },
   meadow: { 
     name: 'Meadow', desc: 'fertile soil and lush grass', color: '#4a7c44', passable: true, alternate: 'grass',
     variations: ['meadow', 'meadow_1', 'meadow_2', 'meadow_3']
   },
   azure_water: { name: 'Azure Sea', desc: 'deep blue Mediterranean waters', color: '#4da6ff', passable: false, alternate: 'water' },
-  lycaeum_roof: { name: 'Lycaeum Roof', desc: 'terracotta tiles', color: '#325aa8', passable: false }
+  lycaeum_roof: { name: 'Lycaeum Roof', desc: 'terracotta tiles', color: '#325aa8', passable: false },
+  dais_floor: { name: 'Royal Dais', desc: 'elevated marble platform', color: '#fff9e6', passable: true }
 };
 
 export function createWorld() {
@@ -40,26 +47,47 @@ export function createWorld() {
     layout: [
       '####################',
       '#..................#',
-      'D..PP..........PP..#',
-      '#..................#',
-      '#..PP..........PP..#',
+      'D..................#',
+      '#.......MMMM.......#',
+      '#.......MMMM.......#',
       '#.......RRRR.......#',
       '#.......RRRR.......#',
       '#.......RRRR.......#',
       '#.......RRRR.......#',
-      '#..PP...RRRR...PP..#',
+      '#.......RRRR.......#',
       '#.......RRRR.......#',
       '#.......RRRR.......#',
       '#.......RRRR.......#',
       '#########DD#########',
       '####################'
     ],
-    legend: { '#': 'marble_wall', '.': 'marble_floor', 'R': 'red_carpet', 'P': 'marble_floor', 'D': 'castle_door' },
+    legend: { '#': 'marble_wall', '.': 'marble_floor', 'R': 'red_carpet', 'M': 'dais_floor', 'D': 'castle_door' },
     objects: [
-      { x: 3, y: 2, sprite: 'pillar', height: 2 }, { x: 16, y: 2, sprite: 'pillar', height: 2 },
-      { x: 3, y: 9, sprite: 'pillar', height: 2 }, { x: 16, y: 9, sprite: 'pillar', height: 2 },
-      { x: 9, y: 2, sprite: 'throne', width: 2, height: 2 },
-      { x: 1, y: 5, sprite: 'torch_wall' }, { x: 18, y: 5, sprite: 'torch_wall' }
+      // Colonnade (Symmetrical pillars)
+      { x: 5, y: 3, sprite: 'pillar', height: 2 }, { x: 14, y: 3, sprite: 'pillar', height: 2 },
+      { x: 5, y: 6, sprite: 'pillar', height: 2 }, { x: 14, y: 6, sprite: 'pillar', height: 2 },
+      { x: 5, y: 9, sprite: 'pillar', height: 2 }, { x: 14, y: 9, sprite: 'pillar', height: 2 },
+      { x: 5, y: 12, sprite: 'pillar', height: 2 }, { x: 14, y: 12, sprite: 'pillar', height: 2 },
+      
+      // Throne Focal Area
+      { 
+        x: 9, y: 2, 
+        sprite: 'throne', 
+        spriteSheet: 'assets/sprites/throne_majestic.png',
+        width: 2, height: 2, 
+        anchorY: 0.8
+      },
+      
+      // Royal Banners
+      { x: 8, y: 1, sprite: 'banner', spriteSheet: 'assets/sprites/banner_royal.png', height: 2 },
+      { x: 11, y: 1, sprite: 'banner', spriteSheet: 'assets/sprites/banner_royal.png', height: 2 },
+      { x: 3, y: 3, sprite: 'banner', spriteSheet: 'assets/sprites/banner_royal.png', height: 2 },
+      { x: 16, y: 3, sprite: 'banner', spriteSheet: 'assets/sprites/banner_royal.png', height: 2 },
+
+      // Torches (Light sources)
+      { x: 1, y: 4, sprite: 'torch_wall' }, { x: 18, y: 4, sprite: 'torch_wall' },
+      { x: 1, y: 8, sprite: 'torch_wall' }, { x: 18, y: 8, sprite: 'torch_wall' },
+      { x: 1, y: 12, sprite: 'torch_wall' }, { x: 18, y: 12, sprite: 'torch_wall' }
     ],
     npcs: [
       {
