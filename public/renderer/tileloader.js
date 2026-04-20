@@ -66,7 +66,8 @@ class TileLoader {
       'grass_3': 'floor_04_03',
       'path': 'floor_05_00',
       'marble_wall': 'athens_temple_wall',
-      'marble_floor': 'athens_marble'
+      'marble_floor': 'athens_marble',
+      'ruins_floor': 'floor_05_04' // Weathered stone for ruins
     };
 
     loadTileManifest()

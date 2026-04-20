@@ -35,7 +35,8 @@ export const TileInfo = {
   lycaeum_roof: { name: 'Lycaeum Roof', desc: 'terracotta tiles', color: '#325aa8', passable: false },
   dais_floor: { name: 'Royal Dais', desc: 'elevated marble platform', color: '#fff9e6', passable: true },
   marble_edge: { name: 'Marble Edge', desc: 'decorative trim', color: '#ccc', passable: true },
-  royal_carpet: { name: 'Royal Runner', desc: 'gold-trimmed ceremonial carpet', color: '#b00', passable: true }
+  royal_carpet: { name: 'Royal Runner', desc: 'gold-trimmed ceremonial carpet', color: '#b00', passable: true },
+  ruins_floor: { name: 'Ancient Ruins', desc: 'shattered stone blocks and ivy', color: '#5a5a5a', passable: true, encounterChance: 0.15 }
 };
 
 export function createWorld() {
@@ -327,72 +328,90 @@ export function createWorld() {
     width: 60, height: 60, safe: false, encounterRate: 0.1,
     defaultTile: 'grass',
     layout: [
-      'TTTTTTTTTTTTTTT                               TTTTTTTTTTTTTTT', // North gap (Castle) 15-45
+      'TTTTTTTTTTTTTTT                               TTTTTTTTTTTTTTT', // North gap (Castle)
+      'TTTTT..........                               ..........TTTTT',
+      'TTT............                               ............TTT',
+      'TT.............                               .............TT',
+      'T...............          ..........          ..............T',
+      'T...............        ..............        ..............T',
+      'T..............       ..WWWWWWWWWWWWWW..       .............T',
+      'T..............      ..WWWWWWWWWWWWWWWW..      .............T',
+      'T...TTTTT......      ..WWWWWWWWWWWWWWWW..      ......TTTTT..T',
+      'T..TTTTTTT.....      ..WWWWWWWWWWWWWWWW..      .....TTTTTT..T',
+      'T..TTTTTTTT....       ..WWWWWWWWWWWWWW..       ....TTTTTTT..T',
+      'T...TTTTTT.....         ..............         .....TTTTT...T',
+      'T.....TTT......           ..........           ......TTT....T',
       'T..............                               ..............T',
       'T..............                               ..............T',
       'T..............                               ..............T',
-      'T..........................................................T',
-      'T..........................................................T',
-      'T..........................................................T',
-      'T..........................................................T',
-      'T..........................................................T',
-      'T..........................................................T',
-      'T..........................................................T',
-      'T..........................................................T',
-      'T..........................................................T',
-      'T..........................................................T',
-      'T..........................................................T',
-      'T..........................................................T',
-      'T..........................................................T',
-      'T..........................................................T',
-      'T..........................................................T',
-      ' ..........................................................T', // West Gap Start (y=20)
-      ' ..........................................................T',
-      ' ..........................................................T',
-      ' ..........................................................T',
-      ' ..........................................................T',
-      ' ..........................................................T',
-      ' ..........................................................T',
-      ' ..........................................................T',
-      ' ..........................................................T',
-      ' ..........................................................T',
-      ' ..........................................................T',
-      ' ..........................................................T',
-      ' ..........................................................T',
-      ' ..........................................................T',
-      ' ..........................................................T',
-      ' ..........................................................T',
-      ' ..........................................................T',
-      ' ..........................................................T',
-      ' ..........................................................T',
-      ' ..........................................................T',
-      ' ..........................................................T',
-      ' ..........................................................T',
-      ' ..........................................................T', // West Gap End (y=42)
-      'T..........................................................T',
-      'T..........................................................T',
-      'T..........................................................T',
-      'T..........................................................T',
-      'T..........................................................T',
-      'T..........................................................T',
-      'T..........................................................T',
-      'T..........................................................T',
-      'T..........................................................T',
-      'T..........................................................T',
-      'T..........................................................T',
-      'T..........................................................T',
-      'T..........................................................T',
-      'T................                              ............T',
-      'T................                              ............T',
-      'T................                              ............T',
-      'TTTTTTTTTTTTTTT                               TTTTTTTTTTTTTTT' // South gap (Village) 15-45
+      'T..........                                       ..........T',
+      'T.......                                             .......T',
+      'T....                                                   ....T',
+      ' .................                                     .....T', // West Gap (Lycaeum)
+      ' .................                                     .....T',
+      ' .................                                     .....T',
+      ' .................                                     .....T',
+      ' .................            XXXXX            .............T', // Ruins Area
+      ' .................           XXXXXXX           .............T',
+      ' .................           XXXXXXX           .............T',
+      ' .................            XXXXX            .............T',
+      ' .................                                     .....T',
+      ' .................                                     .....T',
+      ' .................                                     .....T',
+      ' .................                                     .....T',
+      ' .................                                     .....T',
+      ' .................                                     .....T',
+      ' .................                                     .....T',
+      ' .................                                     .....T',
+      ' .................                                     .....T',
+      ' .................                                     .....T',
+      ' .................                                     .....T',
+      ' .................                                     .....T',
+      ' .................                                     .....T',
+      ' .................                                     .....T',
+      ' .................                                     .....T', // West Gap End
+      'T..............                                        .....T',
+      'T..............                                        .....T',
+      'T..............                                        .....T',
+      'T.......TTTTT..                                 ..TTTTT.....T',
+      'T......TTTTTTTT.                               .TTTTTTTT....T',
+      'T.....TTTTTTTTTT.                             .TTTTTTTTTT...T',
+      'T....TTTTTTTTTTTT.                           .TTTTTTTTTTTT..T',
+      'T...TTTTTTTTTTTTTT.                         .TTTTTTTTTTTTTT.T',
+      'T..TTTTTTTTTTTTTTTT.                       .TTTTTTTTTTTTTTT.T',
+      'T.TTTTTTTTTTTTTTTTTT.                     .TTTTTTTTTTTTTTTT.T',
+      'TTTTTTTTTTTTTTTTTTTTT.                   .TTTTTTTTTTTTTTTTT.T',
+      'TTTTTTTTTTTTTTTTTTTTTT.                 .TTTTTTTTTTTTTTTTTT.T',
+      'TTTTTTTTTTTTTTTTTTTTTTT.               .TTTTTTTTTTTTTTTTTTT.T',
+      'TTTTTTTTTTTTTTTTTTTTTTTT.             .TTTTTTTTTTTTTTTTTTTT.T',
+      'T................                                      .....T',
+      'T................                                      .....T',
+      'T................                                      .....T',
+      'TTTTTTTTTTTTTTT                               TTTTTTTTTTTTTTT' // South gap (Village)
     ],
-    legend: { 'T': 'trees', '.': 'grass', ' ': 'grass' },
+    legend: { 'T': 'trees', '.': 'grass', ' ': 'grass', 'W': 'water', 'X': 'ruins_floor' },
     objects: [
       { x: 23, y: 1, sprite: 'pillar', height: 2 }, { x: 30, y: 1, sprite: 'pillar', height: 2 }, // Castle Entrance markers
       { x: 1, y: 25, sprite: 'statue' }, { x: 1, y: 28, sprite: 'statue' }, // Lycaeum Entrance markers
       { x: 23, y: 58, sprite: 'fountain' }, { x: 30, y: 58, sprite: 'fountain' }, // Village road markers
-      { x: 52, y: 30, sprite: 'cave_entrance' } // Dark Caverns
+      { x: 52, y: 30, sprite: 'cave_entrance' }, // Dark Caverns
+      { x: 10, y: 10, sprite: 'chapel_altar', name: 'Shrine of Compassion' },
+      { x: 50, y: 50, sprite: 'chapel_altar', name: 'Shrine of Honesty' },
+      { x: 30, y: 25, sprite: 'pillar', name: 'The Ancient Spire' }
+    ],
+    npcs: [
+      {
+        id: 'hermit', name: 'Iolo the Hermit', x: 45, y: 10,
+        spriteSheet: 'assets/sprites/villager.png',
+        color: '#ffcc99',
+        behavior: 'wander',
+        job: 'I play my lute and watch the stars. The Gargoyles do not bother me, for I have nothing they desire.',
+        responses: {
+          'LUTE': 'A fine instrument. It speaks a language that transcends words.',
+          'STARS': 'They tell of a change in the winds. The False Prophet is mentioned in the celestial alignment.'
+        },
+        dialogue: "Greetings, traveler. The wilderness has a voice, if one listens closely."
+      }
     ],
     adjacencies: {
         north: { map: 'castle', xOffset: -15, silent: true },
