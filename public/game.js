@@ -720,12 +720,19 @@ function handleInventoryAction(action, itemId) {
 
 // ... (Map Management)
 
-function changeMap(mapId, spawnTag) {
+function changeMap(mapId, spawnTag, x, y) {
   const map = state.world.maps[mapId];
   if (!map) return;
   state.map = map;
   state.discoveredAreas.add(mapId);
-  state.player.setMap(map, spawnTag);
+  
+  if (x !== undefined && y !== undefined) {
+    state.player.map = map;
+    state.player.setPosition(x, y);
+  } else {
+    state.player.setMap(map, spawnTag);
+  }
+
   state.pendingTransition = null;
   activeMovementDirections.clear();
   renderer.stopAllMovement();
@@ -805,21 +812,25 @@ function handleEdgeWarp(dx, dy) {
     const targetMapId = state.map.adjacencies?.[direction];
     if (!targetMapId) return;
 
-    // Determine spawn tag based on context
-    let spawnTag = 'castle_gate'; // Default
-    if (state.map.id === 'castle') spawnTag = 'castle_entrance';
-    if (state.map.id === 'lycaeum_entrance') spawnTag = 'lycaeum_gateway';
-    if (state.map.id === 'village') spawnTag = 'village_road';
-    
-    // When entering a city from overworld
-    if (state.map.id === 'overworld') {
-        if (targetMapId === 'castle') spawnTag = 'castle_gate';
-        if (targetMapId === 'lycaeum_entrance') spawnTag = 'lycaeum_gateway';
-        if (targetMapId === 'village') spawnTag = 'village_road';
+    const targetMap = state.world.maps[targetMapId];
+    if (!targetMap) return;
+
+    let newX = state.player.position.x;
+    let newY = state.player.position.y;
+
+    // Coordinate preservation logic
+    if (direction === 'north') {
+        newY = targetMap.height - 1;
+    } else if (direction === 'south') {
+        newY = 0;
+    } else if (direction === 'west') {
+        newX = targetMap.width - 1;
+    } else if (direction === 'east') {
+        newX = 0;
     }
 
-    log(`You travel ${direction} towards ${targetMapId === 'overworld' ? 'the wilderness' : targetMapId}.`);
-    changeMap(targetMapId, spawnTag);
+    log(`You travel ${direction} towards ${targetMap.name || targetMapId}.`);
+    changeMap(targetMapId, null, newX, newY);
 }
 
 function handleTalk() {
