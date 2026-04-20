@@ -1059,7 +1059,7 @@ function handleTileEvents() {
   const { x, y } = state.player.position;
 
   // Castle Crisis Stage 1 Trigger (Throne Room Ambush)
-  if (state.map.id === 'castle' && state.character.getQuestStage('castle_crisis') === 0 && x === 9 && y === 11) {
+  if (state.map.id === 'castle' && state.character.getQuestStage('castle_crisis') === 0 && x === 14 && y === 11) {
     setQuestStageAndRefresh('castle_crisis', 1);
     log('A gargoyle bursts into the throne room!');
     startSpecialEncounter('throne_ambush');

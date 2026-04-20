@@ -388,7 +388,11 @@ export default class RenderEngine {
 
     ctx.save();
     ctx.clearRect(0, 0, this.viewportWidth, this.viewportHeight);
-    ctx.fillStyle = this.backgroundColor;
+    if (grid?.id === 'castle') {
+      ctx.fillStyle = '#1a1a1a'; // Dark stone foundation
+    } else {
+      ctx.fillStyle = this.backgroundColor;
+    }
     ctx.fillRect(0, 0, this.viewportWidth, this.viewportHeight);
 
     const grid = this.getMapGrid();
@@ -426,12 +430,17 @@ export default class RenderEngine {
 
       // Draw sorted entities
       entities.forEach(entity => {
-          // Draw shadows first for all entities
-          this.drawShadow(ctx, entity.data, entity.type);
+          // Draw shadows first for all entities (Softened)
+          this.drawSoftShadowForEntity(ctx, entity);
           
           if (entity.type === 'object') this.drawObject(ctx, entity.data);
           if (entity.type === 'npc') this.drawNPC(ctx, entity.data);
           if (entity.type === 'player') this.drawPlayer(ctx);
+
+          // DRAW LIGHT BLOOM FOR TORCHES
+          if (entity.type === 'object' && entity.data.sprite === 'torch_wall') {
+            this.drawTorchLight(ctx, entity.data);
+          }
       });
 
       // 3. Draw Top Layers (Roofs, Canopy, etc.)
@@ -453,14 +462,14 @@ export default class RenderEngine {
 
       this.camera.reset(ctx);
       
-      // 4. Throne Room Special Effects (Showcase Upgrade)
+      // 4. Throne Room Special Effects (Showcase Upgrade v2)
       if (grid.id === 'castle') {
-          // A. Focal God-Ray (Radial gradient centered on Lord British)
-          const throneX = this.offsetX + 9.5 * this.tileSize;
-          const throneY = this.offsetY + 3 * this.tileSize;
-          const grad = ctx.createRadialGradient(throneX, throneY, this.tileSize, throneX, throneY, this.tileSize * 10);
-          grad.addColorStop(0, 'rgba(255, 240, 180, 0.15)');
-          grad.addColorStop(0.3, 'rgba(255, 240, 180, 0.05)');
+          // A. Focal God-Ray (Radial gradient centered on Lord British at new x=14, y=7)
+          const throneX = this.offsetX + 14.5 * this.tileSize;
+          const throneY = this.offsetY + 7 * this.tileSize;
+          const grad = ctx.createRadialGradient(throneX, throneY, this.tileSize, throneX, throneY, this.tileSize * 12);
+          grad.addColorStop(0, 'rgba(255, 230, 150, 0.2)');
+          grad.addColorStop(0.3, 'rgba(255, 230, 150, 0.08)');
           grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
           
           ctx.save();
@@ -469,36 +478,39 @@ export default class RenderEngine {
           ctx.fillRect(0, 0, this.viewportWidth, this.viewportHeight);
           ctx.restore();
 
-          // B. Material Specular Shine (Subtle horizontal glint on marble tiles)
-          const time = Date.now() * 0.001;
+          // B. Royal Floor Specularity (Subtle glint on marble and dais tiles)
+          const time = Date.now() * 0.0008;
           ctx.save();
           ctx.globalCompositeOperation = 'overlay';
-          ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
           ctx.lineWidth = 1;
           for (let y = 0; y < grid.height; y++) {
             for (let x = 0; x < grid.width; x++) {
-              if (grid.tiles[y][x].includes('marble')) {
+              const tile = grid.tiles[y][x];
+              if (tile.includes('marble') || tile === 'dais_floor') {
                 const px = this.offsetX + x * this.tileSize;
                 const py = this.offsetY + y * this.tileSize;
-                const shift = Math.sin(time + x * 0.5 + y * 0.3) * (this.tileSize * 0.3);
-                ctx.beginPath();
-                ctx.moveTo(px + shift, py);
-                ctx.lineTo(px + shift + 10, py + this.tileSize);
-                ctx.stroke();
+                // Periodic wave across the whole hall
+                const spark = Math.sin(time + x * 0.3 + y * 0.4);
+                if (spark > 0.8) {
+                    ctx.beginPath();
+                    ctx.moveTo(px, py + (spark - 0.8) * 100);
+                    ctx.lineTo(px + this.tileSize, py + (spark - 0.8) * 100 - 10);
+                    ctx.stroke();
+                }
               }
             }
           }
           ctx.restore();
 
-          // C. Golden Motes (Particle system emulation near throne)
+          // C. Golden Celebration Motes
           ctx.save();
           ctx.globalCompositeOperation = 'screen';
-          for (let i = 0; i < 12; i++) {
-            const seed = (Math.sin(time * 0.5 + i) * 1000) % 1;
-            const mx = throneX + (Math.sin(time * 0.2 + i * 1.5) * this.tileSize * 6);
-            const my = throneY + (Math.cos(time * 0.1 + i * 2) * this.tileSize * 4);
-            const size = 1 + Math.abs(Math.sin(time + i)) * 2;
-            ctx.fillStyle = `rgba(255, 215, 0, ${0.1 + Math.abs(Math.sin(time * 0.5 + i)) * 0.3})`;
+          for (let i = 0; i < 20; i++) {
+            const mx = throneX + (Math.sin(time * 0.3 + i * 123.45) * this.tileSize * 8);
+            const my = throneY + (Math.cos(time * 0.15 + i * 543.21) * this.tileSize * 5);
+            const size = 0.8 + Math.abs(Math.sin(time * 0.7 + i)) * 1.5;
+            ctx.fillStyle = `rgba(255, 215, 100, ${0.05 + Math.abs(Math.sin(time * 0.4 + i)) * 0.25})`;
             ctx.beginPath();
             ctx.arc(mx, my, size, 0, Math.PI * 2);
             ctx.fill();
@@ -575,6 +587,8 @@ export default class RenderEngine {
 
     this.mapPixelWidth = grid.width * this.tileSize;
     this.mapPixelHeight = grid.height * this.tileSize;
+    this.mapPixelWidth = grid.width * this.tileSize;
+    this.mapPixelHeight = grid.height * this.tileSize;
     this.offsetX = Math.floor((width - this.mapPixelWidth) / 2);
     this.offsetY = Math.floor((height - this.mapPixelHeight) / 2);
 
@@ -586,6 +600,49 @@ export default class RenderEngine {
 
     const target = this.getPlayerScreenCenter();
     this.camera.follow(target.x, target.y);
+  }
+
+  drawTorchLight(ctx, torch) {
+    const tx = this.offsetX + (torch.x + 0.5) * this.tileSize;
+    const ty = this.offsetY + (torch.y + 0.5) * this.tileSize;
+    const time = Date.now() * 0.002;
+    const flicker = 1 + Math.sin(time * 3) * 0.1;
+    const radius = this.tileSize * 2.5 * flicker;
+
+    const grad = ctx.createRadialGradient(tx, ty, 0, tx, ty, radius);
+    grad.addColorStop(0, 'rgba(255, 180, 50, 0.3)');
+    grad.addColorStop(0.5, 'rgba(255, 100, 20, 0.1)');
+    grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(tx, ty, radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  drawSoftShadowForEntity(ctx, entity) {
+    const data = entity.data;
+    let cx = this.offsetX + (data.x + 0.5) * this.tileSize;
+    let by = this.offsetY + (data.y + 1) * this.tileSize;
+
+    if (entity.type === 'player' && data.position) {
+       cx = this.offsetX + (data.position.x + 0.5) * this.tileSize;
+       by = this.offsetY + (data.position.y + 1) * this.tileSize;
+    }
+
+    if (data.width && data.width > 1) {
+       cx = this.offsetX + (data.x + data.width / 2) * this.tileSize;
+    }
+
+    this.drawSoftShadow(ctx, cx, by, this.tileSize, this.tileSize * 0.5);
+  }
+
+  drawShadow(ctx, object, type) {
+    // Legacy method maintained for compatibility but redirected to modern soft shadows
+    this.drawSoftShadowForEntity(ctx, { data: object, type });
   }
 
   getMapGrid(map = this.map) {
@@ -658,15 +715,40 @@ export default class RenderEngine {
         const fallback = info?.color;
         let spriteToDraw = tileType;
 
-        // Implement tile variations to break up repetitive patterns (like grass)
+        // Implement tile variations to break up repetitive patterns
         if (info?.variations && info.variations.length > 0) {
-          // Stable random pick based on coordinates
           const hash = (Math.abs(x * 374761393 + y * 668265263) ^ 0x9e3779b9);
           const index = (hash >>> 0) % info.variations.length;
           spriteToDraw = info.variations[index];
         }
 
         this.drawAtlasTile(ctx, spriteToDraw, x, y, fallback);
+
+        // 5. Special Case: Royal Carpet Runner (Golden Fringe)
+        if (tileType === 'royal_carpet' || tileType === 'red_carpet') {
+          const px = this.offsetX + x * this.tileSize;
+          const py = this.offsetY + y * this.tileSize;
+          const left = x > 0 ? (tiles[y][x-1]) : null;
+          const right = x < grid.width - 1 ? (tiles[y][x+1]) : null;
+          
+          ctx.save();
+          ctx.strokeStyle = '#ffd700'; // Gold
+          ctx.lineWidth = 2;
+          
+          if (left !== tileType) {
+            ctx.beginPath();
+            ctx.moveTo(px + 1, py);
+            ctx.lineTo(px + 1, py + this.tileSize);
+            ctx.stroke();
+          }
+          if (right !== tileType) {
+            ctx.beginPath();
+            ctx.moveTo(px + this.tileSize - 1, py);
+            ctx.lineTo(px + this.tileSize - 1, py + this.tileSize);
+            ctx.stroke();
+          }
+          ctx.restore();
+        }
       }
     }
   }

@@ -35,7 +35,9 @@ export const TileInfo = {
   },
   azure_water: { name: 'Azure Sea', desc: 'deep blue Mediterranean waters', color: '#4da6ff', passable: false, alternate: 'water' },
   lycaeum_roof: { name: 'Lycaeum Roof', desc: 'terracotta tiles', color: '#325aa8', passable: false },
-  dais_floor: { name: 'Royal Dais', desc: 'elevated marble platform', color: '#fff9e6', passable: true }
+  dais_floor: { name: 'Royal Dais', desc: 'elevated marble platform', color: '#fff9e6', passable: true },
+  marble_edge: { name: 'Marble Edge', desc: 'decorative trim', color: '#ccc', passable: true },
+  royal_carpet: { name: 'Royal Runner', desc: 'gold-trimmed ceremonial carpet', color: '#b00', passable: true }
 };
 
 export function createWorld() {
@@ -43,55 +45,62 @@ export function createWorld() {
   const castle = new GameMap({
     id: 'castle',
     name: 'Castle Britannia',
-    width: 20, height: 15, safe: true,
+    width: 30, height: 20, safe: true,
     layout: [
-      '####################',
-      '#..................#',
-      'D..................#',
-      '#.......MMMM.......#',
-      '#.......MMMM.......#',
-      '#.......RRRR.......#',
-      '#.......RRRR.......#',
-      '#.......RRRR.......#',
-      '#.......RRRR.......#',
-      '#.......RRRR.......#',
-      '#.......RRRR.......#',
-      '#.......RRRR.......#',
-      '#.......RRRR.......#',
-      '#########DD#########',
-      '####################'
+      '##############################',
+      '##############################',
+      '##..........................##',
+      '##..........................##',
+      'D...........................##',
+      '##.......WWWWWWWWWWWW.......##',
+      '##.......WMMMMMMMMMMW.......##',
+      '##.......WMMMMMMMMMMW.......##',
+      '##.......WMMMMMMMMMMW.......##',
+      '##.......WRRRRRRRRRRW.......##',
+      '##.......WRRRRRRRRRRW.......##',
+      '##.......WRRRRRRRRRRW.......##',
+      '##.......WRRRRRRRRRRW.......##',
+      '##.......WRRRRRRRRRRW.......##',
+      '##.......WRRRRRRRRRRW.......##',
+      '##.......WRRRRRRRRRRW.......##',
+      '##.......WRRRRRRRRRRW.......##',
+      '##.......WRRRRRRRRRRW.......##',
+      '#########DDDDDDDDDDDD#########',
+      '##############################'
     ],
-    legend: { '#': 'marble_wall', '.': 'marble_floor', 'R': 'red_carpet', 'M': 'dais_floor', 'D': 'castle_door' },
+    legend: { '#': 'marble_wall', '.': 'marble_floor', 'R': 'royal_carpet', 'M': 'dais_floor', 'W': 'marble_edge', 'D': 'castle_door' },
     objects: [
-      // Colonnade (Symmetrical pillars)
-      { x: 5, y: 3, sprite: 'pillar', height: 2 }, { x: 14, y: 3, sprite: 'pillar', height: 2 },
-      { x: 5, y: 6, sprite: 'pillar', height: 2 }, { x: 14, y: 6, sprite: 'pillar', height: 2 },
-      { x: 5, y: 9, sprite: 'pillar', height: 2 }, { x: 14, y: 9, sprite: 'pillar', height: 2 },
-      { x: 5, y: 12, sprite: 'pillar', height: 2 }, { x: 14, y: 12, sprite: 'pillar', height: 2 },
+      // Symmetrical Colonnade (12 pillars)
+      { x: 5, y: 7, sprite: 'pillar', height: 2 }, { x: 24, y: 7, sprite: 'pillar', height: 2 },
+      { x: 5, y: 10, sprite: 'pillar', height: 2 }, { x: 24, y: 10, sprite: 'pillar', height: 2 },
+      { x: 5, y: 13, sprite: 'pillar', height: 2 }, { x: 24, y: 13, sprite: 'pillar', height: 2 },
+      { x: 5, y: 16, sprite: 'pillar', height: 2 }, { x: 24, y: 16, sprite: 'pillar', height: 2 },
+      { x: 5, y: 4, sprite: 'pillar', height: 2 }, { x: 24, y: 4, sprite: 'pillar', height: 2 },
+      { x: 5, y: 1, sprite: 'pillar', height: 2 }, { x: 24, y: 1, sprite: 'pillar', height: 2 },
       
-      // Throne Focal Area
+      // Majestic Throne v2
       { 
-        x: 9, y: 2, 
+        x: 14, y: 6, 
         sprite: 'throne', 
-        spriteSheet: 'assets/sprites/throne_majestic.png',
+        spriteSheet: 'assets/sprites/throne_v2.png',
         width: 2, height: 2, 
-        anchorY: 0.8
+        anchorY: 0.9, shadow: true
       },
       
       // Royal Banners
-      { x: 8, y: 1, sprite: 'banner', spriteSheet: 'assets/sprites/banner_royal.png', height: 2 },
-      { x: 11, y: 1, sprite: 'banner', spriteSheet: 'assets/sprites/banner_royal.png', height: 2 },
-      { x: 3, y: 3, sprite: 'banner', spriteSheet: 'assets/sprites/banner_royal.png', height: 2 },
-      { x: 16, y: 3, sprite: 'banner', spriteSheet: 'assets/sprites/banner_royal.png', height: 2 },
+      { x: 12, y: 5, sprite: 'banner', spriteSheet: 'assets/sprites/banner_royal.png', height: 2 },
+      { x: 17, y: 5, sprite: 'banner', spriteSheet: 'assets/sprites/banner_royal.png', height: 2 },
+      { x: 3, y: 5, sprite: 'banner', spriteSheet: 'assets/sprites/banner_royal.png', height: 2 },
+      { x: 26, y: 5, sprite: 'banner', spriteSheet: 'assets/sprites/banner_royal.png', height: 2 },
 
       // Torches (Light sources)
-      { x: 1, y: 4, sprite: 'torch_wall' }, { x: 18, y: 4, sprite: 'torch_wall' },
-      { x: 1, y: 8, sprite: 'torch_wall' }, { x: 18, y: 8, sprite: 'torch_wall' },
-      { x: 1, y: 12, sprite: 'torch_wall' }, { x: 18, y: 12, sprite: 'torch_wall' }
+      { x: 1, y: 4, sprite: 'torch_wall' }, { x: 28, y: 4, sprite: 'torch_wall' },
+      { x: 1, y: 9, sprite: 'torch_wall' }, { x: 28, y: 9, sprite: 'torch_wall' },
+      { x: 1, y: 14, sprite: 'torch_wall' }, { x: 28, y: 14, sprite: 'torch_wall' }
     ],
     npcs: [
       {
-        id: 'lord_british', name: 'Lord British', x: 9, y: 3,
+        id: 'lord_british', name: 'Lord British', x: 14, y: 7,
         spriteSheet: LORD_BRITISH_SPRITE_SHEET, spriteFrame: 'player_south_1',
         color: '#ffdd00',
         behavior: 'static',
@@ -115,7 +124,7 @@ export function createWorld() {
         }
       },
       {
-        id: 'castle_guard', name: 'Sentinal', x: 10, y: 11,
+        id: 'castle_guard', name: 'Sentinal', x: 11, y: 15,
         spriteSheet: 'assets/sprites/villager.png',
         color: '#777',
         behavior: 'static',
@@ -129,11 +138,11 @@ export function createWorld() {
         dialogue: "Stand back, citizen. The castle is on high alert."
       }
     ],
-    adjacencies: { south: 'overworld' }, // Seamless exit to south
+    adjacencies: { south: 'overworld' },
     transitions: [
-      { x: 0, y: 2, map: 'castle_bedroom', spawn: 'bedroom_door' }
+      { x: 0, y: 4, map: 'castle_bedroom', spawn: 'bedroom_door' }
     ],
-    spawnPoints: { 'castle_gate': { x: 9, y: 12 }, 'bedroom_door': { x: 1, y: 2 }, 'south_edge': { x: 9, y: 14 } }
+    spawnPoints: { 'castle_gate': { x: 14, y: 15 }, 'bedroom_door': { x: 1, y: 4 }, 'south_edge': { x: 14, y: 18 } }
   });
 
   // 2. LYCAEUM ENTRANCE (Formerly Athens Entrance)
