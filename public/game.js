@@ -49,6 +49,7 @@ dialogueEl.style.cssText = `
     
     const dialogueText = dialogueEl.querySelector('#dialogue-text');
     const dialogueKeywords = dialogueEl.querySelector('#dialogue-keywords');
+    const dialogueInputContainer = dialogueEl.querySelector('#dialogue-input-container');
 
 // --- JOURNAL UI SETUP ---
 const journalEl = document.createElement('div');
