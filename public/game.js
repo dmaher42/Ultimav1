@@ -317,7 +317,7 @@ function getObjectiveState() {
 
   return {
     hidden: false,
-    text: 'Use the Orb of Moons to travel between Castle Britannia, Athens, Britanny Bay, and the Dark Caverns.',
+    text: 'Use the Orb of Moons to travel between Castle Britannia, the Lycaeum, Britanny Bay, and the Dark Caverns.',
     tip: 'I opens inventory, C opens the character sheet, X opens the Codex.'
   };
 }
@@ -537,7 +537,7 @@ function getOrbDestinations() {
     { mapId: 'castle', label: 'Castle Britannia', spawn: 'castle_gate', note: 'Return to Lord British.' },
     { mapId: 'castle_bedroom', label: 'Royal Quarters', spawn: 'bedroom_door', note: 'Search the bedroom for supplies.' },
     { mapId: 'village', label: 'Britanny Bay', spawn: 'castle_gate', note: 'Visit the village and the cave path.' },
-    { mapId: 'athens_entrance', label: 'Lycaeum Entrance', spawn: 'lycaeum_gateway', note: 'Speak with Mariah.' },
+    { mapId: 'lycaeum_entrance', label: 'The Lycaeum', spawn: 'lycaeum_gateway', note: 'Speak with Mariah.' },
     { mapId: 'dungeon_1', label: 'Dark Caverns', spawn: 'entry', note: 'Challenge the dungeon denizens.' }
   ];
   return mapList.filter((entry) => state.world.maps[entry.mapId]);

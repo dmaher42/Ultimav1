@@ -17,9 +17,9 @@ Original prompt: Continue this repo from its current state until there is a play
 ## Verification Notes
 
 - Intro ambush now resolves in the throne room, drops loot, and leaves the player able to talk to Lord British.
-- Castle -> Athens -> Village -> Dungeon travel works, and the Orb of Moons can now be picked up and used to choose a destination.
+- Castle -> Lycaeum -> Village -> Dungeon travel works, and the Orb of Moons can now be picked up and used to choose a destination.
 - Storm Cloak is equipped from loot and blocks Reaper lightning damage.
-- Socrates quest now shows the riddle choices, awards the Tactics Codex, and opens the codex panel.
+- Mariah's quest now shows the riddle choices, awards the Tactics Codex, and opens the codex panel.
 - Reloading the page restores the saved state from localStorage.
 - The character creator had a validation trap on the hero name field; it now starts with a real default name so Begin Adventure works immediately.
 - Added a live objective panel in the HUD so the throne-room intro, Orb of Moons quest, and Codex quest are easier to follow during play and in `render_game_to_text`.

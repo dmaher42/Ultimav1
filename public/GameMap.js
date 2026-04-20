@@ -109,7 +109,7 @@ export function createWorld() {
   });
 
   // 2. LYCAEUM ENTRANCE (Formerly Athens Entrance)
-  const lycaeum = new GameMap({
+  const lycaeum_entrance = new GameMap({
     id: 'lycaeum_entrance',
     name: 'The Lycaeum',
     width: 20, height: 20, safe: true,
@@ -434,7 +434,7 @@ export function createWorld() {
     spawnPoints: { 'entry': { x: 1, y: 18 } }
   });
 
-  return { maps: { castle, lycaeum_entrance: lycaeum, castle_bedroom, village, dungeon_1, overworld }, startingMap: castle };
+  return { maps: { castle, lycaeum_entrance, castle_bedroom, village, dungeon_1, overworld }, startingMap: castle };
 }
 
 export class GameMap {
