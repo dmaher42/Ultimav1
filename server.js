@@ -138,6 +138,16 @@ const upload = multer({
 app.use(cors());
 app.use(express.json({ limit: '1mb' }));
 
+// Keep the local browser and IAB on the latest runtime without stale asset caching.
+app.use((req, res, next) => {
+  if (req.method === 'GET') {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+  }
+  next();
+});
+
 app.get(['/', '/index.html'], (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });

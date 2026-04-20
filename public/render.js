@@ -392,17 +392,21 @@ export default class RenderEngine {
 
     // 0. Draw Background Framing (Prevent black void feel)
     if (grid?.id === 'castle') {
-      ctx.fillStyle = '#1a1a1a'; // Dark stone foundation
+      this.drawCastleBackdrop(ctx);
     } else {
       ctx.fillStyle = this.backgroundColor;
+      ctx.fillRect(0, 0, this.viewportWidth, this.viewportHeight);
     }
-    ctx.fillRect(0, 0, this.viewportWidth, this.viewportHeight);
 
     if (grid) {
       this.camera.apply(ctx);
 
       // 1. Draw Map Tiles (Ground Layer)
       this.drawMap(ctx, grid);
+
+      if (grid.id === 'castle') {
+        this.drawCastleThroneRoomStage(ctx, grid);
+      }
 
       // 2. Depth Sort Entities (Player, NPCs, Objects)
       const entities = [];
@@ -532,9 +536,20 @@ export default class RenderEngine {
 
     if (grid) {
         const { tint, vignette: vignetteStrength } = this.timeOfDay.getTint();
+        const isCastleInterior = grid.id === 'castle';
         ctx.save();
-        vignette(ctx, this.viewportWidth, this.viewportHeight, vignetteStrength);
-        colorGrade(ctx, tint, this.viewportWidth, this.viewportHeight);
+        vignette(
+          ctx,
+          this.viewportWidth,
+          this.viewportHeight,
+          isCastleInterior ? Math.min(0.08, vignetteStrength * 0.2) : vignetteStrength
+        );
+        colorGrade(
+          ctx,
+          isCastleInterior ? 'rgba(255, 215, 160, 0.025)' : tint,
+          this.viewportWidth,
+          this.viewportHeight
+        );
         ctx.restore();
     }
 
@@ -607,11 +622,12 @@ export default class RenderEngine {
     const ty = this.offsetY + (torch.y + 0.5) * this.tileSize;
     const time = Date.now() * 0.002;
     const flicker = 1 + Math.sin(time * 3) * 0.1;
-    const radius = this.tileSize * 2.5 * flicker;
+    const radius = this.tileSize * 3.35 * flicker;
 
     const grad = ctx.createRadialGradient(tx, ty, 0, tx, ty, radius);
-    grad.addColorStop(0, 'rgba(255, 180, 50, 0.3)');
-    grad.addColorStop(0.5, 'rgba(255, 100, 20, 0.1)');
+    grad.addColorStop(0, 'rgba(255, 235, 170, 0.28)');
+    grad.addColorStop(0.28, 'rgba(255, 194, 80, 0.22)');
+    grad.addColorStop(0.55, 'rgba(255, 130, 35, 0.12)');
     grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
 
     ctx.save();
@@ -620,6 +636,182 @@ export default class RenderEngine {
     ctx.beginPath();
     ctx.arc(tx, ty, radius, 0, Math.PI * 2);
     ctx.fill();
+    ctx.restore();
+  }
+
+  drawCastleBackdrop(ctx) {
+    const width = this.viewportWidth;
+    const height = this.viewportHeight;
+
+    const base = ctx.createLinearGradient(0, 0, 0, height);
+    base.addColorStop(0, '#2b1d17');
+    base.addColorStop(0.48, '#36241c');
+    base.addColorStop(1, '#1a1310');
+    ctx.fillStyle = base;
+    ctx.fillRect(0, 0, width, height);
+
+    const glow = ctx.createRadialGradient(width * 0.5, height * 0.36, 24, width * 0.5, height * 0.36, Math.max(width, height) * 0.78);
+    glow.addColorStop(0, 'rgba(114, 74, 39, 0.24)');
+    glow.addColorStop(0.45, 'rgba(78, 47, 28, 0.12)');
+    glow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, width, height);
+
+    ctx.fillStyle = 'rgba(255, 220, 150, 0.025)';
+    ctx.fillRect(0, 0, 18, height);
+    ctx.fillRect(width - 18, 0, 18, height);
+  }
+
+  drawCastleThroneRoomStage(ctx, grid) {
+    const ts = this.tileSize;
+    const hallLeft = this.offsetX + 7.9 * ts;
+    const hallTop = this.offsetY + 0.9 * ts;
+    const hallWidth = 14.4 * ts;
+    const hallHeight = 8.0 * ts;
+    const throneCenterX = this.offsetX + 15.5 * ts;
+    const throneCenterY = this.offsetY + 6.8 * ts;
+    const daisTop = throneCenterY - ts * 2.6;
+    const daisBottom = throneCenterY + ts * 1.4;
+    const alcoveLeft = throneCenterX - ts * 4.2;
+    const alcoveRight = throneCenterX + ts * 4.2;
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+
+    const throneGlow = ctx.createRadialGradient(throneCenterX, throneCenterY, ts * 0.6, throneCenterX, throneCenterY, ts * 7.5);
+    throneGlow.addColorStop(0, 'rgba(255, 238, 180, 0.20)');
+    throneGlow.addColorStop(0.25, 'rgba(232, 180, 84, 0.12)');
+    throneGlow.addColorStop(0.68, 'rgba(120, 70, 30, 0.05)');
+    throneGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = throneGlow;
+    ctx.fillRect(hallLeft - ts * 0.7, hallTop - ts * 0.3, hallWidth + ts * 1.4, hallHeight + ts * 1.3);
+
+    ctx.globalCompositeOperation = 'source-over';
+
+    const panel = ctx.createLinearGradient(0, hallTop, 0, hallTop + hallHeight);
+    panel.addColorStop(0, 'rgba(66, 42, 31, 0.94)');
+    panel.addColorStop(0.55, 'rgba(48, 31, 24, 0.90)');
+    panel.addColorStop(1, 'rgba(34, 21, 17, 0.84)');
+    ctx.fillStyle = panel;
+    ctx.fillRect(hallLeft, hallTop, hallWidth, hallHeight);
+
+    // Broader royal alcove so the throne reads as the heart of the hall.
+    const alcove = ctx.createLinearGradient(alcoveLeft, daisTop, alcoveRight, daisBottom);
+    alcove.addColorStop(0, 'rgba(28, 18, 16, 0.96)');
+    alcove.addColorStop(0.5, 'rgba(66, 34, 28, 0.96)');
+    alcove.addColorStop(1, 'rgba(18, 12, 10, 0.98)');
+    ctx.fillStyle = alcove;
+    ctx.fillRect(alcoveLeft, daisTop - ts * 0.8, ts * 8.4, ts * 5.6);
+
+    const archPath = new Path2D();
+    archPath.moveTo(throneCenterX - ts * 3.35, daisTop + ts * 0.8);
+    archPath.lineTo(throneCenterX - ts * 3.0, daisTop - ts * 1.2);
+    archPath.ellipse(throneCenterX, daisTop - ts * 1.0, ts * 3.0, ts * 1.55, 0, Math.PI, 0);
+    archPath.lineTo(throneCenterX + ts * 3.35, daisTop + ts * 0.8);
+    archPath.closePath();
+    ctx.fillStyle = 'rgba(88, 54, 34, 0.40)';
+    ctx.fill(archPath);
+    ctx.strokeStyle = 'rgba(234, 196, 114, 0.32)';
+    ctx.lineWidth = 3;
+    ctx.stroke(archPath);
+
+    ctx.fillStyle = 'rgba(154, 122, 72, 0.16)';
+    ctx.fillRect(hallLeft + ts * 0.35, hallTop + ts * 0.28, hallWidth - ts * 0.7, ts * 0.34);
+    ctx.fillRect(hallLeft + ts * 0.35, hallTop + hallHeight - ts * 0.42, hallWidth - ts * 0.7, ts * 0.18);
+
+    const rulerGlow = ctx.createRadialGradient(throneCenterX, throneCenterY - ts * 0.55, ts * 0.2, throneCenterX, throneCenterY - ts * 0.55, ts * 2.6);
+    rulerGlow.addColorStop(0, 'rgba(255, 245, 198, 0.20)');
+    rulerGlow.addColorStop(0.55, 'rgba(214, 166, 72, 0.10)');
+    rulerGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = rulerGlow;
+    ctx.fillRect(throneCenterX - ts * 1.8, throneCenterY - ts * 2.2, ts * 3.6, ts * 3.2);
+
+    // Strong royal throne silhouette so the focal point is unmistakable.
+    ctx.fillStyle = 'rgba(78, 18, 18, 0.96)';
+    ctx.fillRect(throneCenterX - ts * 1.62, throneCenterY - ts * 1.58, ts * 3.24, ts * 2.08);
+    ctx.fillStyle = 'rgba(188, 147, 62, 0.95)';
+    ctx.fillRect(throneCenterX - ts * 1.74, throneCenterY - ts * 1.70, ts * 3.48, ts * 0.14);
+    ctx.fillRect(throneCenterX - ts * 1.74, throneCenterY + ts * 0.48, ts * 3.48, ts * 0.14);
+    ctx.fillRect(throneCenterX - ts * 1.74, throneCenterY - ts * 1.70, ts * 0.14, ts * 2.32);
+    ctx.fillRect(throneCenterX + ts * 1.60, throneCenterY - ts * 1.70, ts * 0.14, ts * 2.32);
+    ctx.fillStyle = 'rgba(120, 35, 37, 0.98)';
+    ctx.fillRect(throneCenterX - ts * 0.96, throneCenterY - ts * 2.18, ts * 1.92, ts * 1.78);
+    ctx.fillStyle = 'rgba(224, 199, 127, 0.95)';
+    ctx.fillRect(throneCenterX - ts * 0.44, throneCenterY - ts * 2.22, ts * 0.88, ts * 0.16);
+    ctx.fillRect(throneCenterX - ts * 0.58, throneCenterY - ts * 2.08, ts * 1.16, ts * 0.12);
+    ctx.fillStyle = 'rgba(255, 243, 205, 0.20)';
+    ctx.fillRect(throneCenterX - ts * 0.72, throneCenterY - ts * 1.62, ts * 1.44, ts * 1.10);
+    ctx.fillStyle = 'rgba(40, 12, 12, 0.34)';
+    ctx.fillRect(throneCenterX - ts * 0.54, throneCenterY - ts * 0.38, ts * 1.08, ts * 0.30);
+    ctx.fillStyle = 'rgba(233, 201, 114, 0.95)';
+    ctx.fillRect(throneCenterX - ts * 0.16, throneCenterY - ts * 2.40, ts * 0.32, ts * 0.16);
+    ctx.fillRect(throneCenterX - ts * 0.38, throneCenterY - ts * 2.10, ts * 0.76, ts * 0.08);
+    ctx.fillRect(throneCenterX - ts * 0.66, throneCenterY - ts * 1.94, ts * 0.14, ts * 0.20);
+    ctx.fillRect(throneCenterX + ts * 0.52, throneCenterY - ts * 1.94, ts * 0.14, ts * 0.20);
+
+    const arch = ctx.createRadialGradient(throneCenterX, throneCenterY - ts * 0.9, ts * 0.3, throneCenterX, throneCenterY - ts * 0.8, ts * 4.2);
+    arch.addColorStop(0, 'rgba(255, 235, 180, 0.14)');
+    arch.addColorStop(0.55, 'rgba(180, 126, 56, 0.08)');
+    arch.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = arch;
+    ctx.fillRect(hallLeft + ts * 2.0, hallTop + ts * 0.15, hallWidth - ts * 4.0, hallHeight - ts * 1.0);
+
+    ctx.fillStyle = 'rgba(12, 8, 7, 0.32)';
+    ctx.fillRect(hallLeft + ts * 1.0, hallTop + ts * 0.55, ts * 0.45, hallHeight - ts * 1.1);
+    ctx.fillRect(hallLeft + hallWidth - ts * 1.45, hallTop + ts * 0.55, ts * 0.45, hallHeight - ts * 1.1);
+
+    // Deep side curtains to close in the hall and pull attention toward the center.
+    const drapeLeft = ctx.createLinearGradient(hallLeft, hallTop, hallLeft + ts * 2.5, hallTop);
+    drapeLeft.addColorStop(0, 'rgba(24, 13, 11, 0.0)');
+    drapeLeft.addColorStop(0.4, 'rgba(46, 18, 20, 0.72)');
+    drapeLeft.addColorStop(1, 'rgba(83, 24, 24, 0.05)');
+    ctx.fillStyle = drapeLeft;
+    ctx.fillRect(hallLeft, hallTop + ts * 0.7, ts * 2.4, hallHeight - ts * 1.1);
+    const drapeRight = ctx.createLinearGradient(hallLeft + hallWidth, hallTop, hallLeft + hallWidth - ts * 2.5, hallTop);
+    drapeRight.addColorStop(0, 'rgba(24, 13, 11, 0.0)');
+    drapeRight.addColorStop(0.4, 'rgba(46, 18, 20, 0.72)');
+    drapeRight.addColorStop(1, 'rgba(83, 24, 24, 0.05)');
+    ctx.fillStyle = drapeRight;
+    ctx.fillRect(hallLeft + hallWidth - ts * 2.4, hallTop + ts * 0.7, ts * 2.4, hallHeight - ts * 1.1);
+
+    ctx.strokeStyle = 'rgba(241, 201, 116, 0.38)';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(hallLeft + ts * 0.35, hallTop + ts * 0.35, hallWidth - ts * 0.7, hallHeight - ts * 0.7);
+
+    const daisGlow = ctx.createRadialGradient(throneCenterX, throneCenterY + ts * 0.4, ts * 0.2, throneCenterX, throneCenterY + ts * 0.4, ts * 3.8);
+    daisGlow.addColorStop(0, 'rgba(255, 230, 165, 0.22)');
+    daisGlow.addColorStop(0.34, 'rgba(208, 150, 58, 0.12)');
+    daisGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = daisGlow;
+    ctx.fillRect(throneCenterX - ts * 3.7, throneCenterY - ts * 2.8, ts * 7.4, ts * 5.8);
+
+    ctx.fillStyle = 'rgba(69, 42, 28, 0.80)';
+    ctx.fillRect(throneCenterX - ts * 3.4, throneCenterY + ts * 1.4, ts * 6.8, ts * 0.34);
+    ctx.fillStyle = 'rgba(196, 157, 76, 0.68)';
+    ctx.fillRect(throneCenterX - ts * 3.6, throneCenterY + ts * 1.32, ts * 7.2, ts * 0.10);
+
+    const runnerX = this.offsetX + 13.2 * ts;
+    const runnerY = this.offsetY + 7.9 * ts;
+    const runner = ctx.createLinearGradient(runnerX, runnerY, runnerX, runnerY + ts * 9.8);
+    runner.addColorStop(0, 'rgba(255, 231, 171, 0.0)');
+    runner.addColorStop(0.12, 'rgba(99, 6, 11, 0.78)');
+    runner.addColorStop(0.42, 'rgba(188, 28, 34, 0.96)');
+    runner.addColorStop(0.58, 'rgba(214, 42, 42, 0.98)');
+    runner.addColorStop(0.76, 'rgba(125, 10, 16, 0.78)');
+    runner.addColorStop(1, 'rgba(255, 231, 171, 0.0)');
+    ctx.fillStyle = runner;
+    ctx.fillRect(runnerX, runnerY, ts * 3.9, ts * 9.8);
+
+    ctx.fillStyle = 'rgba(255, 226, 154, 0.24)';
+    ctx.fillRect(runnerX + ts * 0.10, runnerY, ts * 0.08, ts * 9.8);
+    ctx.fillRect(runnerX + ts * 3.72, runnerY, ts * 0.08, ts * 9.8);
+    ctx.fillStyle = 'rgba(248, 210, 108, 0.10)';
+    ctx.fillRect(runnerX + ts * 1.72, runnerY + ts * 0.08, ts * 0.34, ts * 9.6);
+
+    // Trim the central aisle so the throne sits at the end of a ceremonial run.
+    ctx.fillStyle = 'rgba(255, 245, 218, 0.08)';
+    ctx.fillRect(throneCenterX - ts * 0.34, hallTop + ts * 0.6, ts * 0.68, ts * 6.9);
+
     ctx.restore();
   }
 
@@ -637,7 +829,25 @@ export default class RenderEngine {
        cx = this.offsetX + (data.x + data.width / 2) * this.tileSize;
     }
 
-    this.drawSoftShadow(ctx, cx, by, this.tileSize, this.tileSize * 0.5);
+    let shadowWidth = this.tileSize;
+    let shadowHeight = this.tileSize * 0.5;
+    let opacity = 0.24;
+
+    if (data.sprite === 'throne') {
+      shadowWidth = this.tileSize * 2.3;
+      shadowHeight = this.tileSize * 0.7;
+      opacity = 0.28;
+    } else if (data.sprite === 'pillar') {
+      shadowWidth = this.tileSize * 0.9;
+      shadowHeight = this.tileSize * 0.42;
+      opacity = 0.28;
+    } else if (data.sprite === 'torch_wall') {
+      shadowWidth = this.tileSize * 0.7;
+      shadowHeight = this.tileSize * 0.24;
+      opacity = 0.16;
+    }
+
+    this.drawSoftShadow(ctx, cx, by, shadowWidth, shadowHeight, opacity);
   }
 
   drawShadow(ctx, object, type) {
@@ -697,7 +907,7 @@ export default class RenderEngine {
     }
 
     if (grid.safe) {
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.06)';
+      ctx.fillStyle = grid.id === 'castle' ? 'rgba(255, 235, 200, 0.03)' : 'rgba(255, 255, 255, 0.06)';
       ctx.fillRect(this.offsetX, this.offsetY, this.mapPixelWidth, this.mapPixelHeight);
     }
   }
@@ -738,6 +948,8 @@ export default class RenderEngine {
 
           const leftType = getTileType(x - 1, y);
           const rightType = getTileType(x + 1, y);
+          const topType = getTileType(x, y - 1);
+          const bottomType = getTileType(x, y + 1);
           
           ctx.save();
           ctx.strokeStyle = '#ffd700'; // Gold
@@ -755,6 +967,20 @@ export default class RenderEngine {
             ctx.lineTo(px + this.tileSize - 1, py + this.tileSize);
             ctx.stroke();
           }
+          if (topType !== tileType) {
+            ctx.beginPath();
+            ctx.moveTo(px, py + 1);
+            ctx.lineTo(px + this.tileSize, py + 1);
+            ctx.stroke();
+          }
+          if (bottomType !== tileType) {
+            ctx.beginPath();
+            ctx.moveTo(px, py + this.tileSize - 1);
+            ctx.lineTo(px + this.tileSize, py + this.tileSize - 1);
+            ctx.stroke();
+          }
+          ctx.fillStyle = 'rgba(255, 235, 160, 0.08)';
+          ctx.fillRect(px + this.tileSize * 0.42, py + 3, this.tileSize * 0.16, this.tileSize - 6);
           ctx.restore();
         }
       }
@@ -809,6 +1035,26 @@ export default class RenderEngine {
         this.drawSoftShadow(ctx, baseX, baseY, width, height);
       }
 
+      if (sprite === 'throne') {
+        this.drawRoyalThrone(ctx, px, py, width, height);
+        return;
+      }
+
+      if (sprite === 'banner') {
+        this.drawRoyalBanner(ctx, px, py, width, height);
+        return;
+      }
+
+      if (sprite === 'pillar') {
+        this.drawRoyalPillar(ctx, px, py, width, height);
+        return;
+      }
+
+      if (sprite === 'torch_wall') {
+        this.drawRoyalTorch(ctx, px, py, width, height);
+        return;
+      }
+
       // 0. Support for Custom SpriteSheets on Objects (e.g. Throne V2)
       if (object.spriteSheet) {
           const sheet = this.getSpriteSheetSync(object.spriteSheet);
@@ -827,6 +1073,142 @@ export default class RenderEngine {
         ctx.fillRect(px, py, width, height);
       }
     }
+  }
+
+  drawRoyalThrone(ctx, px, py, width, height) {
+    const rim = Math.max(3, Math.round(width * 0.05));
+    const armWidth = width * 0.14;
+    const seatY = py + height * 0.52;
+    const baseY = py + height * 0.76;
+
+    ctx.save();
+
+    // Broad pedestal so the throne feels anchored on a dais.
+    ctx.fillStyle = 'rgba(66, 44, 28, 0.96)';
+    ctx.fillRect(px + width * 0.12, baseY, width * 0.76, height * 0.16);
+    ctx.fillStyle = 'rgba(195, 163, 90, 0.90)';
+    ctx.fillRect(px + width * 0.10, baseY - height * 0.05, width * 0.80, height * 0.08);
+
+    // Side arms and back.
+    ctx.fillStyle = '#6a4125';
+    ctx.fillRect(px + width * 0.12, py + height * 0.30, armWidth, height * 0.40);
+    ctx.fillRect(px + width * 0.74, py + height * 0.30, armWidth, height * 0.40);
+    ctx.fillStyle = '#7b1f1f';
+    ctx.fillRect(px + width * 0.24, py + height * 0.12, width * 0.52, height * 0.50);
+
+    // Seat cushion and back cushion.
+    ctx.fillStyle = '#4f1117';
+    ctx.fillRect(px + width * 0.26, seatY, width * 0.48, height * 0.14);
+    ctx.fillStyle = '#8f1e22';
+    ctx.fillRect(px + width * 0.28, py + height * 0.18, width * 0.44, height * 0.26);
+
+    // Crowned top and gold trim.
+    ctx.fillStyle = '#c89a3b';
+    ctx.fillRect(px + width * 0.28, py + height * 0.02, width * 0.44, height * 0.10);
+    ctx.fillStyle = '#e6d18b';
+    ctx.fillRect(px + width * 0.33, py, width * 0.34, height * 0.05);
+    ctx.strokeStyle = '#d8b76c';
+    ctx.lineWidth = rim;
+    ctx.strokeRect(px + width * 0.20, py + height * 0.10, width * 0.60, height * 0.66);
+
+    // Highlight sweep down the back to make the silhouette readable at distance.
+    const shine = ctx.createLinearGradient(px, py, px + width, py);
+    shine.addColorStop(0, 'rgba(255,255,255,0.00)');
+    shine.addColorStop(0.45, 'rgba(255,240,190,0.22)');
+    shine.addColorStop(0.55, 'rgba(255,240,190,0.32)');
+    shine.addColorStop(1, 'rgba(255,255,255,0.00)');
+    ctx.fillStyle = shine;
+    ctx.fillRect(px + width * 0.24, py + height * 0.08, width * 0.52, height * 0.60);
+
+    // A tiny crest so the throne reads as royal, not just furniture.
+    ctx.fillStyle = '#b08a2d';
+    ctx.fillRect(px + width * 0.42, py - height * 0.02, width * 0.16, height * 0.08);
+    ctx.fillRect(px + width * 0.37, py + height * 0.03, width * 0.06, height * 0.08);
+    ctx.fillRect(px + width * 0.57, py + height * 0.03, width * 0.06, height * 0.08);
+
+    ctx.restore();
+  }
+
+  drawRoyalBanner(ctx, px, py, width, height) {
+    ctx.save();
+
+    const poleWidth = Math.max(2, Math.round(width * 0.12));
+    ctx.fillStyle = '#5f3b1c';
+    ctx.fillRect(px + width * 0.42, py, poleWidth, height);
+
+    const clothX = px + width * 0.18;
+    const clothY = py + height * 0.10;
+    const clothW = width * 0.46;
+    const clothH = height * 0.76;
+    const cloth = ctx.createLinearGradient(clothX, clothY, clothX + clothW, clothY + clothH);
+    cloth.addColorStop(0, '#8d1118');
+    cloth.addColorStop(0.45, '#bc1d23');
+    cloth.addColorStop(1, '#6d0f14');
+    ctx.fillStyle = cloth;
+    ctx.beginPath();
+    ctx.moveTo(clothX, clothY);
+    ctx.lineTo(clothX + clothW, clothY + height * 0.08);
+    ctx.lineTo(clothX + clothW - width * 0.06, clothY + clothH * 0.60);
+    ctx.lineTo(clothX + clothW * 0.50, clothY + clothH);
+    ctx.lineTo(clothX + width * 0.10, clothY + clothH * 0.70);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.strokeStyle = '#e0c16f';
+    ctx.lineWidth = Math.max(1, Math.round(width * 0.04));
+    ctx.stroke();
+
+    ctx.fillStyle = 'rgba(247, 224, 152, 0.7)';
+    ctx.fillRect(clothX + clothW * 0.20, clothY + height * 0.12, clothW * 0.26, height * 0.18);
+    ctx.fillRect(clothX + clothW * 0.32, clothY + height * 0.34, clothW * 0.12, height * 0.24);
+
+    ctx.restore();
+  }
+
+  drawRoyalPillar(ctx, px, py, width, height) {
+    ctx.save();
+
+    const shaftX = px + width * 0.26;
+    const shaftW = width * 0.48;
+    const capH = Math.max(4, Math.round(height * 0.12));
+    const baseH = Math.max(4, Math.round(height * 0.16));
+    const shaft = ctx.createLinearGradient(shaftX, py, shaftX + shaftW, py);
+    shaft.addColorStop(0, '#d9d4c8');
+    shaft.addColorStop(0.5, '#f6f2ea');
+    shaft.addColorStop(1, '#b8b0a1');
+
+    ctx.fillStyle = '#7d7263';
+    ctx.fillRect(shaftX - width * 0.10, py + height - baseH, shaftW + width * 0.20, baseH);
+    ctx.fillStyle = shaft;
+    ctx.fillRect(shaftX, py + capH, shaftW, height - capH - baseH);
+    ctx.fillStyle = '#ece6db';
+    ctx.fillRect(shaftX - width * 0.06, py, shaftW + width * 0.12, capH);
+    ctx.fillRect(shaftX - width * 0.08, py + height - baseH - capH * 0.12, shaftW + width * 0.16, capH * 0.6);
+
+    ctx.fillStyle = 'rgba(0,0,0,0.14)';
+    ctx.fillRect(shaftX + shaftW * 0.60, py + capH, shaftW * 0.10, height - capH - baseH);
+    ctx.restore();
+  }
+
+  drawRoyalTorch(ctx, px, py, width, height) {
+    ctx.save();
+    const poleX = px + width * 0.44;
+    const poleW = Math.max(2, Math.round(width * 0.10));
+    ctx.fillStyle = '#5b3a1c';
+    ctx.fillRect(poleX, py + height * 0.04, poleW, height * 0.86);
+    ctx.fillStyle = '#7b5225';
+    ctx.fillRect(px + width * 0.24, py + height * 0.20, width * 0.52, height * 0.22);
+    ctx.fillStyle = '#c88825';
+    ctx.fillRect(px + width * 0.40, py + height * 0.05, width * 0.20, height * 0.10);
+    ctx.fillStyle = '#f5cf79';
+    ctx.beginPath();
+    ctx.moveTo(px + width * 0.50, py);
+    ctx.lineTo(px + width * 0.64, py + height * 0.14);
+    ctx.lineTo(px + width * 0.50, py + height * 0.28);
+    ctx.lineTo(px + width * 0.36, py + height * 0.14);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
   }
 
   drawNPC(ctx, npc) {

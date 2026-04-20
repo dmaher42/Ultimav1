@@ -67,7 +67,7 @@ export function createWorld() {
       '#########DDDDDDDDDDDD#########',
       '##############################'
     ],
-    legend: { '#': 'marble_wall', '.': 'marble_floor', 'R': 'royal_carpet', 'M': 'dais_floor', 'W': 'marble_edge', 'D': 'castle_door' },
+    legend: { '#': 'marble_wall', '.': 'marble_floor', 'R': 'red_carpet', 'M': 'dais_floor', 'W': 'marble_edge', 'D': 'castle_door' },
     objects: [
       // Symmetrical Colonnade (12 pillars)
       { x: 5, y: 7, sprite: 'pillar', height: 2 }, { x: 24, y: 7, sprite: 'pillar', height: 2 },
@@ -77,19 +77,19 @@ export function createWorld() {
       { x: 5, y: 4, sprite: 'pillar', height: 2 }, { x: 24, y: 4, sprite: 'pillar', height: 2 },
       { x: 5, y: 1, sprite: 'pillar', height: 2 }, { x: 24, y: 1, sprite: 'pillar', height: 2 },
       
-      // Majestic Throne v2
+      // Majestic throne centerpiece
       { 
-        x: 14, y: 6, 
-        sprite: 'throne_v2', 
-        width: 2, height: 2, 
-        anchorY: 0.9, shadow: true
+        x: 14, y: 8, 
+        sprite: 'throne', 
+        width: 5, height: 5, 
+        shadow: true
       },
       
       // Royal Banners
-      { x: 12, y: 5, sprite: 'banner_royal', height: 2 },
-      { x: 17, y: 5, sprite: 'banner_royal', height: 2 },
-      { x: 3, y: 5, sprite: 'banner_royal', height: 2 },
-      { x: 26, y: 5, sprite: 'banner_royal', height: 2 },
+      { x: 12, y: 3, sprite: 'banner', height: 4 },
+      { x: 17, y: 3, sprite: 'banner', height: 4 },
+      { x: 3, y: 4, sprite: 'banner', height: 3 },
+      { x: 26, y: 4, sprite: 'banner', height: 3 },
 
       // Torches (Light sources)
       { x: 1, y: 4, sprite: 'torch_wall' }, { x: 28, y: 4, sprite: 'torch_wall' },
