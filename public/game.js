@@ -810,16 +810,21 @@ function handleEdgeWarp(dx, dy) {
     if (dx === -1) direction = 'west';
     if (dx === 1) direction = 'east';
 
-    const targetMapId = state.map.adjacencies?.[direction];
-    if (!targetMapId) return;
+    const adj = state.map.adjacencies?.[direction];
+    if (!adj) return;
+
+    // Support both legacy string IDs and new object configurations
+    const targetMapId = typeof adj === 'string' ? adj : adj.map;
+    const xOffset = adj.xOffset || 0;
+    const yOffset = adj.yOffset || 0;
 
     const targetMap = state.world.maps[targetMapId];
     if (!targetMap) return;
 
-    let newX = state.player.position.x;
-    let newY = state.player.position.y;
+    let newX = state.player.position.x + xOffset;
+    let newY = state.player.position.y + yOffset;
 
-    // Coordinate preservation logic
+    // Boundary warping logic
     if (direction === 'north') {
         newY = targetMap.height - 1;
     } else if (direction === 'south') {
@@ -830,7 +835,15 @@ function handleEdgeWarp(dx, dy) {
         newX = 0;
     }
 
-    log(`You travel ${direction} towards ${targetMap.name || targetMapId}.`);
+    // Safety clamping
+    newX = Math.max(0, Math.min(targetMap.width - 1, newX));
+    newY = Math.max(0, Math.min(targetMap.height - 1, newY));
+
+    // Optional: Suppress log for seamless feel
+    if (!adj.silent) {
+        log(`You travel ${direction} towards ${targetMap.name || targetMapId}.`);
+    }
+    
     changeMap(targetMapId, null, newX, newY);
 }
 
