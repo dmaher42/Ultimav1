@@ -23,7 +23,9 @@ class TileLoader {
       'public/assets/pixelcrawler/props/',
       './public/assets/pixelcrawler/',
       './public/assets/pixelcrawler/tiles/',
-      './public/assets/pixelcrawler/props/'
+      './public/assets/pixelcrawler/props/',
+      'public/assets/sprites/',
+      './public/assets/sprites/'
     ];
     // optional: filename aliasing (tileName -> fileName without .png)
     this.alias = {
@@ -62,7 +64,9 @@ class TileLoader {
       'grass_1': 'floor_04_01',
       'grass_2': 'floor_04_02',
       'grass_3': 'floor_04_03',
-      'path': 'floor_05_00'
+      'path': 'floor_05_00',
+      'marble_wall': 'athens_temple_wall',
+      'marble_floor': 'athens_marble'
     };
 
     loadTileManifest()

@@ -22,12 +22,10 @@ export const TileInfo = {
   dungeon_wall: { name: 'Dungeon Wall', desc: 'crumbling, dark wall', color: '#222', passable: false },
   cave_entrance: { name: 'Cave Mouth', desc: 'the opening to darkness', color: '#000', passable: true },
   marble_wall: { 
-    name: 'Royal Marble Wall', desc: 'polished white marble with gold veins', color: '#fcfcfc', passable: false,
-    variations: ['marble_wall', 'marble_wall_trim', 'marble_wall_ornate']
+    name: 'Royal Marble Wall', desc: 'polished white marble with gold veins', color: '#fcfcfc', passable: false
   },
   marble_floor: { 
-    name: 'Marble Floor', desc: 'smooth, reflective marble', color: '#f0f0f0', passable: true,
-    variations: ['marble_floor', 'marble_floor_1', 'marble_floor_2']
+    name: 'Marble Floor', desc: 'smooth, reflective marble', color: '#f0f0f0', passable: true
   },
   meadow: { 
     name: 'Meadow', desc: 'fertile soil and lush grass', color: '#4a7c44', passable: true, alternate: 'grass',
@@ -81,17 +79,16 @@ export function createWorld() {
       // Majestic Throne v2
       { 
         x: 14, y: 6, 
-        sprite: 'throne', 
-        spriteSheet: 'assets/sprites/throne_v2.png',
+        sprite: 'throne_v2', 
         width: 2, height: 2, 
         anchorY: 0.9, shadow: true
       },
       
       // Royal Banners
-      { x: 12, y: 5, sprite: 'banner', spriteSheet: 'assets/sprites/banner_royal.png', height: 2 },
-      { x: 17, y: 5, sprite: 'banner', spriteSheet: 'assets/sprites/banner_royal.png', height: 2 },
-      { x: 3, y: 5, sprite: 'banner', spriteSheet: 'assets/sprites/banner_royal.png', height: 2 },
-      { x: 26, y: 5, sprite: 'banner', spriteSheet: 'assets/sprites/banner_royal.png', height: 2 },
+      { x: 12, y: 5, sprite: 'banner_royal', height: 2 },
+      { x: 17, y: 5, sprite: 'banner_royal', height: 2 },
+      { x: 3, y: 5, sprite: 'banner_royal', height: 2 },
+      { x: 26, y: 5, sprite: 'banner_royal', height: 2 },
 
       // Torches (Light sources)
       { x: 1, y: 4, sprite: 'torch_wall' }, { x: 28, y: 4, sprite: 'torch_wall' },

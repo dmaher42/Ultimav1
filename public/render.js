@@ -388,14 +388,15 @@ export default class RenderEngine {
 
     ctx.save();
     ctx.clearRect(0, 0, this.viewportWidth, this.viewportHeight);
+    const grid = this.getMapGrid();
+
+    // 0. Draw Background Framing (Prevent black void feel)
     if (grid?.id === 'castle') {
       ctx.fillStyle = '#1a1a1a'; // Dark stone foundation
     } else {
       ctx.fillStyle = this.backgroundColor;
     }
     ctx.fillRect(0, 0, this.viewportWidth, this.viewportHeight);
-
-    const grid = this.getMapGrid();
 
     if (grid) {
       this.camera.apply(ctx);
@@ -404,12 +405,11 @@ export default class RenderEngine {
       this.drawMap(ctx, grid);
 
       // 2. Depth Sort Entities (Player, NPCs, Objects)
-      // This is crucial for Ultima 6 style "oblique" rendering
       const entities = [];
 
       // Add Objects
       this.objects.forEach(obj => {
-         const y = (obj.y + 1) * this.tileSize; // Sort by bottom of the tile
+         const y = (obj.y + 1) * this.tileSize;
          entities.push({ type: 'object', y, data: obj });
       });
 
@@ -430,7 +430,6 @@ export default class RenderEngine {
 
       // Draw sorted entities
       entities.forEach(entity => {
-          // Draw shadows first for all entities (Softened)
           this.drawSoftShadowForEntity(ctx, entity);
           
           if (entity.type === 'object') this.drawObject(ctx, entity.data);
@@ -464,9 +463,11 @@ export default class RenderEngine {
       
       // 4. Throne Room Special Effects (Showcase Upgrade v2)
       if (grid.id === 'castle') {
-          // A. Focal God-Ray (Radial gradient centered on Lord British at new x=14, y=7)
           const throneX = this.offsetX + 14.5 * this.tileSize;
           const throneY = this.offsetY + 7 * this.tileSize;
+          const time = Date.now() * 0.0008;
+
+          // A. Focal God-Ray
           const grad = ctx.createRadialGradient(throneX, throneY, this.tileSize, throneX, throneY, this.tileSize * 12);
           grad.addColorStop(0, 'rgba(255, 230, 150, 0.2)');
           grad.addColorStop(0.3, 'rgba(255, 230, 150, 0.08)');
@@ -478,19 +479,18 @@ export default class RenderEngine {
           ctx.fillRect(0, 0, this.viewportWidth, this.viewportHeight);
           ctx.restore();
 
-          // B. Royal Floor Specularity (Subtle glint on marble and dais tiles)
-          const time = Date.now() * 0.0008;
+          // B. Royal Floor Specularity (Corrected legend lookup)
           ctx.save();
           ctx.globalCompositeOperation = 'overlay';
-          ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
           ctx.lineWidth = 1;
           for (let y = 0; y < grid.height; y++) {
             for (let x = 0; x < grid.width; x++) {
-              const tile = grid.tiles[y][x];
-              if (tile.includes('marble') || tile === 'dais_floor') {
+              const char = grid.tiles[y][x];
+              const tileType = grid.legend ? grid.legend[char] : char;
+              if (tileType && (tileType.includes('marble') || tileType === 'dais_floor')) {
                 const px = this.offsetX + x * this.tileSize;
                 const py = this.offsetY + y * this.tileSize;
-                // Periodic wave across the whole hall
                 const spark = Math.sin(time + x * 0.3 + y * 0.4);
                 if (spark > 0.8) {
                     ctx.beginPath();
@@ -706,9 +706,10 @@ export default class RenderEngine {
     if (!tiles) return;
     for (let y = 0; y < grid.height; y += 1) {
       const row = tiles[y];
-      if (!Array.isArray(row)) continue;
+      if (!row) continue;
       for (let x = 0; x < grid.width; x += 1) {
-        const tileType = row[x];
+        const char = row[x];
+        const tileType = grid.legend ? grid.legend[char] : char;
         if (!tileType || tileType === 'empty' || tileType === 'none') continue;
         
         const info = TileInfo[tileType];
@@ -728,20 +729,27 @@ export default class RenderEngine {
         if (tileType === 'royal_carpet' || tileType === 'red_carpet') {
           const px = this.offsetX + x * this.tileSize;
           const py = this.offsetY + y * this.tileSize;
-          const left = x > 0 ? (tiles[y][x-1]) : null;
-          const right = x < grid.width - 1 ? (tiles[y][x+1]) : null;
+          
+          const getTileType = (tx, ty) => {
+            if (tx < 0 || tx >= grid.width || ty < 0 || ty >= grid.height) return null;
+            const char = tiles[ty][tx];
+            return grid.legend ? grid.legend[char] : char;
+          };
+
+          const leftType = getTileType(x - 1, y);
+          const rightType = getTileType(x + 1, y);
           
           ctx.save();
           ctx.strokeStyle = '#ffd700'; // Gold
           ctx.lineWidth = 2;
           
-          if (left !== tileType) {
+          if (leftType !== tileType) {
             ctx.beginPath();
             ctx.moveTo(px + 1, py);
             ctx.lineTo(px + 1, py + this.tileSize);
             ctx.stroke();
           }
-          if (right !== tileType) {
+          if (rightType !== tileType) {
             ctx.beginPath();
             ctx.moveTo(px + this.tileSize - 1, py);
             ctx.lineTo(px + this.tileSize - 1, py + this.tileSize);
@@ -768,9 +776,6 @@ export default class RenderEngine {
   drawObject(ctx, object) {
     if (typeof object?.draw === 'function') {
       ctx.save();
-      // Since we are using camera.apply(), we likely don't need this.offsetX manually here
-      // if the object.draw expects local coordinates. However, existing objects likely expect
-      // to draw themselves relative to the world offset.
       ctx.translate(this.offsetX, this.offsetY);
       object.draw(ctx, {
         tileSize: this.tileSize,
@@ -789,21 +794,10 @@ export default class RenderEngine {
       const tileUnitsHeight = Number.isFinite(object?.height) && object.height > 0 ? object.height : 1;
       const width = tileUnitsWidth * this.tileSize;
       const height = tileUnitsHeight * this.tileSize;
-      const anchorArray = Array.isArray(metadata.anchor) ? metadata.anchor : null;
-      const anchorX = Number.isFinite(object?.anchorX)
-        ? object.anchorX
-        : Number.isFinite(metadata.anchorX)
-          ? metadata.anchorX
-          : anchorArray && Number.isFinite(anchorArray[0])
-            ? anchorArray[0]
-            : 0;
-      const anchorY = Number.isFinite(object?.anchorY)
-        ? object.anchorY
-        : Number.isFinite(metadata.anchorY)
-          ? metadata.anchorY
-          : anchorArray && Number.isFinite(anchorArray[1])
-            ? anchorArray[1]
-            : 0;
+
+      const metadataAnchor = metadata.anchor || [0, 0];
+      const anchorX = object.anchorX ?? metadata.anchorX ?? metadataAnchor[0];
+      const anchorY = object.anchorY ?? metadata.anchorY ?? metadataAnchor[1];
 
       const baseX = this.offsetX + (object.x + 0.5) * this.tileSize;
       const baseY = this.offsetY + (object.y + 1) * this.tileSize;
@@ -815,6 +809,19 @@ export default class RenderEngine {
         this.drawSoftShadow(ctx, baseX, baseY, width, height);
       }
 
+      // 0. Support for Custom SpriteSheets on Objects (e.g. Throne V2)
+      if (object.spriteSheet) {
+          const sheet = this.getSpriteSheetSync(object.spriteSheet);
+          if (sheet) {
+              if (this.drawSpriteSheetFrame(ctx, sheet, sprite, px, py, width, height)) {
+                  return;
+              }
+          } else {
+              this.requestSpriteSheet(object.spriteSheet);
+          }
+      }
+
+      // 1. Fallback to Atlas
       if (!drawTile(ctx, this.atlas, sprite, px, py, width, height, color)) {
         ctx.fillStyle = color;
         ctx.fillRect(px, py, width, height);
