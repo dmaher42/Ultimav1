@@ -197,7 +197,7 @@ export function createWorld() {
     legend: { 'W': 'azure_water', '.': 'meadow', 'M': 'marble_floor' },
     layersData: [
         {
-          zIndex: 1, // Roof Layer
+          zIndex: 1,
           layout: [
             '                    ',
             '   RRRRRRRRRRRRRR   ',
@@ -244,7 +244,6 @@ export function createWorld() {
     spawnPoints: { 'lycaeum_gateway': { x: 9, y: 11 }, 'east_edge': { x: 18, y: 10 } }
   });
 
-  // 2. CASTLE BEDROOM (New Area)
   const castle_bedroom = new GameMap({
     id: 'castle_bedroom',
     name: 'Royal Quarters',
@@ -253,10 +252,10 @@ export function createWorld() {
     layout: [
       '############',
       '#..........#',
-      '#..BB......#', // Bed
+      '#..BB......#',
       '#..........#',
-      '#.......S..#', // Bookshelf
-      '#..........D', // Door (Exit East)
+      '#.......S..#',
+      '#..........D',
       '#..........#',
       '############',
       '############',
@@ -274,11 +273,10 @@ export function createWorld() {
     spawnPoints: { 'bedroom_door': { x: 10, y: 5 } }
   });
 
-  // 3. VILLAGE (Hub)
   const village = new GameMap({
     id: 'village', name: 'Britanny Bay', width: 30, height: 30, safe: true, defaultTile: 'grass',
     layout: [
-      '..............................', // Row 0
+      '..............................',
       '..............................',
       '..............................',
       '..............................',
@@ -344,14 +342,13 @@ export function createWorld() {
     spawnPoints: { 'village_road': { x: 15, y: 1 }, 'north_edge': { x: 15, y: 1 } }
   });
 
-  // 4. OVERWORLD (The Great Wilderness)
   const overworld = new GameMap({
     id: 'overworld',
     name: 'The Britannian Wilderness',
     width: 60, height: 60, safe: false, encounterRate: 0.1,
     defaultTile: 'grass',
     layout: [
-      'TTTTTTTTTTTTTTT                               TTTTTTTTTTTTTTT', // North gap (Castle)
+      'TTTTTTTTTTTTTTT                               TTTTTTTTTTTTTTT',
       'TTTTT..........                               ..........TTTTT',
       'TTT............                               ............TTT',
       'TT.............                               .............TT',
@@ -370,11 +367,11 @@ export function createWorld() {
       'T..........                                       ..........T',
       'T.......                                             .......T',
       'T....                                                   ....T',
-      ' .................                                     .....T', // West Gap (Lycaeum)
       ' .................                                     .....T',
       ' .................                                     .....T',
       ' .................                                     .....T',
-      ' .................            XXXXX            .............T', // Ruins Area
+      ' .................                                     .....T',
+      ' .................            XXXXX            .............T',
       ' .................           XXXXXXX           .............T',
       ' .................           XXXXXXX           .............T',
       ' .................            XXXXX            .............T',
@@ -392,7 +389,7 @@ export function createWorld() {
       ' .................                                     .....T',
       ' .................                                     .....T',
       ' .................                                     .....T',
-      ' .................                                     .....T', // West Gap End
+      ' .................                                     .....T',
       'T..............                                        .....T',
       'T..............                                        .....T',
       'T..............                                        .....T',
@@ -410,14 +407,14 @@ export function createWorld() {
       'T................                                      .....T',
       'T................                                      .....T',
       'T................                                      .....T',
-      'TTTTTTTTTTTTTTT                               TTTTTTTTTTTTTTT' // South gap (Village)
+      'TTTTTTTTTTTTTTT                               TTTTTTTTTTTTTTT'
     ],
     legend: { 'T': 'trees', '.': 'grass', ' ': 'grass', 'W': 'water', 'X': 'ruins_floor' },
     objects: [
-      { x: 23, y: 1, sprite: 'pillar', height: 2 }, { x: 30, y: 1, sprite: 'pillar', height: 2 }, // Castle Entrance markers
-      { x: 1, y: 25, sprite: 'statue' }, { x: 1, y: 28, sprite: 'statue' }, // Lycaeum Entrance markers
-      { x: 23, y: 58, sprite: 'fountain' }, { x: 30, y: 58, sprite: 'fountain' }, // Village road markers
-      { x: 52, y: 30, sprite: 'cave_entrance' }, // Dark Caverns
+      { x: 23, y: 1, sprite: 'pillar', height: 2 }, { x: 30, y: 1, sprite: 'pillar', height: 2 },
+      { x: 1, y: 25, sprite: 'statue' }, { x: 1, y: 28, sprite: 'statue' },
+      { x: 23, y: 58, sprite: 'fountain' }, { x: 30, y: 58, sprite: 'fountain' },
+      { x: 52, y: 30, sprite: 'cave_entrance' },
       { x: 10, y: 10, sprite: 'chapel_altar', name: 'Shrine of Compassion' },
       { x: 50, y: 50, sprite: 'chapel_altar', name: 'Shrine of Honesty' },
       { x: 30, y: 25, sprite: 'pillar', name: 'The Ancient Spire' }
@@ -453,7 +450,6 @@ export function createWorld() {
     }
   });
 
-  // 4. DUNGEON LEVEL 1 (Dark Caverns)
   const dungeon_1 = new GameMap({
     id: 'dungeon_1', name: 'Dark Caverns', width: 30, height: 20, safe: false, areaLevel: 3, 
     encounterGroup: 'dungeon',
@@ -466,7 +462,7 @@ export function createWorld() {
       'X...X....X.....X.............X',
       'X...X....X.....X...XXXXXX....X',
       'X...X....X.....X...X....X....X',
-      'X...X.G..X.....X...X.O..X....X', // G = Guardian, O = Orb Chamber
+      'X...X.G..X.....X...X.O..X....X',
       'X...X....X.....XXXXXXXXXX....X',
       'X...XXXXXX...................X',
       'X............................X',
@@ -477,7 +473,7 @@ export function createWorld() {
       'X............................X',
       'X............................X',
       'X............................X',
-      'E............................X', // E = Entry/Exit
+      'E............................X',
       'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
     ],
     legend: { 'X': 'dungeon_wall', '.': 'dungeon_floor', 'E': 'cave_exit', 'O': 'dungeon_floor', 'G': 'dungeon_floor' },
@@ -488,7 +484,9 @@ export function createWorld() {
     npcs: [
       {
         id: 'gargoyle_guardian', name: 'Guardian', x: 6, y: 7,
-        spriteSheet: 'assets/sprites/villager.png',
+        spriteSheet: 'assets/sprites/gargoyle_guardian_sheet.svg',
+        spriteSheetOptions: { columns: 4, rows: 3, directions: ['south', 'east', 'north'], framePrefix: 'gargoyle' },
+        spriteFrame: 'gargoyle_south_0',
         color: '#f44',
         behavior: 'static',
         job: 'I protect the sacred artifact from the reach of the Doom-Bringer.',
@@ -519,8 +517,7 @@ export class GameMap {
     this.npcs = data.npcs || [];
     this.objects = data.objects || [];
     this.layers = data.layers || [];
-    this.adjacencies = data.adjacencies || {}; // For seamless exploration
-    // Initialize primary tiles layer if not provided via layers
+    this.adjacencies = data.adjacencies || {};
     if (!this.layers.length) {
         this.tiles = [];
         for (let y = 0; y < this.height; y++) {
@@ -532,7 +529,6 @@ export class GameMap {
         this.applyLayout(data.layout, data.legend);
     }
     
-    // Support initialization of specific layers from data
     if (data.layersData) {
         data.layersData.forEach(l => {
             const layerTiles = [];
@@ -584,6 +580,6 @@ export class GameMap {
 
   getSpawn(tag) {
       if (this.spawnPoints && this.spawnPoints[tag]) return this.spawnPoints[tag];
-      return { x: 1, y: 1 }; // Fallback
+      return { x: 1, y: 1 };
   }
 }
