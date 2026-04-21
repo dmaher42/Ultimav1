@@ -5,26 +5,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Britannia Reborn</title>
     <link rel="icon" href="data:,">
-    <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap"
-    />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
       :root {
         color-scheme: dark;
-        font-family: 'Trebuchet MS', 'Lucida Sans Unicode', sans-serif;
+        font-family: 'Outfit', sans-serif;
         --bg-night: #050812;
         --bg-deep: #0b1020;
-        --panel: rgba(12, 16, 30, 0.92);
-        --panel-soft: rgba(16, 22, 40, 0.82);
-        --panel-border: rgba(205, 170, 110, 0.38);
-        --panel-border-strong: rgba(255, 220, 150, 0.55);
-        --text-main: #f3efe3;
-        --text-muted: #b8c4f2;
-        --accent: #ffdf9d;
-        --accent-strong: #ffd06d;
-        --success: #b9e1a0;
-        --danger: #ff9b9b;
+        --panel: rgba(10, 14, 24, 0.75);
+        --panel-border: rgba(212, 175, 55, 0.25);
+        --panel-border-strong: rgba(212, 175, 55, 0.5);
+        --text-main: #e2e8f0;
+        --text-muted: #94a3b8;
+        --accent: #d4af37;
+        --accent-strong: #ffd700;
+        --success: #10b981;
+        --danger: #ef4444;
+        --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+        --glass-inset: inset 0 1px 1px rgba(255, 255, 255, 0.1);
       }
       * {
         box-sizing: border-box;
@@ -43,7 +43,7 @@
       }
       #app-shell {
         display: grid;
-        grid-template-columns: minmax(250px, 18vw) minmax(0, 1fr);
+        grid-template-columns: minmax(280px, 18vw) minmax(0, 1fr);
         gap: 16px;
         width: 100%;
         height: 100vh;
@@ -64,6 +64,10 @@
         display: flex;
         align-items: stretch;
         justify-content: stretch;
+        border-radius: 16px;
+        overflow: hidden;
+        border: 1px solid var(--panel-border);
+        box-shadow: var(--glass-shadow);
       }
       canvas {
         display: block;
@@ -75,454 +79,307 @@
           radial-gradient(circle at 50% 28%, rgba(96, 116, 180, 0.18), transparent 30%),
           radial-gradient(circle at 50% 65%, rgba(144, 92, 48, 0.08), transparent 36%),
           linear-gradient(180deg, #09111f 0%, #04070e 60%, #030409 100%);
-        box-shadow:
-          inset 0 0 0 1px rgba(255, 255, 255, 0.05),
-          0 0 0 1px rgba(255, 255, 255, 0.03),
-          0 24px 80px rgba(0, 0, 0, 0.55);
       }
+      
+      /* Custom Scrollbars */
+      ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: var(--panel-border);
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: var(--panel-border-strong);
+      }
+
+      /* Glassmorphism Base for UI */
+      .glass-panel {
+        background: var(--panel);
+        border: 1px solid var(--panel-border);
+        border-radius: 16px;
+        box-shadow: var(--glass-shadow), var(--glass-inset);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+      }
+
+      h1, h2, h3 {
+        font-family: 'Cinzel', serif;
+        font-weight: 700;
+        margin: 0;
+        letter-spacing: 0.05em;
+      }
+
       #hud {
         position: relative;
         width: 100%;
-        padding: 12px 14px;
-        background: linear-gradient(180deg, rgba(14, 18, 34, 0.92), rgba(7, 10, 20, 0.84));
-        border: 1px solid rgba(140, 168, 255, 0.28);
-        border-radius: 14px;
-        font-size: 12.5px;
-        line-height: 1.58;
-        box-shadow: 0 18px 36px rgba(0, 0, 0, 0.38);
-        backdrop-filter: blur(10px);
+        padding: 16px;
+        font-size: 13px;
+        line-height: 1.6;
         z-index: 10;
+        transition: transform 0.3s ease;
       }
       #hud strong {
         color: var(--accent);
+        font-family: 'Cinzel', serif;
+        font-weight: 700;
+        letter-spacing: 0.02em;
       }
       #hud div {
-        text-shadow: 0 1px 0 rgba(0, 0, 0, 0.28);
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
       }
       #hud .keys {
         display: block;
-        font-size: 10.5px;
+        font-size: 11px;
         color: var(--text-muted);
-        margin-top: 6px;
-        line-height: 1.45;
+        margin-top: 12px;
+        line-height: 1.5;
         overflow-wrap: anywhere;
+        border-top: 1px solid rgba(255,255,255,0.05);
+        padding-top: 8px;
       }
+      
       #message-log {
         position: relative;
         width: 100%;
         min-height: 0;
-        flex: 0 0 auto;
-        max-height: 34vh;
-        padding: 12px 13px;
-        background: linear-gradient(180deg, rgba(6, 10, 20, 0.88), rgba(6, 8, 14, 0.72));
-        border: 1px solid rgba(190, 160, 110, 0.3);
-        border-radius: 14px;
+        flex: 1 1 auto;
+        padding: 16px;
         overflow-y: auto;
-        font-size: 11.5px;
-        line-height: 1.5;
-        box-shadow: 0 18px 30px rgba(0, 0, 0, 0.36);
-        backdrop-filter: blur(10px);
+        font-size: 13px;
+        line-height: 1.6;
         z-index: 10;
-      }
-      .panel {
-        position: relative;
-        top: auto;
-        right: auto;
-        left: auto;
-        transform: none;
-        width: 100%;
-        max-height: none;
-        padding: 18px;
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-        background: linear-gradient(180deg, rgba(16, 22, 40, 0.97), rgba(9, 12, 22, 0.94));
-        border: 1px solid var(--panel-border);
-        border-radius: 16px;
-        box-shadow: 0 24px 48px rgba(0, 0, 0, 0.5);
-        backdrop-filter: blur(12px);
-        z-index: 15;
-      }
-      .panel h2 {
-        margin: 0;
-        font-size: 17px;
-        color: var(--accent);
-        letter-spacing: 0.02em;
-      }
-      .panel p {
-        line-height: 1.55;
-      }
-      .panel button.close {
-        align-self: flex-end;
-        padding: 7px 11px;
-      }
-      .hidden {
-        display: none !important;
-      }
-      .shake { animation: shake 0.4s; }
-      .dialogue-opt {
-        background: linear-gradient(180deg, rgba(163, 132, 82, 0.95), rgba(121, 87, 46, 0.95));
-        border: 1px solid rgba(255, 219, 150, 0.45);
-        color: white;
-        padding: 7px 14px;
-        cursor: pointer;
-        margin-right: 10px;
-        font-family: inherit;
-        font-size: 0.9em;
-        transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
-        margin-top: 10px;
-        border-radius: 8px;
-      }
-      .dialogue-opt:hover { transform: translateY(-1px); box-shadow: 0 8px 18px rgba(255, 214, 128, 0.18); filter: brightness(1.06); }
-      
-      @keyframes shake {
-        0% { transform: translate(1px, 1px) rotate(0deg); }
-        10-20% { transform: translate(-1px, -2px) rotate(-1deg); }
-        30-40% { transform: translate(-3px, 0px) rotate(1deg); }
-        50-60% { transform: translate(3px, 2px) rotate(0deg); }
-        70-80% { transform: translate(-1px, -1px) rotate(1deg); }
-        90-100% { transform: translate(1px, 2px) rotate(0deg); }
-      }
-      button {
-        appearance: none;
-        border: 1px solid rgba(255, 214, 153, 0.34);
-        border-radius: 10px;
-        padding: 7px 12px;
-        font-size: 12px;
-        letter-spacing: 0.05em;
-        background: linear-gradient(135deg, rgba(255, 222, 153, 0.24), rgba(140, 90, 40, 0.22));
-        color: #fff1d4;
-        cursor: pointer;
-        transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease, border-color 0.15s ease;
-      }
-      button:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 8px 18px rgba(0, 0, 0, 0.22);
-        background: linear-gradient(135deg, rgba(255, 222, 153, 0.38), rgba(180, 120, 60, 0.36));
-        border-color: rgba(255, 228, 179, 0.6);
-      }
-      button:focus-visible,
-      input[type='text']:focus-visible,
-      input[type='number']:focus-visible {
-        outline: 2px solid rgba(255, 222, 153, 0.85);
-        outline-offset: 2px;
-      }
-      button:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-      }
-      .inventory-list {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        overflow-y: auto;
-      }
-      .inventory-item {
         display: flex;
         flex-direction: column;
         gap: 6px;
-        padding: 10px;
-        border: 1px solid rgba(120, 140, 210, 0.26);
-        border-radius: 10px;
-        background: linear-gradient(180deg, rgba(18, 24, 44, 0.74), rgba(12, 16, 30, 0.84));
       }
+      #message-log div {
+        animation: fade-in 0.3s ease-out;
+      }
+      
+      .panel {
+        position: fixed;
+        top: 50%;
+        right: 24px;
+        transform: translateY(-50%);
+        width: 400px;
+        max-height: 85vh;
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        z-index: 100;
+      }
+      .panel h2 {
+        font-size: 20px;
+        color: var(--accent-strong);
+        text-align: center;
+        border-bottom: 1px solid var(--panel-border);
+        padding-bottom: 12px;
+        margin-bottom: 4px;
+      }
+      .panel p {
+        line-height: 1.6;
+      }
+      .panel button.close {
+        align-self: center;
+        margin-top: auto;
+        width: 100%;
+        padding: 10px;
+      }
+      
+      .hidden {
+        display: none !important;
+        opacity: 0;
+        pointer-events: none;
+      }
+      
+      .shake { animation: shake 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97) both; }
+      
+      @keyframes shake {
+        10%, 90% { transform: translate3d(-1px, 0, 0); }
+        20%, 80% { transform: translate3d(2px, 0, 0); }
+        30%, 50%, 70% { transform: translate3d(-3px, 0, 0); }
+        40%, 60% { transform: translate3d(3px, 0, 0); }
+      }
+      
+      @keyframes fade-in {
+        from { opacity: 0; transform: translateY(4px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+
+      button, .dialogue-opt {
+        appearance: none;
+        border: 1px solid var(--panel-border);
+        border-radius: 8px;
+        padding: 8px 16px;
+        font-size: 13px;
+        font-family: 'Outfit', sans-serif;
+        font-weight: 500;
+        letter-spacing: 0.05em;
+        background: linear-gradient(135deg, rgba(212, 175, 55, 0.15), rgba(0, 0, 0, 0.4));
+        color: var(--text-main);
+        cursor: pointer;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+      }
+      
+      button:hover, .dialogue-opt:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(212, 175, 55, 0.15), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+        background: linear-gradient(135deg, rgba(212, 175, 55, 0.25), rgba(0, 0, 0, 0.3));
+        border-color: var(--accent);
+        color: var(--accent-strong);
+      }
+      
+      button:active, .dialogue-opt:active {
+        transform: translateY(0);
+        box-shadow: none;
+      }
+      
+      .inventory-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        overflow-y: auto;
+        padding-right: 4px;
+      }
+      
+      .inventory-item {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 12px;
+        background: rgba(0, 0, 0, 0.2);
+        transition: border-color 0.2s, background 0.2s;
+      }
+      .inventory-item:hover {
+        border-color: rgba(212, 175, 55, 0.3);
+        background: rgba(212, 175, 55, 0.05);
+      }
+      
       .inventory-item-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
         gap: 8px;
-        font-size: 12px;
+        font-size: 14px;
       }
       .inventory-item-header strong {
-        font-size: 12.5px;
-        color: #f4ead4;
+        color: var(--accent);
+        font-weight: 600;
       }
       .inventory-item-header span {
-        color: #cdd9ff;
+        color: var(--text-muted);
+        font-size: 12px;
       }
       .inventory-item-actions {
         display: flex;
         flex-wrap: wrap;
-        gap: 6px;
+        gap: 8px;
+        margin-top: 4px;
       }
-      .inventory-item-actions button {
-        padding: 6px 10px;
-        font-size: 11px;
-      }
-      #journal-panel {
-        color: #2e1d0e;
-      }
-      #journal-panel h2 {
-        color: #4a2c10;
-      }
-      #journal-panel #journal-content {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-      }
-      #journal-panel .quest-entry {
-        padding: 12px;
-        border-radius: 10px;
-        background: rgba(255, 255, 255, 0.28);
-        border: 1px solid rgba(92, 60, 30, 0.16);
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);
-      }
-      #journal-panel .quest-entry h3 {
-        color: #4a2c10;
-        line-height: 1.2;
-      }
-      #journal-panel .quest-entry p {
-        color: #5a4326;
-      }
+      
       table.stats {
         width: 100%;
         border-collapse: collapse;
-        font-size: 13px;
+        font-size: 14px;
       }
       table.stats td {
-        padding: 4px 0;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        padding: 8px 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
       }
       table.stats td:first-child {
-        color: #ffdb92;
-        width: 120px;
+        color: var(--accent);
+        width: 140px;
+        font-weight: 500;
       }
+      
       .modal {
         position: fixed;
         top: 50%;
         left: 50%;
         transform: translate(-50%, -50%);
         width: min(520px, 92vw);
-        padding: 20px;
-        background: linear-gradient(180deg, rgba(12, 16, 30, 0.98), rgba(7, 10, 18, 0.96));
-        border: 1px solid var(--panel-border);
-        border-radius: 18px;
-        box-shadow: 0 26px 54px rgba(0, 0, 0, 0.56);
-        backdrop-filter: blur(12px);
-        z-index: 30;
+        padding: 32px;
+        z-index: 200;
       }
       .modal h2 {
-        margin-top: 0;
-        color: var(--accent);
+        font-size: 24px;
+        color: var(--accent-strong);
         text-align: center;
-        letter-spacing: 0.03em;
+        margin-bottom: 24px;
+        border-bottom: 1px solid var(--panel-border);
+        padding-bottom: 16px;
       }
-      .modal:not(.hidden),
-      .panel:not(.hidden) {
-        animation: panel-enter 180ms ease-out;
+      
+      .modal:not(.hidden) {
+        animation: pop-in-modal 0.3s cubic-bezier(0.16, 1, 0.3, 1);
       }
-      #objective-panel:not(.hidden) {
-        animation: objective-enter 180ms ease-out;
+      @keyframes pop-in-modal {
+        from { opacity: 0; transform: translate(-50%, -45%) scale(0.95); }
+        to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
       }
-      .creator-stats {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 10px;
-      }
-      .creator-stat {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-        padding: 9px;
-        border-radius: 10px;
-        background: rgba(18, 24, 42, 0.78);
-        border: 1px solid rgba(130, 160, 230, 0.3);
-      }
-      .creator-stat label {
-        font-size: 12px;
-        color: #cdd9ff;
-      }
-      .creator-brand {
-        display: inline-block;
-        margin-bottom: 6px;
-        font-size: 11px;
-        letter-spacing: 0.16em;
-        text-transform: uppercase;
-        color: var(--text-muted);
-      }
-      .creator-intro {
-        margin: -2px 0 12px;
-        color: #d7e0fb;
-        font-size: 12px;
-        line-height: 1.5;
-      }
-      .creator-actions {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 12px;
-        margin-top: 14px;
-      }
-      .creator-actions button {
-        min-width: 120px;
-      }
-      input[type='text'],
-      input[type='number'] {
-        appearance: none;
-        padding: 7px 9px;
-        border-radius: 8px;
-        border: 1px solid rgba(255, 214, 153, 0.35);
-        background: rgba(8, 12, 24, 0.82);
-        color: #f4e9d8;
-        font-size: 13px;
-      }
-      .combat-log {
-        height: 176px;
-        overflow-y: auto;
-        background: rgba(6, 10, 18, 0.72);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        padding: 10px 12px;
-        border-radius: 10px;
-        font-size: 12px;
-        line-height: 1.5;
-        scroll-behavior: smooth;
-        overflow-anchor: auto;
-      }
-      .combat-log > div {
-        padding: 3px 0;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-      }
-      .combat-log > div:last-child {
-        border-bottom: 0;
-      }
-      .combat-actions {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-        justify-content: center;
-      }
-      .combat-actions button {
-        min-width: 78px;
-      }
-      .combat-actions button.is-active {
-        background: linear-gradient(135deg, rgba(255, 226, 160, 0.42), rgba(179, 120, 52, 0.4));
-        border-color: rgba(255, 232, 186, 0.76);
-        box-shadow: 0 0 0 1px rgba(255, 232, 186, 0.12), 0 10px 24px rgba(0, 0, 0, 0.28);
-        transform: translateY(-1px);
-      }
-      .combat-actions button:disabled {
-        opacity: 0.35;
-        box-shadow: none;
-        transform: none;
-      }
-      #combat-item-list {
-        margin-top: 12px;
-        max-height: 180px;
-        padding: 10px;
-        border-radius: 10px;
-        background: rgba(8, 12, 22, 0.78);
-        border: 1px solid rgba(255, 214, 153, 0.2);
-      }
-      #combat-item-list .combat-item-empty {
-        padding: 10px 2px;
-        color: #b8c4f2;
-        font-size: 12px;
-      }
-      #tooltip {
-        position: fixed;
-        pointer-events: none;
-        padding: 7px 9px;
-        border-radius: 8px;
-        background: rgba(18, 22, 38, 0.95);
-        border: 1px solid rgba(140, 180, 255, 0.4);
-        color: #f0f6ff;
-        font-size: 12px;
-        z-index: 25;
-        max-width: 240px;
-        white-space: pre-wrap;
-      }
+
       #objective-panel {
         position: relative;
-        top: auto;
-        right: auto;
         width: 100%;
-        max-width: none;
-        padding: 12px 14px;
-        background: linear-gradient(180deg, rgba(10, 14, 26, 0.9), rgba(7, 10, 18, 0.84));
-        border: 1px solid rgba(170, 145, 95, 0.42);
-        border-radius: 12px;
-        box-shadow: 0 16px 30px rgba(0, 0, 0, 0.38);
-        backdrop-filter: blur(10px);
-        color: #f4ead4;
+        padding: 16px;
         z-index: 11;
       }
       #objective-panel h3 {
-        margin: 0 0 6px 0;
-        font-size: 13px;
-        color: #ffde9a;
-        letter-spacing: 0.03em;
+        font-size: 15px;
+        margin-bottom: 8px;
+        text-transform: uppercase;
+        color: var(--accent);
       }
       #objective-panel p {
+        font-size: 13px;
+        line-height: 1.5;
         margin: 0;
-        font-size: 12px;
-        line-height: 1.45;
-        color: #d7e0fb;
-        overflow-wrap: anywhere;
+        color: var(--text-main);
       }
       #objective-panel .objective-tip {
-        margin-top: 8px;
-        padding-top: 8px;
-        border-top: 1px solid rgba(255, 255, 255, 0.08);
-        font-size: 11px;
-        color: #b8c4f2;
-        overflow-wrap: anywhere;
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        font-size: 12px;
+        color: var(--text-muted);
+        font-style: italic;
       }
+      
       #dungeon-nav {
-        position: relative;
-        top: auto;
-        left: auto;
-        transform: none;
-        min-width: 0;
-        max-width: none;
-        width: 100%;
-        padding: 8px 12px;
+        position: fixed;
+        top: 24px;
+        left: 50%;
+        transform: translateX(-50%);
+        min-width: 260px;
+        padding: 12px 24px;
         text-align: center;
-        background: linear-gradient(180deg, rgba(16, 22, 40, 0.9), rgba(9, 12, 20, 0.86));
-        border: 1px solid rgba(220, 182, 120, 0.28);
-        border-radius: 999px;
-        color: #f4ead4;
-        font-size: 11px;
-        line-height: 1.35;
-        box-shadow: 0 14px 28px rgba(0, 0, 0, 0.34);
-        backdrop-filter: blur(10px);
-        z-index: 12;
+        border-radius: 100px;
+        font-size: 13px;
+        z-index: 20;
       }
       #dungeon-nav strong {
-        color: #ffdf9d;
+        color: var(--accent);
+        font-family: 'Cinzel', serif;
+        font-size: 15px;
+        letter-spacing: 0.05em;
       }
       #dungeon-nav .subtle {
-        color: #b8c4f2;
+        color: var(--text-muted);
       }
-      @keyframes panel-enter {
-        from {
-          opacity: 0;
-          transform: scale(0.98);
-        }
-        to {
-          opacity: 1;
-          transform: scale(1);
-        }
-      }
-      @keyframes objective-enter {
-        from {
-          opacity: 0;
-          transform: translateY(-4px) scale(0.98);
-        }
-        to {
-          opacity: 1;
-          transform: translateY(0) scale(1);
-        }
-      }
+
       @media (max-width: 1260px) {
         #app-shell {
-          grid-template-columns: minmax(220px, 24vw) minmax(0, 1fr);
-          grid-template-areas: 'left game';
-        }
-        #ui-left-rail {
-          grid-area: left;
-        }
-        #game-stage {
-          grid-area: game;
+          grid-template-columns: minmax(240px, 24vw) minmax(0, 1fr);
         }
       }
       @media (max-width: 960px) {
@@ -531,19 +388,14 @@
         }
         #app-shell {
           grid-template-columns: 1fr;
-          grid-template-areas:
-            'game'
-            'left'
-            'right';
           height: auto;
           min-height: 100vh;
         }
         #game-stage {
-          min-height: 56vh;
+          min-height: 50vh;
         }
         #message-log {
-          min-height: 220px;
-          max-height: 32vh;
+          min-height: 300px;
         }
       }
     </style>
@@ -551,7 +403,7 @@
   <body>
     <div id="app-shell">
       <aside id="ui-left-rail">
-        <section id="hud">
+        <section id="hud" class="glass-panel">
           <div><strong>Name:</strong> <span id="hud-name">--</span></div>
           <div><strong>Level:</strong> <span id="hud-level">1</span></div>
           <div><strong>HP:</strong> <span id="hud-hp">0 / 0</span></div>
@@ -559,70 +411,102 @@
           <div><strong>XP:</strong> <span id="hud-xp">0</span></div>
           <div><strong>Area:</strong> <span id="hud-area">Unknown</span></div>
           <span class="keys">I: Inventory | C: Stats | J: Journal | T: Talk | G: Get | O: Orb</span>
-          <div style="margin-top: 8px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 6px; color: #fe5;">
-            Gold: <strong id="hud-gold">0</strong>
+          <div style="margin-top: 8px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 6px; color: var(--accent-strong);">
+            Gold: <strong id="hud-gold" style="color: var(--accent-strong);">0</strong>
           </div>
         </section>
-        <section id="message-log"></section>
-        <aside id="objective-panel" class="hidden">
+
+        <aside id="objective-panel" class="glass-panel hidden">
           <h3>Current Objective</h3>
           <p id="objective-text">Create your hero to begin.</p>
           <div class="objective-tip" id="objective-tip">WASD to move. T to talk. G to get. O for Orb. X for Codex.</div>
         </aside>
-        <aside id="dungeon-nav" class="hidden"></aside>
-        <aside id="inventory-panel" class="panel hidden">
-          <h2>Inventory</h2>
-          <div id="inventory-capacity"></div>
-          <div class="inventory-list" id="inventory-list"></div>
-          <button class="close" data-close="inventory">Close (I)</button>
-        </aside>
-        <aside id="character-panel" class="panel hidden">
-          <h2>Character Sheet</h2>
-          <div id="character-summary"></div>
-          <table class="stats" id="character-stats"></table>
-          <div id="stat-points"></div>
-          <div class="inventory-item-actions" id="stat-allocation"></div>
-          <button class="close" data-close="character">Close (C)</button>
-        </aside>
-        <aside id="menu-panel" class="panel hidden">
-          <h2>Adventurer's Journal</h2>
-          <button id="menu-save">Manual Save</button>
-          <button id="menu-load">Load</button>
-          <button id="menu-clear">Clear Save</button>
-          <div id="menu-last-save"></div>
-          <button class="close" data-close="menu">Close (M)</button>
-        </aside>
-        <aside id="codex-panel" class="panel hidden">
-          <h2>Tactics Codex</h2>
-          <div id="codex-content"></div>
-          <button class="close" data-close="codex">Close (X)</button>
-        </aside>
-        <aside id="orb-panel" class="panel hidden">
-          <h2>Orb of Moons</h2>
-          <div id="orb-content"></div>
-          <button class="close" data-close="orb">Close (O)</button>
-        </aside>
+
+        <section id="message-log" class="glass-panel"></section>
       </aside>
+
       <main id="game-stage">
         <canvas id="game" width="640" height="640"></canvas>
       </main>
     </div>
-    <section id="combat-ui" class="modal hidden">
-      <h2>Battle!</h2>
-      <div id="combat-status"></div>
-      <div class="combat-log" id="combat-log"></div>
-      <div class="combat-actions">
-        <button data-action="melee">Melee</button>
-        <button data-action="bow">Bow</button>
+
+    <!-- Modals and Overlays -->
+    <aside id="dungeon-nav" class="glass-panel hidden"></aside>
+
+    <aside id="inventory-panel" class="panel glass-panel hidden">
+      <h2>Inventory</h2>
+      <div id="inventory-capacity"></div>
+      <div class="inventory-list" id="inventory-list"></div>
+      <button class="close" data-close="inventory">Close (I)</button>
+    </aside>
+    
+    <aside id="character-panel" class="panel glass-panel hidden">
+      <h2>Character Sheet</h2>
+      <div id="character-summary"></div>
+      <table class="stats" id="character-stats"></table>
+      <div id="stat-points"></div>
+      <div class="inventory-item-actions" id="stat-allocation"></div>
+      <button class="close" data-close="character">Close (C)</button>
+    </aside>
+    
+    <aside id="menu-panel" class="panel glass-panel hidden">
+      <h2>Adventurer's Journal</h2>
+      <button id="menu-save">Manual Save</button>
+      <button id="menu-load">Load</button>
+      <button id="menu-clear">Clear Save</button>
+      <div id="menu-last-save"></div>
+      <button class="close" data-close="menu">Close (M)</button>
+    </aside>
+    
+    <aside id="codex-panel" class="panel glass-panel hidden">
+      <h2>Tactics Codex</h2>
+      <div id="codex-content"></div>
+      <button class="close" data-close="codex">Close (X)</button>
+    </aside>
+    
+    <aside id="orb-panel" class="panel glass-panel hidden">
+      <h2>Orb of Moons</h2>
+      <div id="orb-content"></div>
+      <button class="close" data-close="orb">Close (O)</button>
+    </aside>
+
+    <section id="combat-ui" class="modal glass-panel hidden">
+      <h2>In Combat</h2>
+      <div id="combat-log" class="combat-log"></div>
+      <div id="combat-actions" class="combat-actions">
+        <button data-action="attack">Attack</button>
         <button data-action="spell">Spell</button>
-        <button data-action="defend">Defend</button>
-        <button data-action="item">Use Item</button>
+        <button data-action="item">Item</button>
         <button data-action="flee">Flee</button>
       </div>
-      <div id="combat-item-list" class="inventory-list hidden"></div>
+      <div id="combat-item-list" class="hidden"></div>
     </section>
-    <section id="character-creator" class="modal hidden"></section>
+
+    <section id="dialogue-ui" class="modal glass-panel hidden">
+      <h2 id="dialogue-name">Talk</h2>
+      <p id="dialogue-text"></p>
+      <div id="dialogue-options" class="combat-actions"></div>
+    </section>
+
+    <section id="creator-ui" class="modal glass-panel hidden">
+      <h2>Hero Creation</h2>
+      <p class="creator-intro">Welcome to Britannia. Who shall you be?</p>
+      <div style="display: flex; flex-direction: column; gap: 20px;">
+        <div>
+          <label class="creator-brand">Name Your Hero</label>
+          <input type="text" id="creator-name" placeholder="Enter name..." maxlength="12">
+        </div>
+        <div class="creator-stats" id="creator-class-list">
+          <!-- Classes injected here -->
+        </div>
+      </div>
+      <div class="creator-actions">
+        <button id="creator-submit">Begin Journey</button>
+      </div>
+    </section>
+
     <div id="tooltip" class="hidden"></div>
-    <script type="module" src="./public/game.js?v=12"></script>
+
+    <script type="module" src="/game.js"></script>
   </body>
 </html>
