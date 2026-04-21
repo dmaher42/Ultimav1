@@ -46,8 +46,6 @@ function loadSpriteSheetImage(url) {
       return;
     }
     const image = new Image();
-    image.decoding = 'async';
-    image.crossOrigin = 'anonymous';
     image.onload = () => resolve(image);
     image.onerror = () => reject(new Error(`Failed to load sprite sheet: ${url}`));
     image.src = url;
@@ -316,6 +314,8 @@ export default class RenderEngine {
     if (!entry) {
       this.ensureSpriteSheet(url, options).catch((error) => {
         console.warn(`Failed to load sprite sheet: ${url}`, error);
+        const el = document.getElementById('quest-info');
+        if (el) el.innerText = `SPRITE_ERR: ${url}`;
       });
     }
     return null;
@@ -1214,19 +1214,41 @@ export default class RenderEngine {
   drawNPC(ctx, npc) {
     if (typeof npc?.x !== 'number' || typeof npc?.y !== 'number') return;
     if (npc.spriteSheet) {
+      const px = this.offsetX + npc.x * this.tileSize;
+      const py = this.offsetY + npc.y * this.tileSize;
+      const width = typeof npc.spriteWidth === 'number' ? npc.spriteWidth : this.tileSize;
+      const height = typeof npc.spriteHeight === 'number' ? npc.spriteHeight : this.tileSize;
+      const frameKey = npc.spriteFrame || 'player_south_1';
+
       const sheetOptions = npc.spriteSheetOptions || npc.spriteOptions;
       const sheet = this.getSpriteSheetSync(npc.spriteSheet, sheetOptions);
       if (sheet) {
-        const px = this.offsetX + npc.x * this.tileSize;
-        const py = this.offsetY + npc.y * this.tileSize;
-        const frameKey = npc.spriteFrame || 'player_south_1';
-        const width = typeof npc.spriteWidth === 'number' ? npc.spriteWidth : this.tileSize;
-        const height = typeof npc.spriteHeight === 'number' ? npc.spriteHeight : this.tileSize;
-        if (this.drawSpriteSheetFrame(ctx, sheet, frameKey, px, py, width, height)) {
+        if (this.drawSpriteSheetFrame(ctx, sheet, frameKey, px, py + height, width, height)) {
           return;
         }
       } else {
         this.requestSpriteSheet(npc.spriteSheet, sheetOptions);
+      }
+
+      // Robust fallback for static/stubborn sprites that fail async cache
+      if (!npc.__rawImage) {
+        npc.__rawImage = new Image();
+        npc.__rawImage.src = npc.spriteSheet;
+      }
+      if (npc.__rawImage.complete && npc.__rawImage.naturalWidth > 0) {
+        const columns = sheetOptions?.columns || 3;
+        const rows = sheetOptions?.rows || 4;
+        const fw = Math.floor(npc.__rawImage.naturalWidth / columns);
+        const fh = Math.floor(npc.__rawImage.naturalHeight / rows);
+        
+        // Approximate 'player_south_1' (Row 0, Col 1) for Guard/Lord facing South
+        let col = 1; let row = 0;
+        if (frameKey.includes('west')) row = 1;
+        if (frameKey.includes('east')) row = 2;
+        if (frameKey.includes('north')) row = 3;
+        
+        ctx.drawImage(npc.__rawImage, col * fw, row * fh, fw, fh, px, py, width, height);
+        return;
       }
     }
     const sprite = npc?.sprite || npc?.type || 'npc';

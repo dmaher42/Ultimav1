@@ -122,9 +122,10 @@ export function createWorld() {
         }
       },
       {
-        id: 'castle_guard', name: 'Sentinal', x: 11, y: 15,
-        spriteSheet: 'assets/sprites/villager.png',
-        color: '#777',
+        id: 'castle_guard', name: 'Sentinel', x: 11, y: 15,
+        spriteSheet: 'assets/sprites/guard_captain.png',
+        spriteFrame: 'player_south_1',
+        color: '#ffcc00', // Update fallback color to match gold trim
         behavior: 'static',
         job: 'I stand watch over the gates of Castle Britannia.',
         responses: {
