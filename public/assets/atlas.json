@@ -1,228 +1,38 @@
 {
-    "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",
-    "7jT1GMt7Z+SD5p6RLuInv6qCXPruNPUYy3tn5IPmnpEu4ie/qoJc+u409RjLe2fkg+aekS7iJ7+qglz67jT1GMt7Z+SD5p6RLuInv6qCXPruNPUYy3tn5IPmnpEu4ie/qoJc+u409RjLe2fkg+aekS7iJ7+qglz67jT1GMt7Z+SD5p6RIWwKCUUkqpkjMopZRSquQMSimllCo5g1JKKaVKzqCUUkqpkjMopZRSquQMSimllCo5g1JKKaVKzqCUUk",
-    "qpkjMopZRSquQMSimllCo5WfvoOvvg5h9Sib4a/oJfnJwQitBz0FqKMLRHhDLqOWgtRRjaI0IZ9Ry0liIM7RGhjHoOWksRhvaIUEY9B62lCEN7RCijnoPWUoShPSKUUc9BaynC0B4RyqjnoLUUYWiPCGXUc9BaijC0R4QiGJRSSilVcgallFJKlZxBKaWUUiUnax9dZx/c/EMq0VfDX/CLkxPCIti4t81yk/HBUWHGxr1tlpuMD44KAbJxb5vlJu",
-    "ODo8KMjXvbLDcZHxwVAmTj3jbLTcYHR4UZG/e2WW4yPjgqBMjGvW2Wm4wPjgozNu5ts9xkfHBUCJCNe9ssNxkfHBVmbNzbZrnJ+OCoECAb97ZZbjI+OCrM2Li3zXKT8cFRIUA27m2z3GR8cFSYsXFvm+Um44OjQoBs3Ntmucn44KgwY+PeNstNxgdHhQDZuLfNcpPxwVFhxsa9bZabjA+OCovAoJRSSqmSMyillFKq5AxKKaWUKjmHJe6VzmbLrO",
-    "Fz5Htn8ypUcDw3fI4bdDZbZvSdmBTK6JXOZsus4XPke2fzKlRwPDd8jht0Nltm9J2YFMrolc5my6zhc+R7Z/MqVHA8N3yOG3Q2W2b0nZgUiuCgKtornc2WWcPnyPfO5lXke274HDfobLbM6DsxKagl65XOZsus4XPke2fzKvI9N3yOG3Q2W2b0nZgU1JL1SmezZdbwOfK9s3kV+Z4bPscNOpstM/pOTApLmIOal+eGz3GDzmbLjL4Tk4Iq2CudzZ",
-    "ZZw+fI987mVXybPDd8jht0Nltm9J2YFFTBXulstswaPke+dzav4tvkueFz3KCz2TKj78SkoAr2SmezZdbwOfK9s3kVpWBQSimlVMk5zDj20v+5mgq09tF1ZyhS34lJ4VZOTHLd+OCo0NlsqSDjg6PCNeODo0Jns6WCjA+OCteMD45KH8HUd2JSuJUTk1w3PjgqdDZbKsj44KhwzfjgqNDZbKkg44OjwjXjg6PSRzD1nZgUbuXEJNeND44Knc2WCj",
-    "I+OCpcMz44KnQ2WyrI+OCocM344Kj0cXc4zFj76LozqIrUd2JSmIe+E5OCUjfpOzEpzEPfiUlBqZv0nZgU5qHvxKSglFJKKaWUUkqpJUpYZPs7Gjd4YnoEnrDYB5ghyFkfPhbxh/qOx08RYPs7Gjd4YnoEnrDYB5ghyFkfPhbxh/qOx08RYPs7Gjd4YnoEnrDYB5ghyFkfPhbxh/qOx0+hlFKq7IRFcmBbSzTjxV/D0gsYbs0TeDPZMPnivg/IEi",
-    "qpkjMopZRSquQMSimllCo5WfvoOvvg5h9Sib4a/oJfnJwQitBz0FqKMLRHhDLqOWgtRRjaI0IZ9Ry0liIM7RGhjHoOWksRhvaIUEY9B62lCEN7RCijnoPWUoShPSKUUc9BaynC0B4RyqjnoLUUYWiPCGXUc9BaijC0R4QiGJRSSilVcgallFJKlZxBKaWUUiVnUEoppVTJGZRSSilVcsIi2bi3zXKT8cFRYcbGvW2Wm4wPjgoBsnFvm+Um44OjwoyNe9ssNxkfHBUCZOPeNstNxgdHhRkb97ZZbj",
-    "I+OCoopZQqG4NSSimlSs6glFJKqZIzKKWUUqrkHIr0SmezZdbwOfK9s3kVKjieGz7HDTqbLTP6TkwKSimlSs5hiXuls9kya/gc+d7ZvIp8zw2f4wadzZYZfScmBaWUUmqBHErkueFz3KCz2TKj78SkoAr2SmezZdbwOfK9s3kVSimlgsuglFJKqZJzKFLfiUnhVk5Mct344KjQ2WypIOODo8I144OjQmezpYKMD44K14wPjkofS",
-    "nMQ9+JSUEppZRaJP8/eW5kLvq+eBkAAAAASUVORK5CYII="
-  ],
-  "image": "./athens_tileset.png",
+  "image": "./tiles/athens_tileset.png",
   "frames": {
-    "grass": {
-      "x": 0,
-      "y": 0,
-      "w": 48,
-      "h": 48
-    },
-    "trees": {
-      "x": 48,
-      "y": 0,
-      "w": 48,
-      "h": 48
-    },
-    "water": {
-      "x": 96,
-      "y": 0,
-      "w": 48,
-      "h": 48
-    },
-    "path": {
-      "x": 144,
-      "y": 0,
-      "w": 48,
-      "h": 48
-    },
-    "cave_entrance": {
-      "x": 192,
-      "y": 0,
-      "w": 48,
-      "h": 48
-    },
-    "cave_exit": {
-      "x": 240,
-      "y": 0,
-      "w": 48,
-      "h": 48
-    },
-    "cave_floor": {
-      "x": 288,
-      "y": 0,
-      "w": 48,
-      "h": 48
-    },
-    "wall": {
-      "x": 336,
-      "y": 0,
-      "w": 48,
-      "h": 48
-    },
-    "npc": {
-      "x": 384,
-      "y": 0,
-      "w": 48,
-      "h": 48
-    },
-    "castle_wall": {
-      "x": 432,
-      "y": 0,
-      "w": 48,
-      "h": 48
-    },
-    "castle_floor": {
-      "x": 0,
-      "y": 48,
-      "w": 48,
-      "h": 48
-    },
-    "red_carpet": {
-      "x": 48,
-      "y": 48,
-      "w": 48,
-      "h": 48
-    },
-    "throne": {
-      "x": 96,
-      "y": 48,
-      "w": 48,
-      "h": 48
-    },
-    "banner": {
-      "x": 144,
-      "y": 48,
-      "w": 48,
-      "h": 48
-    },
-    "torch_wall": {
-      "x": 192,
-      "y": 48,
-      "w": 48,
-      "h": 48
-    },
-    "castle_door": {
-      "x": 240,
-      "y": 48,
-      "w": 48,
-      "h": 48
-    },
-    "castle_window": {
-      "x": 288,
-      "y": 48,
-      "w": 48,
-      "h": 48
-    },
-    "fountain": {
-      "x": 336,
-      "y": 48,
-      "w": 48,
-      "h": 48
-    },
-    "garden": {
-      "x": 384,
-      "y": 48,
-      "w": 48,
-      "h": 48
-    },
-    "courtyard": {
-      "x": 432,
-      "y": 48,
-      "w": 48,
-      "h": 48
-    },
-    "default": {
-      "x": 0,
-      "y": 96,
-      "w": 48,
-      "h": 48
-    },
-    "player_south_0": {
-      "x": 48,
-      "y": 96,
-      "w": 48,
-      "h": 48
-    },
-    "player_south_1": {
-      "x": 96,
-      "y": 96,
-      "w": 48,
-      "h": 48
-    },
-    "player_south_2": {
-      "x": 144,
-      "y": 96,
-      "w": 48,
-      "h": 48
-    },
-    "player_west_0": {
-      "x": 192,
-      "y": 96,
-      "w": 48,
-      "h": 48
-    },
-    "player_west_1": {
-      "x": 240,
-      "y": 96,
-      "w": 48,
-      "h": 48
-    },
-    "player_west_2": {
-      "x": 288,
-      "y": 96,
-      "w": 48,
-      "h": 48
-    },
-    "player_east_0": {
-      "x": 336,
-      "y": 96,
-      "w": 48,
-      "h": 48
-    },
-    "player_east_1": {
-      "x": 384,
-      "y": 96,
-      "w": 48,
-      "h": 48
-    },
-    "player_east_2": {
-      "x": 432,
-      "y": 96,
-      "w": 48,
-      "h": 48
-    },
-    "player_north_0": {
-      "x": 0,
-      "y": 144,
-      "w": 48,
-      "h": 48
-    },
-    "player_north_1": {
-      "x": 48,
-      "y": 144,
-      "w": 48,
-      "h": 48
-    },
-    "player_north_2": {
-      "x": 96,
-      "y": 144,
-      "w": 48,
-      "h": 48
-    }
+    "grass": { "x": 0, "y": 0, "w": 48, "h": 48 },
+    "trees": { "x": 48, "y": 0, "w": 48, "h": 48 },
+    "water": { "x": 96, "y": 0, "w": 48, "h": 48 },
+    "path": { "x": 144, "y": 0, "w": 48, "h": 48 },
+    "cave_entrance": { "x": 192, "y": 0, "w": 48, "h": 48 },
+    "cave_exit": { "x": 240, "y": 0, "w": 48, "h": 48 },
+    "cave_floor": { "x": 288, "y": 0, "w": 48, "h": 48 },
+    "wall": { "x": 336, "y": 0, "w": 48, "h": 48 },
+    "npc": { "x": 384, "y": 0, "w": 48, "h": 48 },
+    "castle_wall": { "x": 432, "y": 0, "w": 48, "h": 48 },
+    "castle_floor": { "x": 0, "y": 48, "w": 48, "h": 48 },
+    "red_carpet": { "x": 48, "y": 48, "w": 48, "h": 48 },
+    "throne": { "x": 96, "y": 48, "w": 48, "h": 48 },
+    "banner": { "x": 144, "y": 48, "w": 48, "h": 48 },
+    "torch_wall": { "x": 192, "y": 48, "w": 48, "h": 48 },
+    "castle_door": { "x": 240, "y": 48, "w": 48, "h": 48 },
+    "castle_window": { "x": 288, "y": 48, "w": 48, "h": 48 },
+    "fountain": { "x": 336, "y": 48, "w": 48, "h": 48 },
+    "garden": { "x": 384, "y": 48, "w": 48, "h": 48 },
+    "courtyard": { "x": 432, "y": 48, "w": 48, "h": 48 },
+    "default": { "x": 0, "y": 96, "w": 48, "h": 48 },
+    "player_south_0": { "x": 48, "y": 96, "w": 48, "h": 48 },
+    "player_south_1": { "x": 96, "y": 96, "w": 48, "h": 48 },
+    "player_south_2": { "x": 144, "y": 96, "w": 48, "h": 48 },
+    "player_west_0": { "x": 192, "y": 96, "w": 48, "h": 48 },
+    "player_west_1": { "x": 240, "y": 96, "w": 48, "h": 48 },
+    "player_west_2": { "x": 288, "y": 96, "w": 48, "h": 48 },
+    "player_east_0": { "x": 336, "y": 96, "w": 48, "h": 48 },
+    "player_east_1": { "x": 384, "y": 96, "w": 48, "h": 48 },
+    "player_east_2": { "x": 432, "y": 96, "w": 48, "h": 48 },
+    "player_north_0": { "x": 0, "y": 144, "w": 48, "h": 48 },
+    "player_north_1": { "x": 48, "y": 144, "w": 48, "h": 48 },
+    "player_north_2": { "x": 96, "y": 144, "w": 48, "h": 48 }
   }
 }

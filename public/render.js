@@ -525,14 +525,14 @@ export default class RenderEngine {
     }
     ctx.restore();
 
+    // 5. Global Atmospheric Lighting
+    if (grid) {
+      this.drawAtmosphericLighting(ctx, grid);
+    }
+
     // Character sheet glow
     if (this.characterSheetOpen) {
       this.drawVignette('rgba(0,0,0,0.6)');
-    }
-
-    // Dungeon Vignette
-    if (grid && !grid.safe) {
-      this.drawVignette('rgba(0,0,40,0.4)'); // Deep blue-black tint for caves
     }
 
     if (grid) {
@@ -680,6 +680,44 @@ export default class RenderEngine {
       width,
       height
     };
+  }
+
+  drawAtmosphericLighting(ctx, grid) {
+    if (!this.player || !this.player.position) return;
+    
+    const ts = this.tileSize;
+    const { x: px, y: py } = this.getPlayerScreenCenter();
+    const time = Date.now() * 0.001;
+    const flicker = 1 + Math.sin(time * 8) * 0.03;
+    
+    const isSafe = grid?.safe || grid?.id === 'castle';
+    const baseShadowAlpha = isSafe ? 0.15 : 0.55;
+    
+    ctx.save();
+    
+    // 1. Shadow Overlay (World Space / Screen Relative)
+    // We create a large radial gradient that follows the player to act as a "vision cone" or light source
+    const lightRadius = ts * (isSafe ? 8 : 5.5) * flicker;
+    const shadowGrad = ctx.createRadialGradient(px, py, ts * 0.8, px, py, lightRadius);
+    shadowGrad.addColorStop(0, 'rgba(0, 0, 0, 0)');
+    shadowGrad.addColorStop(0.5, `rgba(0, 0, 5, ${baseShadowAlpha * 0.4})`);
+    shadowGrad.addColorStop(1, `rgba(0, 0, 10, ${baseShadowAlpha})`);
+    
+    ctx.fillStyle = shadowGrad;
+    ctx.fillRect(0, 0, this.viewportWidth, this.viewportHeight);
+    
+    // 2. Hero Light (Subtle warm glow around player)
+    const heroGrad = ctx.createRadialGradient(px, py, 0, px, py, ts * 2.5);
+    heroGrad.addColorStop(0, 'rgba(255, 210, 150, 0.12)');
+    heroGrad.addColorStop(1, 'rgba(255, 210, 150, 0)');
+    
+    ctx.globalCompositeOperation = 'screen';
+    ctx.fillStyle = heroGrad;
+    ctx.beginPath();
+    ctx.arc(px, py, ts * 2.5, 0, Math.PI * 2);
+    ctx.fill();
+    
+    ctx.restore();
   }
 
   drawCastleBackdrop(ctx) {
