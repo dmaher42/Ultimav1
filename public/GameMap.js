@@ -2,7 +2,7 @@
 import QuestManager from './QuestManager.js';
 
 export const AVATAR_SPRITE = 'assets/sprites/avatar.png';
-export const LORD_BRITISH_SPRITE_SHEET = 'assets/sprites/lord_british.png';
+export const LORD_BRITISH_SPRITE_SHEET = 'assets/sprites/lord_british_v2_seated.png';
 export const CHEST_SPRITE_SHEET = 'assets/sprites/chest.png';
 
 export const TileInfo = {
@@ -16,16 +16,18 @@ export const TileInfo = {
   castle_floor: { name: 'Castle Floor', desc: 'sturdy stone blocks', color: '#555555', passable: true },
   castle_wall: { name: 'Wall', desc: 'thick stone fortifications', color: '#333333', passable: false },
   castle_door: { name: 'Door', desc: 'a heavy iron-bound door', color: '#885522', passable: true },
-  red_carpet: { name: 'Royal Carpet', desc: 'opulent red velvet', color: '#8b0000', passable: true },
+  red_carpet_end: { name: 'Royal Carpet Flourish', desc: 'the ceremonial approach to the throne', color: '#a40012', passable: true },
   courtyard: { name: 'Courtyard', desc: 'flagstones and fresh air', color: '#666', passable: true },
   dungeon_floor: { name: 'Dungeon Floor', desc: 'cold, damp stone', color: '#444', passable: true, encounterChance: 0.2 },
   dungeon_wall: { name: 'Dungeon Wall', desc: 'crumbling, dark wall', color: '#222', passable: false },
   cave_entrance: { name: 'Cave Mouth', desc: 'the opening to darkness', color: '#000', passable: true },
   marble_wall: { 
-    name: 'Royal Marble Wall', desc: 'polished white marble with gold veins', color: '#fcfcfc', passable: false
+    name: 'Royal Marble Wall', desc: 'polished white marble with gold veins', color: '#fcfcfc', passable: false,
+    variations: ['marble_wall', 'marble_wall_1']
   },
   marble_floor: { 
-    name: 'Marble Floor', desc: 'smooth, reflective marble', color: '#f0f0f0', passable: true
+    name: 'Marble Floor', desc: 'smooth, reflective marble', color: '#f0f0f0', passable: true,
+    variations: ['marble_floor', 'marble_floor_1', 'marble_floor_2', 'marble_floor_3']
   },
   meadow: { 
     name: 'Meadow', desc: 'fertile soil and lush grass', color: '#4a7c44', passable: true, alternate: 'grass',
@@ -35,6 +37,10 @@ export const TileInfo = {
   lycaeum_roof: { name: 'Lycaeum Roof', desc: 'terracotta tiles', color: '#325aa8', passable: false },
   dais_floor: { name: 'Royal Dais', desc: 'elevated marble platform', color: '#fff9e6', passable: true },
   marble_edge: { name: 'Marble Edge', desc: 'decorative trim', color: '#ccc', passable: true },
+  red_carpet: { 
+    name: 'Royal Carpet', desc: 'gold-trimmed ceremonial carpet', color: '#b00', passable: true,
+    variations: ['red_carpet']
+  },
   royal_carpet: { name: 'Royal Runner', desc: 'gold-trimmed ceremonial carpet', color: '#b00', passable: true },
   ruins_floor: { name: 'Ancient Ruins', desc: 'shattered stone blocks and ivy', color: '#5a5a5a', passable: true, encounterChance: 0.15 }
 };
@@ -48,61 +54,77 @@ export function createWorld() {
     layout: [
       '##############################',
       '##############################',
-      '##..........................##',
-      '##..........................##',
+      '##........WWWWWWWWWW........##',
+      '##......WWWWWWWWWWWWWW......##',
       'D...........................##',
-      '##.......WWWWWWWWWWWW.......##',
+      '##......WWWWWWWWWWWWWW......##',
+      '##......WMMMMMMMMMMMMW......##',
       '##.......WMMMMMMMMMMW.......##',
-      '##.......WMMMMMMMMMMW.......##',
-      '##.......WMMMMMMMMMMW.......##',
-      '##.......WRRRRRRRRRRW.......##',
-      '##.......WRRRRRRRRRRW.......##',
-      '##.......WRRRRRRRRRRW.......##',
-      '##.......WRRRRRRRRRRW.......##',
-      '##.......WRRRRRRRRRRW.......##',
-      '##.......WRRRRRRRRRRW.......##',
-      '##.......WRRRRRRRRRRW.......##',
-      '##.......WRRRRRRRRRRW.......##',
-      '##.......WRRRRRRRRRRW.......##',
+      '##......WWMMMTTTTMMMWW......##',
+      '##........WWWWTTWWWW........##',
+      '##.........WWRRRRWW.........##',
+      '##.........WWRRRRWW.........##',
+      '##.........WWRRRRWW.........##',
+      '##.........WWRRRRWW.........##',
+      '##.........WWRRRRWW.........##',
+      '##.........WWRRRRWW.........##',
+      '##.........WWRRRRWW.........##',
+      '##.........WWRRRRWW.........##',
       '#########DDDDDDDDDDDD#########',
       '##############################'
     ],
-    legend: { '#': 'marble_wall', '.': 'marble_floor', 'R': 'red_carpet', 'M': 'dais_floor', 'W': 'marble_edge', 'D': 'castle_door' },
+    legend: { '#': 'marble_wall', '.': 'marble_floor', 'R': 'red_carpet', 'T': 'red_carpet_end', 'M': 'dais_floor', 'W': 'marble_edge', 'D': 'castle_door' },
     objects: [
-      // Symmetrical Colonnade (12 pillars)
-      { x: 5, y: 7, sprite: 'pillar', height: 2 }, { x: 24, y: 7, sprite: 'pillar', height: 2 },
-      { x: 5, y: 10, sprite: 'pillar', height: 2 }, { x: 24, y: 10, sprite: 'pillar', height: 2 },
-      { x: 5, y: 13, sprite: 'pillar', height: 2 }, { x: 24, y: 13, sprite: 'pillar', height: 2 },
-      { x: 5, y: 16, sprite: 'pillar', height: 2 }, { x: 24, y: 16, sprite: 'pillar', height: 2 },
-      { x: 5, y: 4, sprite: 'pillar', height: 2 }, { x: 24, y: 4, sprite: 'pillar', height: 2 },
-      { x: 5, y: 1, sprite: 'pillar', height: 2 }, { x: 24, y: 1, sprite: 'pillar', height: 2 },
+      // Processional colonnade framing the central aisle.
+      { x: 6, y: 3, sprite: 'pillar', height: 3 },
+      { x: 23, y: 3, sprite: 'pillar', height: 3 },
+      { x: 6, y: 9, sprite: 'pillar', height: 3 },
+      { x: 23, y: 9, sprite: 'pillar', height: 3 },
+      { x: 6, y: 15, sprite: 'pillar', height: 3 },
+      { x: 23, y: 15, sprite: 'pillar', height: 3 },
+
+      // Throne wall set piece inspired by the reference image.
+      { x: 11, y: 0, sprite: 'royal_drapes', width: 8, height: 4, passable: true, shadow: false },
+      { x: 14, y: 1, sprite: 'royal_crest', width: 2, height: 3, passable: true, shadow: false },
       
-      // Majestic throne centerpiece
-      { 
-        x: 14, y: 8, 
-        sprite: 'throne', 
-        width: 5, height: 5, 
-        shadow: true
-      },
+        // Majestic throne centerpiece
+        { 
+          x: 14, y: 6,
+          sprite: 'throne', 
+          width: 3.35, height: 3.45,
+          anchorX: 0.5,
+          anchorY: 1,
+          shadow: true
+        },
+
+      // Braziers flanking the dais like the reference hall.
+      { x: 10, y: 6, sprite: 'royal_brazier', width: 1, height: 2 },
+      { x: 19, y: 6, sprite: 'royal_brazier', width: 1, height: 2 },
       
       // Royal Banners
-      { x: 12, y: 3, sprite: 'banner', height: 4 },
-      { x: 17, y: 3, sprite: 'banner', height: 4 },
-      { x: 3, y: 4, sprite: 'banner', height: 3 },
-      { x: 26, y: 4, sprite: 'banner', height: 3 },
+      { x: 9, y: 2, sprite: 'banner', height: 4, shadow: false },
+      { x: 20, y: 2, sprite: 'banner', height: 4, shadow: false },
 
       // Torches (Light sources)
-      { x: 1, y: 4, sprite: 'torch_wall' }, { x: 28, y: 4, sprite: 'torch_wall' },
-      { x: 1, y: 9, sprite: 'torch_wall' }, { x: 28, y: 9, sprite: 'torch_wall' },
-      { x: 1, y: 14, sprite: 'torch_wall' }, { x: 28, y: 14, sprite: 'torch_wall' }
+      { x: 8, y: 3, sprite: 'torch_wall' }, { x: 21, y: 3, sprite: 'torch_wall' },
+      { x: 2, y: 6, sprite: 'torch_wall' }, { x: 27, y: 6, sprite: 'torch_wall' },
+      { x: 2, y: 12, sprite: 'torch_wall' }, { x: 27, y: 12, sprite: 'torch_wall' },
+      { x: 2, y: 17, sprite: 'torch_wall' }, { x: 27, y: 17, sprite: 'torch_wall' }
     ],
     npcs: [
-      {
-        id: 'lord_british', name: 'Lord British', x: 14, y: 7,
-        spriteSheet: LORD_BRITISH_SPRITE_SHEET, spriteFrame: 'player_south_1',
-        color: '#ffdd00',
-        behavior: 'static',
-        job: 'I rule this land with the help of the Eight Virtues.',
+        {
+          id: 'lord_british', name: 'Lord British', x: 14, y: 7,
+          spriteSheet: LORD_BRITISH_SPRITE_SHEET,
+          spriteFrame: 'player_south_1',
+          spriteTileWidth: 1.38,
+          spriteTileHeight: 1.5,
+          spriteAnchorX: 0.5,
+          spriteAnchorY: 1,
+          spriteOffsetTileY: -1.47,
+          shadow: false,
+          color: '#ffdd00',
+          behavior: 'static',
+          job: 'I rule this land with the help of the Eight Virtues.',
         responses: {
           'BRITANNIA': 'Our land is troubled by the Gargoyle incursions. They strike with a precision that suggests a deep-seated grievance.',
           'GARGOYLE': 'Winged creatures of the underworld. They were once thought simple beasts, but they coordinate their attacks around our Shrines.',
@@ -125,7 +147,7 @@ export function createWorld() {
         id: 'castle_guard', name: 'Sentinel', x: 11, y: 15,
         spriteSheet: 'assets/sprites/guard_captain.png',
         spriteFrame: 'player_south_1',
-        color: '#ffcc00', // Update fallback color to match gold trim
+        color: '#ffcc00',
         behavior: 'static',
         job: 'I stand watch over the gates of Castle Britannia.',
         responses: {

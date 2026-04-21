@@ -8,16 +8,28 @@ const CORE_TILES = [
   { name: 'path', category: 'terrain', src: 'assets/tiles/path.png' },
   { name: 'courtyard', category: 'terrain', src: 'assets/tiles/terrain/courtyard.png' },
   { name: 'dungeon_floor', category: 'terrain', src: 'assets/tiles/dungeon_00_00.png' }, // NEW
+  { name: 'castle_floor', category: 'terrain', src: 'assets/tiles/terrain/castle_floor.png' },
+  { name: 'marble_floor', category: 'terrain', src: 'assets/tiles/terrain/marble_floor.png' },
+  { name: 'marble_floor_1', category: 'terrain', src: 'assets/tiles/terrain/marble_floor_1.png' },
+  { name: 'marble_floor_2', category: 'terrain', src: 'assets/tiles/terrain/marble_floor_2.png' },
+  { name: 'marble_floor_3', category: 'terrain', src: 'assets/tiles/terrain/marble_floor_3.png' },
+  { name: 'marble_edge', category: 'terrain', src: 'assets/tiles/terrain/marble_edge.png' },
+  { name: 'dais_floor', category: 'terrain', src: 'assets/tiles/terrain/dais_floor.png' },
+  { name: 'red_carpet', category: 'terrain', src: 'assets/tiles/terrain/red_carpet.png' },
+  { name: 'red_carpet_1', category: 'terrain', src: 'assets/tiles/terrain/red_carpet_1.png' },
+  { name: 'red_carpet_2', category: 'terrain', src: 'assets/tiles/terrain/red_carpet_2.png' },
+  { name: 'red_carpet_end', category: 'terrain', src: 'assets/tiles/terrain/red_carpet_end.png' },
 
   // --- CASTLE ARCHITECTURE ---
-  { name: 'castle_floor', category: 'architecture', src: 'assets/tiles/terrain/castle_floor.png' },
-  { name: 'marble_wall', category: 'architecture', src: 'assets/tiles/athens_temple_wall.png' },
-  { name: 'red_carpet', category: 'architecture', src: 'assets/tiles/red_carpet.png' },
-  { name: 'marble_floor', category: 'architecture', src: 'assets/tiles/athens_marble.png' },
+  { name: 'marble_wall', category: 'architecture', src: 'assets/tiles/architecture/marble_wall.png' },
+  { name: 'marble_wall_1', category: 'architecture', src: 'assets/tiles/architecture/marble_wall_1.png' },
 
   // --- PROPS & DECOR ---
   { name: 'throne', category: 'props', src: 'assets/tiles/props/throne.png' },
   { name: 'banner', category: 'props', src: 'assets/tiles/props/banner.png' },
+  { name: 'royal_drapes', category: 'props', src: 'assets/tiles/props/royal_drapes.png' },
+  { name: 'royal_crest', category: 'props', src: 'assets/tiles/props/royal_crest.png' },
+  { name: 'royal_brazier', category: 'props', src: 'assets/tiles/props/royal_brazier.png' },
   { name: 'torch_wall', category: 'props', src: 'assets/tiles/props/torch_wall.png' },
   { name: 'fountain', category: 'props', src: 'assets/tiles/props/fountain.png' },
   { name: 'pillar', category: 'props', src: 'assets/tiles/pillar.png' },

@@ -85,7 +85,79 @@
       "wangset": "castle_floor_auto"
     },
     {
+      "name": "marble_floor",
+      "category": "terrain",
+      "kind": "floor",
+      "tileset": "assets/tiles/terrain/marble_floor.tsx",
+      "atlas": "terrain",
+      "layer": "floor",
+      "idRange": [0, 0],
+      "passable": true,
+      "footstep": "stone",
+      "wangset": "marble_floor_auto"
+    },
+    {
+      "name": "marble_edge",
+      "category": "terrain",
+      "kind": "trim",
+      "tileset": "assets/tiles/terrain/marble_edge.tsx",
+      "atlas": "terrain",
+      "layer": "floor",
+      "idRange": [0, 0],
+      "passable": true,
+      "footstep": "stone",
+      "wangset": "marble_edge_auto"
+    },
+    {
+      "name": "dais_floor",
+      "category": "terrain",
+      "kind": "floor",
+      "tileset": "assets/tiles/terrain/dais_floor.tsx",
+      "atlas": "terrain",
+      "layer": "floor",
+      "idRange": [0, 0],
+      "passable": true,
+      "footstep": "stone",
+      "wangset": "dais_floor_auto"
+    },
+    {
       "name": "red_carpet",
+      "category": "terrain",
+      "kind": "carpet",
+      "tileset": "assets/tiles/terrain/red_carpet.tsx",
+      "atlas": "terrain",
+      "layer": "carpet",
+      "idRange": [0, 0],
+      "passable": true,
+      "footstep": "carpet",
+      "wangset": "red_carpet_auto"
+    },
+    {
+      "name": "red_carpet_1",
+      "category": "terrain",
+      "kind": "carpet",
+      "tileset": "assets/tiles/terrain/red_carpet.tsx",
+      "atlas": "terrain",
+      "layer": "carpet",
+      "idRange": [0, 0],
+      "passable": true,
+      "footstep": "carpet",
+      "wangset": "red_carpet_auto"
+    },
+    {
+      "name": "red_carpet_2",
+      "category": "terrain",
+      "kind": "carpet",
+      "tileset": "assets/tiles/terrain/red_carpet.tsx",
+      "atlas": "terrain",
+      "layer": "carpet",
+      "idRange": [0, 0],
+      "passable": true,
+      "footstep": "carpet",
+      "wangset": "red_carpet_auto"
+    },
+    {
+      "name": "red_carpet_end",
       "category": "terrain",
       "kind": "carpet",
       "tileset": "assets/tiles/terrain/red_carpet.tsx",
@@ -107,6 +179,28 @@
       "passable": true,
       "footstep": "stone",
       "wangset": "courtyard_auto"
+    },
+    {
+      "name": "marble_wall",
+      "category": "architecture",
+      "kind": "wall",
+      "tileset": "assets/tiles/architecture/marble_wall.tsx",
+      "atlas": "architecture",
+      "layer": "walls",
+      "idRange": [0, 0],
+      "passable": false,
+      "shadow": true
+    },
+    {
+      "name": "marble_wall_1",
+      "category": "architecture",
+      "kind": "wall",
+      "tileset": "assets/tiles/architecture/marble_wall_1.tsx",
+      "atlas": "architecture",
+      "layer": "walls",
+      "idRange": [0, 0],
+      "passable": false,
+      "shadow": true
     },
     {
       "name": "castle_wall",
@@ -175,6 +269,39 @@
       "category": "props",
       "kind": "banner",
       "tileset": "assets/tiles/props/banner.tsx",
+      "atlas": "props",
+      "layer": "props",
+      "idRange": [0, 0],
+      "passable": false,
+      "anchor": [0.5, 1]
+    },
+    {
+      "name": "royal_drapes",
+      "category": "props",
+      "kind": "backdrop",
+      "tileset": "assets/tiles/props/royal_drapes.tsx",
+      "atlas": "props",
+      "layer": "decor",
+      "idRange": [0, 0],
+      "passable": true,
+      "anchor": [0.5, 1]
+    },
+    {
+      "name": "royal_crest",
+      "category": "props",
+      "kind": "heraldry",
+      "tileset": "assets/tiles/props/royal_crest.tsx",
+      "atlas": "props",
+      "layer": "decor",
+      "idRange": [0, 0],
+      "passable": true,
+      "anchor": [0.5, 1]
+    },
+    {
+      "name": "royal_brazier",
+      "category": "props",
+      "kind": "light",
+      "tileset": "assets/tiles/props/royal_brazier.tsx",
       "atlas": "props",
       "layer": "props",
       "idRange": [0, 0],

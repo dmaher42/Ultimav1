@@ -29,18 +29,33 @@ class TileLoader {
     ];
     // optional: filename aliasing (tileName -> fileName without .png)
     this.alias = {
-      // Map game tile names to pixelcrawler assets
+      // Map game tile names to the canonical throne-room kit first.
       'castle_wall': 'wall_00_00',
-      'castle_floor': 'floor_00_00',
-      'throne': 'dungeon_00_03',
-      'banner': 'dungeon_00_04',
-      'torch_wall': 'wall_01_00',
+      'castle_floor': 'terrain/castle_floor',
+      'marble_floor': 'terrain/marble_floor',
+      'marble_floor_1': 'terrain/marble_floor_1',
+      'marble_floor_2': 'terrain/marble_floor_2',
+      'marble_floor_3': 'terrain/marble_floor_3',
+      'marble_edge': 'terrain/marble_edge',
+      'dais_floor': 'terrain/dais_floor',
+      'red_carpet': 'terrain/red_carpet',
+      'red_carpet_1': 'terrain/red_carpet_1',
+      'red_carpet_2': 'terrain/red_carpet_2',
+      'red_carpet_end': 'terrain/red_carpet_end',
+      'marble_wall': 'architecture/marble_wall',
+      'marble_wall_1': 'architecture/marble_wall_1',
+      'throne': 'props/throne',
+      'banner': 'props/banner',
+      'royal_drapes': 'props/royal_drapes',
+      'royal_crest': 'props/royal_crest',
+      'royal_brazier': 'props/royal_brazier',
+      'torch_wall': 'props/torch_wall',
+      'pillar': 'pillar',
       'castle_door': 'dungeon_01_00',
       'castle_window': 'wall_02_00',
       'fountain': 'dungeon_02_00',
       'garden': 'floor_02_00',
       'courtyard': 'floor_00_01',
-      'pillar': 'wall_03_00',
       'bookshelf': 'dungeon_03_00',
       'barracks_bed': 'dungeon_04_00',
       'kitchen_table': 'dungeon_05_00',
@@ -65,8 +80,6 @@ class TileLoader {
       'grass_2': 'floor_04_02',
       'grass_3': 'floor_04_03',
       'path': 'floor_05_00',
-      'marble_wall': 'athens_temple_wall',
-      'marble_floor': 'athens_marble',
       'ruins_floor': 'floor_05_04' // Weathered stone for ruins
     };
 
