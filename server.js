@@ -152,6 +152,10 @@ app.get(['/', '/index.html'], (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
+app.get('/game.js', (req, res) => {
+  res.sendFile(path.join(PUBLIC_DIR, 'game.js'));
+});
+
 app.use('/public', express.static(PUBLIC_DIR));
 app.use('/assets', express.static(path.join(__dirname, 'assets')));
 app.use(express.static(PUBLIC_DIR));
