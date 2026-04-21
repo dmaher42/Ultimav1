@@ -23,7 +23,7 @@ const syncCanvasSize = () => {
   resize();
 };
 
-const uiRightRail = document.getElementById('ui-right-rail');
+const uiLeftRail = document.getElementById('ui-left-rail');
 
 // --- DIALOGUE UI SETUP ---
 const dialogueEl = document.createElement('div');
@@ -70,8 +70,8 @@ journalEl.innerHTML = `
     <div id="journal-content"></div>
     <div style="text-align: center; margin-top: 20px; font-size: 0.8em;">(Press J to close)</div>
 `;
-if (uiRightRail) {
-  uiRightRail.appendChild(journalEl);
+if (uiLeftRail) {
+  uiLeftRail.appendChild(journalEl);
 } else {
   document.body.appendChild(journalEl);
 }

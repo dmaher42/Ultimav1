@@ -43,15 +43,14 @@
       }
       #app-shell {
         display: grid;
-        grid-template-columns: minmax(250px, 17vw) minmax(0, 1fr) minmax(290px, 20vw);
+        grid-template-columns: minmax(250px, 18vw) minmax(0, 1fr);
         gap: 16px;
         width: 100%;
         height: 100vh;
         padding: 16px;
         box-sizing: border-box;
       }
-      #ui-left-rail,
-      #ui-right-rail {
+      #ui-left-rail {
         display: flex;
         flex-direction: column;
         gap: 12px;
@@ -112,8 +111,8 @@
         position: relative;
         width: 100%;
         min-height: 0;
-        flex: 1 1 auto;
-        max-height: none;
+        flex: 0 0 auto;
+        max-height: 34vh;
         padding: 12px 13px;
         background: linear-gradient(180deg, rgba(6, 10, 20, 0.88), rgba(6, 8, 14, 0.72));
         border: 1px solid rgba(190, 160, 110, 0.3);
@@ -517,15 +516,10 @@
       @media (max-width: 1260px) {
         #app-shell {
           grid-template-columns: minmax(220px, 24vw) minmax(0, 1fr);
-          grid-template-areas:
-            'left game'
-            'right game';
+          grid-template-areas: 'left game';
         }
         #ui-left-rail {
           grid-area: left;
-        }
-        #ui-right-rail {
-          grid-area: right;
         }
         #game-stage {
           grid-area: game;
@@ -570,11 +564,6 @@
           </div>
         </section>
         <section id="message-log"></section>
-      </aside>
-      <main id="game-stage">
-        <canvas id="game" width="640" height="640"></canvas>
-      </main>
-      <aside id="ui-right-rail">
         <aside id="objective-panel" class="hidden">
           <h3>Current Objective</h3>
           <p id="objective-text">Create your hero to begin.</p>
@@ -614,6 +603,9 @@
           <button class="close" data-close="orb">Close (O)</button>
         </aside>
       </aside>
+      <main id="game-stage">
+        <canvas id="game" width="640" height="640"></canvas>
+      </main>
     </div>
     <section id="combat-ui" class="modal hidden">
       <h2>Battle!</h2>
