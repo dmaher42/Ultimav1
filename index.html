@@ -535,14 +535,11 @@
     <section id="combat-ui" class="modal glass-panel hidden">
       <h2>In Combat</h2>
       <div id="combat-status" style="text-align: center; margin-bottom: 12px; font-family: 'Cinzel', serif; color: var(--accent); font-size: 14px;"></div>
-      <div id="combat-log" class="combat-log"></div>
-      <div id="combat-actions" class="combat-actions">
-        <button data-action="attack">Attack</button>
-        <button data-action="spell">Spell</button>
-        <button data-action="item">Item</button>
-        <button data-action="flee">Flee</button>
+      <div id="combat-log" class="combat-log" style="max-height: 200px; overflow-y: auto; margin-bottom: 16px; font-size: 13px; color: var(--text-muted);"></div>
+      <div id="combat-actions" class="combat-actions" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
+        <!-- Buttons are dynamically injected by CombatEngine.js -->
       </div>
-      <div id="combat-item-list" class="hidden"></div>
+      <div id="combat-item-list" class="hidden" style="margin-top: 16px; border-top: 1px solid var(--panel-border); padding-top: 12px;"></div>
     </section>
 
     <section id="dialogue-ui" class="modal glass-panel hidden">

@@ -429,6 +429,11 @@ export default class RenderEngine {
          entities.push({ type: 'player', y, data: this.player });
       }
 
+      // 1.5 Reflection Pass (For polished floors)
+      if (grid.id === 'castle') {
+        this.drawFloorReflections(ctx, grid, entities);
+      }
+
       // Sort by Y coordinate
       entities.sort((a, b) => a.y - b.y);
 
@@ -472,16 +477,41 @@ export default class RenderEngine {
             const throneY = throneFocus.glowY;
             const time = Date.now() * 0.0008;
 
-          // A. Focal God-Ray
-          const grad = ctx.createRadialGradient(throneX, throneY, this.tileSize, throneX, throneY, this.tileSize * 12);
-          grad.addColorStop(0, 'rgba(255, 230, 150, 0.2)');
-          grad.addColorStop(0.3, 'rgba(255, 230, 150, 0.08)');
-          grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-          
+          // A. Upgraded God-Rays (Linear Volumetric Beams)
           ctx.save();
           ctx.globalCompositeOperation = 'screen';
-          ctx.fillStyle = grad;
-          ctx.fillRect(0, 0, this.viewportWidth, this.viewportHeight);
+          
+          // Source of light from upper left windows
+          const raySourceX = throneX - this.tileSize * 12;
+          const raySourceY = throneY - this.tileSize * 15;
+          
+          for(let i = 0; i < 3; i++) {
+              const rayShift = Math.sin(time * 0.4 + i) * 15;
+              const beamGrad = ctx.createLinearGradient(raySourceX, raySourceY, throneX + rayShift, throneY);
+              const beamAlpha = 0.15 + Math.sin(time * 0.6 + i) * 0.08;
+              
+              beamGrad.addColorStop(0, 'rgba(255, 245, 200, 0)');
+              beamGrad.addColorStop(0.5, `rgba(255, 240, 180, ${beamAlpha})`);
+              beamGrad.addColorStop(1, 'rgba(255, 230, 150, 0)');
+              
+              ctx.fillStyle = beamGrad;
+              ctx.beginPath();
+              ctx.moveTo(raySourceX + i * 120, raySourceY);
+              ctx.lineTo(throneX - this.tileSize * 3 + i * 60 + rayShift, throneY + this.tileSize * 8);
+              ctx.lineTo(throneX + this.tileSize * 3 + i * 60 + rayShift, throneY + this.tileSize * 8);
+              ctx.closePath();
+              ctx.fill();
+          }
+
+          // A2. Throne Underlight (Direct Golden Glow)
+          const underlightGrad = ctx.createRadialGradient(throneX, throneY, 0, throneX, throneY, this.tileSize * 4);
+          underlightGrad.addColorStop(0, `rgba(255, 220, 100, ${0.35 + Math.sin(time * 1.5) * 0.1})`);
+          underlightGrad.addColorStop(1, 'rgba(255, 180, 50, 0)');
+          ctx.fillStyle = underlightGrad;
+          ctx.beginPath();
+          ctx.ellipse(throneX, throneY + this.tileSize * 2.5, this.tileSize * 3, this.tileSize * 1.5, 0, 0, Math.PI * 2);
+          ctx.fill();
+
           ctx.restore();
 
           // B. Royal Floor Specularity (Corrected legend lookup)
@@ -508,19 +538,70 @@ export default class RenderEngine {
           }
           ctx.restore();
 
-          // C. Golden Celebration Motes
+          // C. Golden Celebration Motes (Dust in the Light)
           ctx.save();
           ctx.globalCompositeOperation = 'screen';
-          for (let i = 0; i < 20; i++) {
-            const mx = throneX + (Math.sin(time * 0.3 + i * 123.45) * this.tileSize * 8);
-            const my = throneY + (Math.cos(time * 0.15 + i * 543.21) * this.tileSize * 5);
-            const size = 0.8 + Math.abs(Math.sin(time * 0.7 + i)) * 1.5;
-            ctx.fillStyle = `rgba(255, 215, 100, ${0.05 + Math.abs(Math.sin(time * 0.4 + i)) * 0.25})`;
+          for (let i = 0; i < 40; i++) {
+            const mx = throneX + (Math.sin(time * 0.2 + i * 123.45) * this.tileSize * 10);
+            const my = throneY + (Math.cos(time * 0.1 + i * 543.21) * this.tileSize * 6);
+            const size = 1.0 + Math.abs(Math.sin(time * 0.7 + i)) * 2.0;
+            const moteAlpha = 0.1 + Math.abs(Math.sin(time * 0.4 + i)) * 0.4;
+            ctx.fillStyle = `rgba(255, 255, 220, ${moteAlpha})`;
             ctx.beginPath();
             ctx.arc(mx, my, size, 0, Math.PI * 2);
             ctx.fill();
+            
+            // Add a small glow to the mote
+            ctx.shadowBlur = 5;
+            ctx.shadowColor = 'rgba(255, 215, 100, 0.5)';
+            ctx.stroke();
+            ctx.shadowBlur = 0;
           }
           ctx.restore();
+
+          // D. Dynamic Brazier Bloom
+          const braziers = [
+              { x: 10.5, y: 7.5 },
+              { x: 19.5, y: 7.5 }
+          ];
+          
+          ctx.save();
+          ctx.globalCompositeOperation = 'screen';
+          braziers.forEach(b => {
+              const bx = this.offsetX + b.x * this.tileSize;
+              const by = this.offsetY + b.y * this.tileSize;
+              const flicker = 0.25 + Math.sin(time * 5 + b.x) * 0.1;
+              
+              const bGrad = ctx.createRadialGradient(bx, by, 0, bx, by, this.tileSize * 5);
+              bGrad.addColorStop(0, `rgba(255, 140, 40, ${flicker})`);
+              bGrad.addColorStop(0.5, `rgba(255, 80, 20, ${flicker * 0.4})`);
+              bGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+              
+              ctx.fillStyle = bGrad;
+              ctx.beginPath();
+              ctx.arc(bx, by, this.tileSize * 4, 0, Math.PI * 2);
+              ctx.fill();
+          });
+          ctx.restore();
+
+          // E. Sovereign Aura (Lord British Glow)
+          const lb = this.npcs.find(n => n.id === 'lord_british');
+          if (lb) {
+              const lbx = this.offsetX + (lb.x + 0.5) * this.tileSize;
+              const lby = this.offsetY + (lb.y + 0.5) * this.tileSize;
+              const auraSize = this.tileSize * (1.5 + Math.sin(time * 2) * 0.3);
+              const auraGrad = ctx.createRadialGradient(lbx, lby, 0, lbx, lby, auraSize);
+              auraGrad.addColorStop(0, 'rgba(255, 255, 200, 0.5)');
+              auraGrad.addColorStop(1, 'rgba(255, 215, 0, 0)');
+              
+              ctx.save();
+              ctx.globalCompositeOperation = 'screen';
+              ctx.fillStyle = auraGrad;
+              ctx.beginPath();
+              ctx.arc(lbx, lby, auraSize, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.restore();
+          }
       }
     }
     ctx.restore();
@@ -641,6 +722,70 @@ export default class RenderEngine {
     ctx.fill();
       ctx.restore();
     }
+
+  drawFloorReflections(ctx, grid, entities) {
+    const time = Date.now() * 0.001;
+    ctx.save();
+    
+    entities.forEach(entity => {
+        const data = entity.data;
+        const x = entity.type === 'player' ? data.position.x : data.x;
+        const y = entity.type === 'player' ? data.position.y : data.y;
+        
+        // Base of the entity
+        const baseX = Math.floor(x + (data.width || 1) * 0.5);
+        const baseY = Math.floor(y + (data.height || 1));
+        
+        // Check floor tile beneath
+        const char = grid.tiles[baseY]?.[baseX];
+        const tileType = grid.legend ? grid.legend[char] : char;
+        
+        if (tileType && (tileType.includes('marble') || tileType === 'dais_floor' || tileType.includes('carpet'))) {
+            ctx.save();
+            
+            // Reflection properties
+            const opacity = tileType.includes('carpet') ? 0.05 : 0.15;
+            ctx.globalAlpha = opacity;
+            ctx.globalCompositeOperation = 'screen';
+            
+            const w = (data.width || 1) * this.tileSize;
+            const h = (data.height || 1) * this.tileSize;
+            const px = this.offsetX + x * this.tileSize;
+            const py = this.offsetY + (y + (data.height || 1)) * this.tileSize;
+
+            // Transformation: Flip vertically and squish slightly
+            ctx.translate(px + w/2, py);
+            ctx.scale(1, -0.5); // Vertical squish for perspective
+            ctx.translate(-(px + w/2), -py);
+
+            // Draw based on type
+            if (entity.type === 'player') {
+                const frameKey = this.playerAnim.frame() || 'player_south_1';
+                drawSprite(ctx, this.atlas, frameKey, px, py - h, w, h);
+            } else if (entity.type === 'npc') {
+                if (data.spriteSheet) {
+                    const sheetOptions = data.spriteSheetOptions || data.spriteOptions;
+                    const sheet = this.getSpriteSheetSync(data.spriteSheet, sheetOptions);
+                    const frameKey = data.spriteFrame || 'player_south_1';
+                    if (sheet) {
+                        this.drawSpriteSheetFrame(ctx, sheet, frameKey, px, py - h, w, h);
+                    }
+                } else {
+                    drawSprite(ctx, this.atlas, data.sprite, px, py - h, w, h);
+                }
+            } else if (entity.type === 'object') {
+                // Don't reflect torches (they are light sources, not solid)
+                if (data.sprite !== 'torch_wall') {
+                    drawSprite(ctx, this.atlas, data.sprite, px, py - h, w, h);
+                }
+            }
+            
+            ctx.restore();
+        }
+    });
+    
+    ctx.restore();
+  }
 
   getCastleThroneFocus() {
     const ts = this.tileSize;
