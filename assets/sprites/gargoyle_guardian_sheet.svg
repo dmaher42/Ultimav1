@@ -1,0 +1,129 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="384" height="288" viewBox="0 0 384 288">
+  <defs>
+    <linearGradient id="skin" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="#6f7783"/>
+      <stop offset="55%" stop-color="#454d58"/>
+      <stop offset="100%" stop-color="#2a313b"/>
+    </linearGradient>
+    <linearGradient id="wing" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#59616d"/>
+      <stop offset="100%" stop-color="#1d232b"/>
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000" flood-opacity="0.4"/>
+    </filter>
+    <g id="gargoyle-base" filter="url(#shadow)" stroke="#161a1f" stroke-width="1.8" stroke-linejoin="round">
+      <path d="M24 47 C13 36, 10 20, 19 9 C26 1, 37 2, 43 10 C37 18, 33 26, 34 36 C34 44, 31 50, 24 47 Z" fill="url(#wing)"/>
+      <path d="M72 47 C83 36, 86 20, 77 9 C70 1, 59 2, 53 10 C59 18, 63 26, 62 36 C62 44, 65 50, 72 47 Z" fill="url(#wing)"/>
+      <path d="M48 9 L42 1 L36 8" fill="none"/>
+      <path d="M48 9 L54 1 L60 8" fill="none"/>
+      <ellipse cx="48" cy="23" rx="18" ry="15" fill="url(#skin)"/>
+      <path d="M35 23 Q48 12 61 23 Q58 36 48 38 Q38 36 35 23 Z" fill="url(#skin)"/>
+      <circle cx="41" cy="22" r="2.3" fill="#e24747" stroke="none"/>
+      <circle cx="55" cy="22" r="2.3" fill="#e24747" stroke="none"/>
+      <path d="M42 30 Q48 33 54 30" fill="none" stroke="#a7b0bc" stroke-width="1.4"/>
+      <path d="M32 42 C31 56, 32 68, 36 80" fill="none"/>
+      <path d="M64 42 C65 56, 64 68, 60 80" fill="none"/>
+      <path d="M39 39 C35 51, 34 64, 36 81 L44 81 C45 63, 45 50, 43 40 Z" fill="url(#skin)"/>
+      <path d="M57 39 C61 51, 62 64, 60 81 L52 81 C51 63, 51 50, 53 40 Z" fill="url(#skin)"/>
+      <path d="M27 43 C21 54, 19 65, 21 77 L29 77 C31 66, 33 55, 35 46 Z" fill="url(#skin)"/>
+      <path d="M69 43 C75 54, 77 65, 75 77 L67 77 C65 66, 63 55, 61 46 Z" fill="url(#skin)"/>
+      <path d="M39 80 C37 86, 35 90, 34 94 L42 94 L46 84 Z" fill="url(#skin)"/>
+      <path d="M57 80 C59 86, 61 90, 62 94 L54 94 L50 84 Z" fill="url(#skin)"/>
+      <path d="M22 75 C18 79, 15 82, 14 88 L22 88 L28 79 Z" fill="url(#skin)"/>
+      <path d="M74 75 C78 79, 81 82, 82 88 L74 88 L68 79 Z" fill="url(#skin)"/>
+      <path d="M47 82 C44 88, 45 93, 49 96 C55 101, 61 106, 58 114" fill="none"/>
+      <path d="M31 47 Q23 61 17 70" fill="none"/>
+      <path d="M65 47 Q73 61 79 70" fill="none"/>
+    </g>
+    <g id="attack-arms" stroke="#161a1f" stroke-width="1.8" stroke-linejoin="round" fill="url(#skin)">
+      <path d="M20 48 C11 49, 6 55, 6 63 C13 62, 19 59, 26 54 Z"/>
+      <path d="M76 48 C85 49, 90 55, 90 63 C83 62, 77 59, 70 54 Z"/>
+    </g>
+  </defs>
+
+  <rect width="384" height="288" fill="transparent"/>
+
+  <g transform="translate(0,0)"><use href="#gargoyle-base"/></g>
+  <g transform="translate(96,0)"><use href="#gargoyle-base"/><g transform="translate(0,1) rotate(-5 48 70)"><path d="M39 80 C36 86, 33 90, 32 94 L41 94 L45 84 Z" fill="url(#skin)" stroke="#161a1f" stroke-width="1.8"/><path d="M57 79 C61 83, 63 89, 64 94 L55 94 L51 84 Z" fill="url(#skin)" stroke="#161a1f" stroke-width="1.8"/></g></g>
+  <g transform="translate(192,0)"><use href="#gargoyle-base"/><g transform="translate(0,1) rotate(5 48 70)"><path d="M39 79 C35 83, 33 89, 32 94 L41 94 L45 84 Z" fill="url(#skin)" stroke="#161a1f" stroke-width="1.8"/><path d="M57 80 C60 86, 63 90, 64 94 L55 94 L51 84 Z" fill="url(#skin)" stroke="#161a1f" stroke-width="1.8"/></g></g>
+  <g transform="translate(288,0)">
+    <use href="#gargoyle-base"/>
+    <g transform="translate(0,-2) scale(1.18 1.08) translate(-8,-2)">
+      <path d="M24 47 C13 36, 10 20, 19 9 C26 1, 37 2, 43 10 C37 18, 33 26, 34 36 C34 44, 31 50, 24 47 Z" fill="url(#wing)" stroke="#161a1f" stroke-width="1.6"/>
+      <path d="M72 47 C83 36, 86 20, 77 9 C70 1, 59 2, 53 10 C59 18, 63 26, 62 36 C62 44, 65 50, 72 47 Z" fill="url(#wing)" stroke="#161a1f" stroke-width="1.6"/>
+    </g>
+    <use href="#attack-arms"/>
+  </g>
+
+  <g transform="translate(96,96)">
+    <g filter="url(#shadow)" stroke="#161a1f" stroke-width="1.8" stroke-linejoin="round">
+      <path d="M62 42 C76 35, 80 21, 73 11 C67 4, 56 5, 50 12 C55 20, 58 28, 57 37 C57 44, 58 48, 62 42 Z" fill="url(#wing)"/>
+      <path d="M46 9 L50 1 L56 8" fill="none"/>
+      <ellipse cx="46" cy="24" rx="14" ry="14" fill="url(#skin)"/>
+      <path d="M34 24 Q44 14 57 20 Q53 31 46 36 Q37 33 34 24 Z" fill="url(#skin)"/>
+      <circle cx="51" cy="22" r="2.2" fill="#e24747" stroke="none"/>
+      <path d="M49 30 Q52 32 57 30" fill="none" stroke="#a7b0bc" stroke-width="1.4"/>
+      <path d="M42 38 C38 48, 38 62, 40 81 L47 81 C48 63, 48 50, 46 39 Z" fill="url(#skin)"/>
+      <path d="M58 43 C64 53, 66 63, 64 75 L56 75 C55 63, 55 53, 56 45 Z" fill="url(#skin)"/>
+      <path d="M31 42 C25 55, 24 66, 27 79 L34 78 C36 63, 38 53, 39 45 Z" fill="url(#skin)"/>
+      <path d="M42 80 C39 86, 37 91, 36 94 L44 94 L47 84 Z" fill="url(#skin)"/>
+      <path d="M59 74 C64 80, 67 85, 68 90 L60 90 L55 80 Z" fill="url(#skin)"/>
+      <path d="M47 82 C43 89, 44 95, 49 98 C57 102, 62 106, 58 114" fill="none"/>
+    </g>
+  </g>
+  <g transform="translate(192,96) rotate(-4 48 48)"><use href="#gargoyle-base" transform="translate(-5,0) scale(0.96 1)"/></g>
+  <g transform="translate(288,96) rotate(4 48 48)"><use href="#gargoyle-base" transform="translate(-5,0) scale(0.96 1)"/></g>
+  <g transform="translate(288,96)">
+    <g filter="url(#shadow)" stroke="#161a1f" stroke-width="1.8" stroke-linejoin="round">
+      <path d="M64 38 C82 29, 87 15, 79 7 C73 2, 60 4, 53 12 C58 18, 62 24, 61 35 C61 42, 62 46, 64 38 Z" fill="url(#wing)"/>
+      <ellipse cx="46" cy="24" rx="14" ry="14" fill="url(#skin)"/>
+      <path d="M34 24 Q44 14 57 20 Q53 31 46 36 Q37 33 34 24 Z" fill="url(#skin)"/>
+      <circle cx="51" cy="22" r="2.2" fill="#e24747" stroke="none"/>
+      <path d="M49 30 Q55 35 60 32" fill="none" stroke="#a7b0bc" stroke-width="1.4"/>
+      <path d="M40 39 C35 50, 36 62, 39 81 L46 81 C47 63, 47 49, 45 40 Z" fill="url(#skin)"/>
+      <path d="M57 42 C67 47, 78 54, 85 63 L75 66 C67 60, 61 56, 54 51 Z" fill="url(#skin)"/>
+      <path d="M30 43 C22 50, 17 56, 13 63 L21 63 C29 57, 34 52, 38 47 Z" fill="url(#skin)"/>
+      <path d="M42 80 C39 86, 37 91, 36 94 L44 94 L47 84 Z" fill="url(#skin)"/>
+      <path d="M58 79 C61 84, 65 89, 67 94 L58 94 L53 84 Z" fill="url(#skin)"/>
+      <path d="M47 82 C43 89, 44 95, 49 98 C57 102, 62 106, 58 114" fill="none"/>
+    </g>
+  </g>
+
+  <g transform="translate(0,192)">
+    <g filter="url(#shadow)" stroke="#161a1f" stroke-width="1.8" stroke-linejoin="round">
+      <path d="M24 47 C13 36, 10 20, 19 9 C26 1, 37 2, 43 10 C37 18, 33 26, 34 36 C34 44, 31 50, 24 47 Z" fill="url(#wing)"/>
+      <path d="M72 47 C83 36, 86 20, 77 9 C70 1, 59 2, 53 10 C59 18, 63 26, 62 36 C62 44, 65 50, 72 47 Z" fill="url(#wing)"/>
+      <path d="M48 9 L42 1 L36 8" fill="none"/>
+      <path d="M48 9 L54 1 L60 8" fill="none"/>
+      <ellipse cx="48" cy="24" rx="16" ry="14" fill="url(#skin)"/>
+      <path d="M37 19 C43 16, 53 16, 59 19 C61 25, 61 32, 59 38 C53 41, 43 41, 37 38 C35 32, 35 25, 37 19 Z" fill="url(#skin)"/>
+      <path d="M39 38 C35 50, 34 64, 36 81 L44 81 C45 63, 45 50, 43 40 Z" fill="url(#skin)"/>
+      <path d="M57 38 C61 50, 62 64, 60 81 L52 81 C51 63, 51 50, 53 40 Z" fill="url(#skin)"/>
+      <path d="M27 43 C21 54, 19 65, 21 77 L29 77 C31 66, 33 55, 35 46 Z" fill="url(#skin)"/>
+      <path d="M69 43 C75 54, 77 65, 75 77 L67 77 C65 66, 63 55, 61 46 Z" fill="url(#skin)"/>
+      <path d="M39 80 C37 86, 35 90, 34 94 L42 94 L46 84 Z" fill="url(#skin)"/>
+      <path d="M57 80 C59 86, 61 90, 62 94 L54 94 L50 84 Z" fill="url(#skin)"/>
+      <path d="M47 82 C44 88, 45 93, 49 96 C55 101, 61 106, 58 114" fill="none"/>
+    </g>
+  </g>
+  <g transform="translate(96,192) rotate(-3 48 48)"><use href="#gargoyle-base" transform="scale(1 1)"/></g>
+  <g transform="translate(192,192) rotate(3 48 48)"><use href="#gargoyle-base" transform="scale(1 1)"/></g>
+  <g transform="translate(288,192)">
+    <g transform="translate(0,-2) scale(1.18 1.08) translate(-8,-2)">
+      <path d="M24 47 C13 36, 10 20, 19 9 C26 1, 37 2, 43 10 C37 18, 33 26, 34 36 C34 44, 31 50, 24 47 Z" fill="url(#wing)" stroke="#161a1f" stroke-width="1.6"/>
+      <path d="M72 47 C83 36, 86 20, 77 9 C70 1, 59 2, 53 10 C59 18, 63 26, 62 36 C62 44, 65 50, 72 47 Z" fill="url(#wing)" stroke="#161a1f" stroke-width="1.6"/>
+    </g>
+    <g filter="url(#shadow)" stroke="#161a1f" stroke-width="1.8" stroke-linejoin="round">
+      <ellipse cx="48" cy="24" rx="16" ry="14" fill="url(#skin)"/>
+      <path d="M37 19 C43 16, 53 16, 59 19 C61 25, 61 32, 59 38 C53 41, 43 41, 37 38 C35 32, 35 25, 37 19 Z" fill="url(#skin)"/>
+      <path d="M32 39 C24 48, 18 56, 15 66 L23 66 C31 57, 35 49, 38 42 Z" fill="url(#skin)"/>
+      <path d="M64 39 C72 48, 78 56, 81 66 L73 66 C65 57, 61 49, 58 42 Z" fill="url(#skin)"/>
+      <path d="M39 38 C35 50, 34 64, 36 81 L44 81 C45 63, 45 50, 43 40 Z" fill="url(#skin)"/>
+      <path d="M57 38 C61 50, 62 64, 60 81 L52 81 C51 63, 51 50, 53 40 Z" fill="url(#skin)"/>
+      <path d="M39 80 C37 86, 35 90, 34 94 L42 94 L46 84 Z" fill="url(#skin)"/>
+      <path d="M57 80 C59 86, 61 90, 62 94 L54 94 L50 84 Z" fill="url(#skin)"/>
+      <path d="M47 82 C44 88, 45 93, 49 96 C55 101, 61 106, 58 114" fill="none"/>
+    </g>
+  </g>
+</svg>
