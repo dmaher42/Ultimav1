@@ -23,6 +23,8 @@ const syncCanvasSize = () => {
   resize();
 };
 
+const uiRightRail = document.getElementById('ui-right-rail');
+
 // --- DIALOGUE UI SETUP ---
 const dialogueEl = document.createElement('div');
 dialogueEl.id = 'dialogue-ui';
@@ -56,8 +58,8 @@ const journalEl = document.createElement('div');
 journalEl.id = 'journal-panel';
 journalEl.className = 'panel hidden';
 journalEl.style.cssText = `
-    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-    width: min(440px, 92vw); height: min(540px, 76vh); background: linear-gradient(180deg, #f1e2b9, #ddc690);
+    position: relative; width: 100%; max-height: none; height: auto;
+    background: linear-gradient(180deg, #f1e2b9, #ddc690);
     color: #2e1d0e; border: 1px solid rgba(92, 60, 30, 0.72); padding: 24px;
     font-family: 'Times New Roman', serif; box-shadow: 16px 16px 40px rgba(0,0,0,0.58);
     z-index: 100; border-radius: 10px;
@@ -68,7 +70,11 @@ journalEl.innerHTML = `
     <div id="journal-content"></div>
     <div style="text-align: center; margin-top: 20px; font-size: 0.8em;">(Press J to close)</div>
 `;
-document.body.appendChild(journalEl);
+if (uiRightRail) {
+  uiRightRail.appendChild(journalEl);
+} else {
+  document.body.appendChild(journalEl);
+}
 
 window.addEventListener('resize', syncCanvasSize);
 window.addEventListener('orientationchange', syncCanvasSize);

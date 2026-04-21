@@ -41,10 +41,35 @@
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
       }
+      #app-shell {
+        display: grid;
+        grid-template-columns: minmax(250px, 17vw) minmax(0, 1fr) minmax(290px, 20vw);
+        gap: 16px;
+        width: 100%;
+        height: 100vh;
+        padding: 16px;
+        box-sizing: border-box;
+      }
+      #ui-left-rail,
+      #ui-right-rail {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        min-width: 0;
+        min-height: 0;
+        overflow-y: auto;
+      }
+      #game-stage {
+        min-width: 0;
+        min-height: 0;
+        display: flex;
+        align-items: stretch;
+        justify-content: stretch;
+      }
       canvas {
         display: block;
-        width: 100vw;
-        height: 100vh;
+        width: 100%;
+        height: 100%;
         image-rendering: pixelated;
         image-rendering: crisp-edges;
         background:
@@ -57,11 +82,8 @@
           0 24px 80px rgba(0, 0, 0, 0.55);
       }
       #hud {
-        position: fixed;
-        top: 12px;
-        left: 12px;
-        width: clamp(220px, 18vw, 280px);
-        max-width: calc(100vw - 24px);
+        position: relative;
+        width: 100%;
         padding: 12px 14px;
         background: linear-gradient(180deg, rgba(14, 18, 34, 0.92), rgba(7, 10, 20, 0.84));
         border: 1px solid rgba(140, 168, 255, 0.28);
@@ -87,12 +109,11 @@
         overflow-wrap: anywhere;
       }
       #message-log {
-        position: fixed;
-        bottom: 12px;
-        left: 12px;
-        width: clamp(250px, 24vw, 340px);
-        max-width: calc(100vw - 24px);
-        max-height: 38vh;
+        position: relative;
+        width: 100%;
+        min-height: 0;
+        flex: 1 1 auto;
+        max-height: none;
         padding: 12px 13px;
         background: linear-gradient(180deg, rgba(6, 10, 20, 0.88), rgba(6, 8, 14, 0.72));
         border: 1px solid rgba(190, 160, 110, 0.3);
@@ -105,12 +126,13 @@
         z-index: 10;
       }
       .panel {
-        position: fixed;
-        top: 50%;
-        right: 24px;
-        transform: translateY(-50%);
-        width: 340px;
-        max-height: 72vh;
+        position: relative;
+        top: auto;
+        right: auto;
+        left: auto;
+        transform: none;
+        width: 100%;
+        max-height: none;
         padding: 18px;
         display: flex;
         flex-direction: column;
@@ -411,11 +433,11 @@
         white-space: pre-wrap;
       }
       #objective-panel {
-        position: fixed;
-        top: 12px;
-        right: 12px;
-        width: clamp(230px, 20vw, 320px);
-        max-width: calc(100vw - 24px);
+        position: relative;
+        top: auto;
+        right: auto;
+        width: 100%;
+        max-width: none;
         padding: 12px 14px;
         background: linear-gradient(180deg, rgba(10, 14, 26, 0.9), rgba(7, 10, 18, 0.84));
         border: 1px solid rgba(170, 145, 95, 0.42);
@@ -447,12 +469,13 @@
         overflow-wrap: anywhere;
       }
       #dungeon-nav {
-        position: fixed;
-        top: 12px;
-        left: 50%;
-        transform: translateX(-50%);
-        min-width: 240px;
-        max-width: min(420px, calc(100vw - 32px));
+        position: relative;
+        top: auto;
+        left: auto;
+        transform: none;
+        min-width: 0;
+        max-width: none;
+        width: 100%;
         padding: 8px 12px;
         text-align: center;
         background: linear-gradient(180deg, rgba(16, 22, 40, 0.9), rgba(9, 12, 20, 0.86));
@@ -474,11 +497,11 @@
       @keyframes panel-enter {
         from {
           opacity: 0;
-          transform: translateY(-50%) scale(0.98);
+          transform: scale(0.98);
         }
         to {
           opacity: 1;
-          transform: translateY(-50%) scale(1);
+          transform: scale(1);
         }
       }
       @keyframes objective-enter {
@@ -491,51 +514,107 @@
           transform: translateY(0) scale(1);
         }
       }
+      @media (max-width: 1260px) {
+        #app-shell {
+          grid-template-columns: minmax(220px, 24vw) minmax(0, 1fr);
+          grid-template-areas:
+            'left game'
+            'right game';
+        }
+        #ui-left-rail {
+          grid-area: left;
+        }
+        #ui-right-rail {
+          grid-area: right;
+        }
+        #game-stage {
+          grid-area: game;
+        }
+      }
+      @media (max-width: 960px) {
+        body {
+          overflow: auto;
+        }
+        #app-shell {
+          grid-template-columns: 1fr;
+          grid-template-areas:
+            'game'
+            'left'
+            'right';
+          height: auto;
+          min-height: 100vh;
+        }
+        #game-stage {
+          min-height: 56vh;
+        }
+        #message-log {
+          min-height: 220px;
+          max-height: 32vh;
+        }
+      }
     </style>
   </head>
   <body>
-    <canvas id="game" width="640" height="640"></canvas>
-    <section id="hud">
-      <div><strong>Name:</strong> <span id="hud-name">--</span></div>
-      <div><strong>Level:</strong> <span id="hud-level">1</span></div>
-      <div><strong>HP:</strong> <span id="hud-hp">0 / 0</span></div>
-      <div><strong>MP:</strong> <span id="hud-mp">0 / 0</span></div>
-      <div><strong>XP:</strong> <span id="hud-xp">0</span></div>
-      <div><strong>Area:</strong> <span id="hud-area">Unknown</span></div>
-      <span class="keys">I: Inventory | C: Stats | J: Journal | T: Talk | G: Get | O: Orb</span>
-      <div style="margin-top: 8px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 6px; color: #fe5;">
-        Gold: <strong id="hud-gold">0</strong>
-      </div>
-    </section>
-    <aside id="objective-panel" class="hidden">
-      <h3>Current Objective</h3>
-      <p id="objective-text">Create your hero to begin.</p>
-      <div class="objective-tip" id="objective-tip">WASD to move. T to talk. G to get. O for Orb. X for Codex.</div>
-    </aside>
-    <aside id="dungeon-nav" class="hidden"></aside>
-    <section id="message-log"></section>
-    <aside id="inventory-panel" class="panel hidden">
-      <h2>Inventory</h2>
-      <div id="inventory-capacity"></div>
-      <div class="inventory-list" id="inventory-list"></div>
-      <button class="close" data-close="inventory">Close (I)</button>
-    </aside>
-    <aside id="character-panel" class="panel hidden">
-      <h2>Character Sheet</h2>
-      <div id="character-summary"></div>
-      <table class="stats" id="character-stats"></table>
-      <div id="stat-points"></div>
-      <div class="inventory-item-actions" id="stat-allocation"></div>
-      <button class="close" data-close="character">Close (C)</button>
-    </aside>
-    <aside id="menu-panel" class="panel hidden">
-      <h2>Adventurer's Journal</h2>
-      <button id="menu-save">Manual Save</button>
-      <button id="menu-load">Load</button>
-      <button id="menu-clear">Clear Save</button>
-      <div id="menu-last-save"></div>
-      <button class="close" data-close="menu">Close (M)</button>
-    </aside>
+    <div id="app-shell">
+      <aside id="ui-left-rail">
+        <section id="hud">
+          <div><strong>Name:</strong> <span id="hud-name">--</span></div>
+          <div><strong>Level:</strong> <span id="hud-level">1</span></div>
+          <div><strong>HP:</strong> <span id="hud-hp">0 / 0</span></div>
+          <div><strong>MP:</strong> <span id="hud-mp">0 / 0</span></div>
+          <div><strong>XP:</strong> <span id="hud-xp">0</span></div>
+          <div><strong>Area:</strong> <span id="hud-area">Unknown</span></div>
+          <span class="keys">I: Inventory | C: Stats | J: Journal | T: Talk | G: Get | O: Orb</span>
+          <div style="margin-top: 8px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 6px; color: #fe5;">
+            Gold: <strong id="hud-gold">0</strong>
+          </div>
+        </section>
+        <section id="message-log"></section>
+      </aside>
+      <main id="game-stage">
+        <canvas id="game" width="640" height="640"></canvas>
+      </main>
+      <aside id="ui-right-rail">
+        <aside id="objective-panel" class="hidden">
+          <h3>Current Objective</h3>
+          <p id="objective-text">Create your hero to begin.</p>
+          <div class="objective-tip" id="objective-tip">WASD to move. T to talk. G to get. O for Orb. X for Codex.</div>
+        </aside>
+        <aside id="dungeon-nav" class="hidden"></aside>
+        <aside id="inventory-panel" class="panel hidden">
+          <h2>Inventory</h2>
+          <div id="inventory-capacity"></div>
+          <div class="inventory-list" id="inventory-list"></div>
+          <button class="close" data-close="inventory">Close (I)</button>
+        </aside>
+        <aside id="character-panel" class="panel hidden">
+          <h2>Character Sheet</h2>
+          <div id="character-summary"></div>
+          <table class="stats" id="character-stats"></table>
+          <div id="stat-points"></div>
+          <div class="inventory-item-actions" id="stat-allocation"></div>
+          <button class="close" data-close="character">Close (C)</button>
+        </aside>
+        <aside id="menu-panel" class="panel hidden">
+          <h2>Adventurer's Journal</h2>
+          <button id="menu-save">Manual Save</button>
+          <button id="menu-load">Load</button>
+          <button id="menu-clear">Clear Save</button>
+          <div id="menu-last-save"></div>
+          <button class="close" data-close="menu">Close (M)</button>
+        </aside>
+        <aside id="codex-panel" class="panel hidden">
+          <h2>Tactics Codex</h2>
+          <div id="codex-content"></div>
+          <button class="close" data-close="codex">Close (X)</button>
+        </aside>
+        <aside id="orb-panel" class="panel hidden">
+          <h2>Orb of Moons</h2>
+          <div id="orb-content"></div>
+          <button class="close" data-close="orb">Close (O)</button>
+        </aside>
+      </aside>
+    </div>
     <section id="combat-ui" class="modal hidden">
       <h2>Battle!</h2>
       <div id="combat-status"></div>
@@ -551,17 +630,7 @@
       <div id="combat-item-list" class="inventory-list hidden"></div>
     </section>
     <section id="character-creator" class="modal hidden"></section>
-    <aside id="codex-panel" class="panel hidden">
-      <h2>Tactics Codex</h2>
-      <div id="codex-content"></div>
-      <button class="close" data-close="codex">Close (X)</button>
-    </aside>
-    <aside id="orb-panel" class="panel hidden">
-      <h2>Orb of Moons</h2>
-      <div id="orb-content"></div>
-      <button class="close" data-close="orb">Close (O)</button>
-    </aside>
     <div id="tooltip" class="hidden"></div>
-    <script type="module" src="./public/game.js?v=10"></script>
+    <script type="module" src="./public/game.js?v=12"></script>
   </body>
 </html>

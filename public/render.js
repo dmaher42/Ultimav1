@@ -575,12 +575,14 @@ export default class RenderEngine {
         }
       : { visible: false };
 
-    this.hudOverlay.draw(ctx, {
-      fps: this.fps,
-      resources: this.hudData.resources,
-      castleLevel: this.hudData.castleLevel,
-      debug: debugPayload
-    });
+    if (this.debugOverlay) {
+      this.hudOverlay.draw(ctx, {
+        fps: this.fps,
+        resources: {},
+        castleLevel: 1,
+        debug: debugPayload
+      });
+    }
   }
 
   updateCanvasMetrics() {
@@ -1470,12 +1472,6 @@ export default class RenderEngine {
 
     const npcs = options.npcs ?? map?.npcs ?? [];
     this.npcs = Array.isArray(npcs) ? npcs.slice() : [];
-
-    const hudOptions = options.hud || {};
-    this.hudData = {
-      resources: normaliseResources(hudOptions.resources),
-      castleLevel: Number.isFinite(hudOptions.castleLevel) ? hudOptions.castleLevel : this.hudData.castleLevel
-    };
 
     this.syncAnimationState();
 
