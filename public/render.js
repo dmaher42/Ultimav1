@@ -973,7 +973,7 @@ export default class RenderEngine {
 
     const lowerFalloff = ctx.createLinearGradient(0, this.offsetY + 7.8 * ts, 0, this.offsetY + 18.8 * ts);
     lowerFalloff.addColorStop(0, 'rgba(0, 0, 0, 0)');
-    lowerFalloff.addColorStop(1, 'rgba(255, 235, 200, 0.12)'); // Changed from dark to warm light
+    lowerFalloff.addColorStop(1, 'rgba(255, 235, 200, 0.05)');
     ctx.fillStyle = lowerFalloff;
     ctx.fillRect(this.offsetX + 2 * ts, this.offsetY + 7.8 * ts, ts * 26, ts * 11);
 
