@@ -465,6 +465,22 @@ export default class RenderEngine {
       }
 
       if (this.particles) {
+        // --- AMBIENT DUST MOTES (Cinematic Atmosphere) ---
+        if (grid.id === 'castle' && Math.random() < 0.15) {
+            const focus = this.getCastleThroneFocus();
+            // Spawn particles specifically in the light beams
+            this.particles.spawn(
+                focus.centerX + (Math.random() - 0.5) * this.tileSize * 10,
+                focus.glowY - Math.random() * this.tileSize * 8,
+                {
+                    vx: (Math.random() - 0.5) * 8,
+                    vy: -Math.random() * 5 - 2,
+                    life: 2.5 + Math.random() * 2,
+                    size: Math.random() * 2 + 1,
+                    color: 'rgba(255, 245, 200, 0.4)'
+                }
+            );
+        }
         this.particles.draw(ctx);
       }
 
@@ -866,7 +882,7 @@ export default class RenderEngine {
     const flicker = 1 + Math.sin(time * 8) * 0.03;
     
     const isSafe = grid?.safe || grid?.id === 'castle';
-    const baseShadowAlpha = isSafe ? 0.15 : 0.55;
+    const baseShadowAlpha = isSafe ? 0.05 : 0.55; // Significantly reduced for throne room clarity
     
     ctx.save();
     
@@ -875,14 +891,14 @@ export default class RenderEngine {
     const lightRadius = ts * (isSafe ? 8 : 5.5) * flicker;
     const shadowGrad = ctx.createRadialGradient(px, py, ts * 0.8, px, py, lightRadius);
     shadowGrad.addColorStop(0, 'rgba(0, 0, 0, 0)');
-    shadowGrad.addColorStop(0.5, `rgba(0, 0, 5, ${baseShadowAlpha * 0.4})`);
-    shadowGrad.addColorStop(1, `rgba(0, 0, 10, ${baseShadowAlpha})`);
+    shadowGrad.addColorStop(0.5, `rgba(30, 20, 10, ${baseShadowAlpha * 0.4})`);
+    shadowGrad.addColorStop(1, `rgba(40, 30, 20, ${baseShadowAlpha})`);
     
     ctx.fillStyle = shadowGrad;
     ctx.fillRect(0, 0, this.viewportWidth, this.viewportHeight);
     
     // 2. Hero Light (Subtle warm glow around player)
-    const heroGrad = ctx.createRadialGradient(px, py, 0, px, py, ts * 2.5);
+    const heroGrad = ctx.createRadialGradient(px, py, 0, px, py, ts * 4.0);
     heroGrad.addColorStop(0, 'rgba(255, 210, 150, 0.12)');
     heroGrad.addColorStop(1, 'rgba(255, 210, 150, 0)');
     
@@ -949,15 +965,15 @@ export default class RenderEngine {
     ctx.globalCompositeOperation = 'source-over';
 
     const sanctuary = ctx.createLinearGradient(0, hallTop, 0, hallTop + hallHeight);
-    sanctuary.addColorStop(0, 'rgba(255, 247, 233, 0.07)');
-    sanctuary.addColorStop(0.45, 'rgba(214, 183, 122, 0.04)');
-    sanctuary.addColorStop(1, 'rgba(66, 44, 31, 0.02)');
+    sanctuary.addColorStop(0, 'rgba(255, 247, 233, 0.15)');
+    sanctuary.addColorStop(0.45, 'rgba(214, 183, 122, 0.10)');
+    sanctuary.addColorStop(1, 'rgba(66, 44, 31, 0.05)');
     ctx.fillStyle = sanctuary;
     ctx.fillRect(hallLeft, hallTop, hallWidth, hallHeight);
 
     const lowerFalloff = ctx.createLinearGradient(0, this.offsetY + 7.8 * ts, 0, this.offsetY + 18.8 * ts);
     lowerFalloff.addColorStop(0, 'rgba(0, 0, 0, 0)');
-    lowerFalloff.addColorStop(1, 'rgba(44, 26, 18, 0.08)');
+    lowerFalloff.addColorStop(1, 'rgba(255, 235, 200, 0.12)'); // Changed from dark to warm light
     ctx.fillStyle = lowerFalloff;
     ctx.fillRect(this.offsetX + 2 * ts, this.offsetY + 7.8 * ts, ts * 26, ts * 11);
 
@@ -1041,6 +1057,39 @@ export default class RenderEngine {
       ctx.fillStyle = 'rgba(255, 242, 210, 0.05)';
       ctx.fillRect(laneX - ts * 0.45, this.offsetY + 2.3 * ts, ts * 0.9, ts * 15.3);
     });
+
+    // --- THE ROYAL SEAL (Floor Ornament) ---
+    const sealX = this.offsetX + 14.5 * ts;
+    const sealY = this.offsetY + 12.5 * ts;
+    const sealSize = ts * 2.8;
+    
+    ctx.save();
+    ctx.translate(sealX, sealY);
+    ctx.rotate(Date.now() * 0.0001); // Extremely subtle, majestic rotation
+    
+    const sealGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, sealSize/2);
+    sealGrad.addColorStop(0, 'rgba(218, 165, 32, 0.15)');
+    sealGrad.addColorStop(0.8, 'rgba(184, 134, 11, 0.08)');
+    sealGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    
+    ctx.fillStyle = sealGrad;
+    ctx.beginPath();
+    ctx.arc(0, 0, sealSize/2, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Compass rose/Seal geometry
+    ctx.strokeStyle = 'rgba(246, 225, 164, 0.12)';
+    ctx.lineWidth = 1.5;
+    for(let i=0; i<8; i++) {
+        ctx.beginPath();
+        ctx.rotate(Math.PI / 4);
+        ctx.moveTo(0, -sealSize * 0.4);
+        ctx.lineTo(sealSize * 0.1, 0);
+        ctx.lineTo(0, sealSize * 0.4);
+        ctx.stroke();
+    }
+    
+    ctx.restore();
 
     ctx.restore();
   }
@@ -1144,21 +1193,70 @@ export default class RenderEngine {
   }
 
   drawMap(ctx, grid) {
+    const ts = this.tileSize;
+    const startCol = Math.floor(this.camera.x / ts);
+    const endCol = Math.ceil((this.camera.x + this.viewportWidth) / ts);
+    const startRow = Math.floor(this.camera.y / ts);
+    const endRow = Math.ceil((this.camera.y + this.viewportHeight) / ts);
+
+    // Helper to draw a single tile grid
+    const drawTileGrid = (tiles, legend) => {
+      for (let y = Math.max(0, startRow); y <= Math.min(grid.height - 1, endRow); y++) {
+        for (let x = Math.max(0, startCol); x <= Math.min(grid.width - 1, endCol); x++) {
+          const char = tiles[y][x];
+          const info = legend ? legend[char] : char;
+          if (!info) continue;
+
+          const tileType = typeof info === 'string' ? info : info.type;
+          const metadata = TileInfo[tileType];
+          
+          // --- AUTOMATIC TILE VARIATION ---
+          let spriteKey = tileType;
+          if (metadata && metadata.variations && metadata.variations.length > 1) {
+             // Coordinate-based hashing for stable random variations
+             const hash = (x * 374761393 ^ y * 668265263) >>> 0;
+             const index = hash % metadata.variations.length;
+             spriteKey = metadata.variations[index];
+          }
+
+          const px = this.offsetX + x * ts;
+          const py = this.offsetY + y * ts;
+
+          // Draw with subtle coordinate-based rotation for organic feel (if it's a floor tile)
+          if (tileType.includes('floor') || tileType.includes('carpet')) {
+              const rotSeed = (x * 13 + y * 7) % 4;
+              ctx.save();
+              ctx.translate(px + ts/2, py + ts/2);
+              ctx.rotate((rotSeed * Math.PI) / 2);
+              drawSprite(ctx, this.atlas, spriteKey, -ts/2, -ts/2, ts, ts);
+              ctx.restore();
+          } else {
+              drawSprite(ctx, this.atlas, spriteKey, px, py, ts, ts);
+          }
+
+          // --- AMBIENT OCCLUSION LITE ---
+          if (grid.id === 'castle') {
+              ctx.fillStyle = 'rgba(0,0,0,0.04)';
+              ctx.fillRect(px, py + ts - 1, ts, 1); // Bottom seam
+              ctx.fillRect(px + ts - 1, py, 1, ts); // Right seam
+          }
+        }
+      }
+    };
+
     // If the map has multiple layers, draw the ground layers first
     if (Array.isArray(grid.layers)) {
       grid.layers.forEach(layer => {
-        // Skip layers that should be drawn after entities (e.g. roofs)
-        if (layer.zIndex < 0 || layer.zIndex === undefined) {
-           this.renderLayer(ctx, grid, layer.tiles);
+        if (!layer.zIndex || layer.zIndex <= 0) {
+          drawTileGrid(layer.tiles, grid.legend);
         }
       });
     } else {
-      // Backwards compatibility for single tiles array
-      this.renderLayer(ctx, grid, grid.tiles);
+      drawTileGrid(grid.tiles, grid.legend);
     }
 
     if (grid.safe) {
-      ctx.fillStyle = grid.id === 'castle' ? 'rgba(255, 235, 200, 0.012)' : 'rgba(255, 255, 255, 0.06)';
+      ctx.fillStyle = grid.id === 'castle' ? 'rgba(255, 235, 200, 0.08)' : 'rgba(255, 255, 255, 0.06)';
       ctx.fillRect(this.offsetX, this.offsetY, this.mapPixelWidth, this.mapPixelHeight);
     }
   }
