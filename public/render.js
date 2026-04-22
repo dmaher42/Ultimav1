@@ -1230,14 +1230,21 @@ export default class RenderEngine {
           const py = this.offsetY + y * ts;
           const isThroneRoom = grid.id === 'castle';
 
-          if (tileType.includes('floor') || tileType.includes('carpet')) {
-              const rotSeed = (x * 13 + y * 7) % 4;
+          const isFloorTile = tileType.includes('floor');
+          const isCarpetTile = tileType.includes('carpet');
+
+          if (isFloorTile || isCarpetTile) {
               ctx.save();
               ctx.translate(px + ts/2, py + ts/2);
-              ctx.rotate((rotSeed * Math.PI) / 2);
+
+              // Keep marble variation organic, but preserve the ceremonial runner direction.
+              if (isFloorTile && !isCarpetTile) {
+                const rotSeed = (x * 13 + y * 7) % 4;
+                ctx.rotate((rotSeed * Math.PI) / 2);
+              }
               
-              if (isThroneRoom) {
-                ctx.filter = 'brightness(1.25) contrast(1.1)';
+              if (isThroneRoom && isFloorTile) {
+                ctx.filter = 'brightness(1.08) contrast(1.03)';
               }
               
               drawTile(ctx, this.atlas, spriteKey, -ts/2, -ts/2, ts, ts, metadata?.color);
@@ -1264,7 +1271,7 @@ export default class RenderEngine {
     }
 
     if (grid.safe) {
-      ctx.fillStyle = grid.id === 'castle' ? 'rgba(255, 245, 220, 0.12)' : 'rgba(255, 255, 255, 0.06)';
+      ctx.fillStyle = grid.id === 'castle' ? 'rgba(255, 245, 220, 0.05)' : 'rgba(255, 255, 255, 0.06)';
       ctx.fillRect(this.offsetX, this.offsetY, this.mapPixelWidth, this.mapPixelHeight);
     }
   }
