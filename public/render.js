@@ -1328,7 +1328,7 @@ export default class RenderEngine {
               }
               
               if (isThroneRoom && isFloorTile) {
-                ctx.filter = 'brightness(1.3) contrast(1.05)';
+                ctx.filter = 'brightness(1.08) contrast(1.03)';
               }
               
               drawTile(ctx, this.atlas, spriteKey, -ts/2, -ts/2, ts, ts, metadata?.color);
