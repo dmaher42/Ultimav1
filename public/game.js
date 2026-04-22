@@ -1133,7 +1133,7 @@ async function startEncounter(category = null) {
     const level = state.map.areaLevel || 1;
     enemy = createEnemy(category || state.map.encounterGroup || state.map.id, level);
     result = await combatEngine.start(state.player, enemy);
-    await resolveCombat(result, enemy);
+    await resolveCombat(result, enemy, category);
 
     // Flag guardian as defeated if victory
     if (category === 'dungeon_boss' && result.outcome === 'victory') {
@@ -1156,7 +1156,7 @@ async function startSpecialEncounter(category) {
     await startEncounter(category);
 }
 
-async function resolveCombat(result, enemy) {
+async function resolveCombat(result, enemy, category = null) {
   if (!state.character) return;
   if (result.outcome === 'victory') {
     const xp = result.xp || enemy.xpReward;
