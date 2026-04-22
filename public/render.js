@@ -468,7 +468,7 @@ export default class RenderEngine {
 
       if (this.particles) {
         // --- AMBIENT DUST MOTES (Cinematic Atmosphere) ---
-        if (grid.id === 'castle' && Math.random() < 0.15) {
+        if (grid.id === 'castle' && Math.random() < 0.06) {
             const focus = this.getCastleThroneFocus();
             // Spawn particles specifically in the light beams
             this.particles.spawn(
@@ -523,7 +523,7 @@ export default class RenderEngine {
 
           // A2. Throne Underlight (Direct Golden Glow)
           const underlightGrad = ctx.createRadialGradient(throneX, throneY, 0, throneX, throneY, this.tileSize * 4);
-          underlightGrad.addColorStop(0, `rgba(255, 220, 100, ${0.35 + Math.sin(time * 1.5) * 0.1})`);
+          underlightGrad.addColorStop(0, `rgba(255, 220, 100, ${0.22 + Math.sin(time * 1.5) * 0.06})`);
           underlightGrad.addColorStop(1, 'rgba(255, 180, 50, 0)');
           ctx.fillStyle = underlightGrad;
           ctx.beginPath();
@@ -545,7 +545,7 @@ export default class RenderEngine {
                 const px = this.offsetX + x * this.tileSize;
                 const py = this.offsetY + y * this.tileSize;
                 const spark = Math.sin(time + x * 0.3 + y * 0.4);
-                if (spark > 0.8) {
+                if (spark > 0.92) {
                     ctx.beginPath();
                     ctx.moveTo(px, py + (spark - 0.8) * 100);
                     ctx.lineTo(px + this.tileSize, py + (spark - 0.8) * 100 - 10);
@@ -559,19 +559,19 @@ export default class RenderEngine {
           // C. Golden Celebration Motes (Dust in the Light)
           ctx.save();
           ctx.globalCompositeOperation = 'screen';
-          for (let i = 0; i < 40; i++) {
+          for (let i = 0; i < 18; i++) {
             const mx = throneX + (Math.sin(time * 0.2 + i * 123.45) * this.tileSize * 10);
             const my = throneY + (Math.cos(time * 0.1 + i * 543.21) * this.tileSize * 6);
-            const size = 1.0 + Math.abs(Math.sin(time * 0.7 + i)) * 2.0;
-            const moteAlpha = 0.1 + Math.abs(Math.sin(time * 0.4 + i)) * 0.4;
+            const size = 0.8 + Math.abs(Math.sin(time * 0.7 + i)) * 1.3;
+            const moteAlpha = 0.04 + Math.abs(Math.sin(time * 0.4 + i)) * 0.12;
             ctx.fillStyle = `rgba(255, 255, 220, ${moteAlpha})`;
             ctx.beginPath();
             ctx.arc(mx, my, size, 0, Math.PI * 2);
             ctx.fill();
             
             // Add a small glow to the mote
-            ctx.shadowBlur = 5;
-            ctx.shadowColor = 'rgba(255, 215, 100, 0.5)';
+            ctx.shadowBlur = 3;
+            ctx.shadowColor = 'rgba(255, 215, 100, 0.24)';
             ctx.stroke();
             ctx.shadowBlur = 0;
           }
@@ -1070,8 +1070,8 @@ export default class RenderEngine {
     ctx.rotate(Date.now() * 0.0001); // Extremely subtle, majestic rotation
     
     const sealGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, sealSize/2);
-    sealGrad.addColorStop(0, 'rgba(218, 165, 32, 0.15)');
-    sealGrad.addColorStop(0.8, 'rgba(184, 134, 11, 0.08)');
+    sealGrad.addColorStop(0, 'rgba(218, 165, 32, 0.09)');
+    sealGrad.addColorStop(0.8, 'rgba(184, 134, 11, 0.04)');
     sealGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
     
     ctx.fillStyle = sealGrad;
@@ -1080,8 +1080,8 @@ export default class RenderEngine {
     ctx.fill();
     
     // Compass rose/Seal geometry
-    ctx.strokeStyle = 'rgba(246, 225, 164, 0.12)';
-    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = 'rgba(246, 225, 164, 0.07)';
+    ctx.lineWidth = 1;
     for(let i=0; i<8; i++) {
         ctx.beginPath();
         ctx.rotate(Math.PI / 4);
@@ -1334,7 +1334,9 @@ export default class RenderEngine {
 
     if (Array.isArray(grid.layers) && grid.layers.length > 0) {
       grid.layers.sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0)).forEach(layer => {
-          drawTileGrid(layer.tiles, grid.legend);
+          if ((layer.zIndex || 0) <= 0) {
+            drawTileGrid(layer.tiles, layer.legend || grid.legend);
+          }
       });
     } else {
       drawTileGrid(grid.tiles, grid.legend);
