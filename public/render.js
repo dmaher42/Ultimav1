@@ -1309,8 +1309,8 @@ export default class RenderEngine {
             let baseColor = metadata.color;
 
             if (isFloorTile && !isCarpetTile) {
-              // Override the pure white metadata color with a solid dark base for the marble
-              baseColor = '#181818'; 
+              // Override the pure white metadata color with a light cool gray base for the marble
+              baseColor = '#c0c4c8'; 
             } else if (isWallTile) {
               baseAlpha = 0.94;
             } else if (isCarpetTile) {
@@ -1335,7 +1335,7 @@ export default class RenderEngine {
               }
               
               if (isThroneRoom && isFloorTile) {
-                ctx.filter = 'brightness(1.08) contrast(1.03)';
+                ctx.filter = 'brightness(1.15) contrast(1.1)';
               }
               
               drawTile(ctx, this.atlas, spriteKey, -ts/2, -ts/2, ts, ts, metadata?.color);
@@ -1345,7 +1345,7 @@ export default class RenderEngine {
           }
 
           if (isThroneRoom) {
-              ctx.fillStyle = 'rgba(0,0,0,0.03)';
+              ctx.fillStyle = 'rgba(0,0,0,0.02)';
               ctx.fillRect(px, py + ts - 1, ts, 1);
               ctx.fillRect(px + ts - 1, py, 1, ts);
           }
