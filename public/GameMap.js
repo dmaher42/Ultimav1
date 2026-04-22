@@ -16,7 +16,7 @@ export const TileInfo = {
   castle_floor: { name: 'Castle Floor', desc: 'sturdy stone blocks', color: '#555555', passable: true },
   castle_wall: { name: 'Wall', desc: 'thick stone fortifications', color: '#333333', passable: false },
   castle_door: { name: 'Door', desc: 'a heavy iron-bound door', color: '#885522', passable: true },
-  red_carpet_end: { name: 'Royal Carpet Flourish', desc: 'the ceremonial approach to the throne', color: '#a40012', passable: true },
+  red_carpet_end: { name: 'Royal Carpet Flourish', desc: 'the ceremonial approach to the throne', color: '#f44336', passable: true },
   courtyard: { name: 'Courtyard', desc: 'flagstones and fresh air', color: '#666', passable: true },
   dungeon_floor: { name: 'Dungeon Floor', desc: 'cold, damp stone', color: '#444', passable: true, encounterChance: 0.2 },
   dungeon_wall: { name: 'Dungeon Wall', desc: 'crumbling, dark wall', color: '#222', passable: false },
@@ -26,7 +26,7 @@ export const TileInfo = {
     variations: ['marble_wall', 'marble_wall_1']
   },
   marble_floor: { 
-    name: 'Marble Floor', desc: 'smooth, reflective marble', color: '#f0f0f0', passable: true,
+    name: 'Marble Floor', desc: 'smooth, reflective marble', color: '#ffffff', passable: true,
     variations: ['marble_floor', 'marble_floor_1', 'marble_floor_2', 'marble_floor_3']
   },
   meadow: { 
@@ -34,14 +34,14 @@ export const TileInfo = {
   },
   azure_water: { name: 'Azure Sea', desc: 'deep blue Mediterranean waters', color: '#4da6ff', passable: false, alternate: 'water' },
   lycaeum_roof: { name: 'Lycaeum Roof', desc: 'terracotta tiles', color: '#325aa8', passable: false },
-  dais_floor: { name: 'Royal Dais', desc: 'elevated marble platform', color: '#fff9e6', passable: true },
-  marble_edge: { name: 'Marble Edge', desc: 'decorative trim', color: '#ccc', passable: true },
+  dais_floor: { name: 'Royal Dais', desc: 'elevated marble platform', color: '#fffdf5', passable: true },
+  marble_edge: { name: 'Marble Edge', desc: 'decorative trim', color: '#f0f0f0', passable: true },
   red_carpet: { 
-    name: 'Royal Carpet', desc: 'gold-trimmed ceremonial carpet', color: '#b00', passable: true,
+    name: 'Royal Carpet', desc: 'gold-trimmed ceremonial carpet', color: '#e53935', passable: true,
     variations: ['red_carpet', 'red_carpet_1', 'red_carpet_2']
   },
   royal_carpet: { 
-    name: 'Royal Runner', desc: 'gold-trimmed ceremonial carpet', color: '#b00', passable: true
+    name: 'Royal Runner', desc: 'gold-trimmed ceremonial carpet', color: '#e53935', passable: true
   },
   ruins_floor: { name: 'Ancient Ruins', desc: 'shattered stone blocks and ivy', color: '#5a5a5a', passable: true, encounterChance: 0.15 }
 };

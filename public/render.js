@@ -1161,24 +1161,32 @@ export default class RenderEngine {
     let tiles = null;
     if (Array.isArray(map.tiles)) {
       tiles = map.tiles;
+    } else if (Array.isArray(map.layout)) {
+      tiles = map.layout;
     } else if (Array.isArray(map)) {
       tiles = map;
     } else if (typeof map.getTiles === 'function') {
       tiles = map.getTiles();
     } else if (Array.isArray(map?.data)) {
       tiles = map.data;
+    } else if (Array.isArray(map?.layersData?.[0]?.layout)) {
+      tiles = map.layersData[0].layout;
     }
 
     if (!Array.isArray(tiles) || !tiles.length) {
+      console.warn('getMapGrid: No tiles found for map', map?.id);
       return null;
     }
 
     const width = tiles[0]?.length || 0;
     const height = tiles.length;
     return {
+      id: map.id || null,
       tiles,
       width,
       height,
+      legend: map.legend || null,
+      layers: map.layers || [],
       safe: Boolean(map.safe),
       name: map.name || '',
       discovered: Boolean(map.discovered)
@@ -1204,16 +1212,15 @@ export default class RenderEngine {
       for (let y = Math.max(0, startRow); y <= Math.min(grid.height - 1, endRow); y++) {
         for (let x = Math.max(0, startCol); x <= Math.min(grid.width - 1, endCol); x++) {
           const char = tiles[y][x];
-          const info = legend ? legend[char] : char;
-          if (!info) continue;
+          // Robust lookup: try legend first, then fallback to raw char
+          const info = (legend && legend[char]) ? legend[char] : char;
+          if (!info || info === 'none') continue;
 
           const tileType = typeof info === 'string' ? info : info.type;
           const metadata = TileInfo[tileType];
           
-          // --- AUTOMATIC TILE VARIATION ---
           let spriteKey = tileType;
           if (metadata && metadata.variations && metadata.variations.length > 1) {
-             // Coordinate-based hashing for stable random variations
              const hash = (x * 374761393 ^ y * 668265263) >>> 0;
              const index = hash % metadata.variations.length;
              spriteKey = metadata.variations[index];
@@ -1221,42 +1228,43 @@ export default class RenderEngine {
 
           const px = this.offsetX + x * ts;
           const py = this.offsetY + y * ts;
+          const isThroneRoom = grid.id === 'castle';
 
-          // Draw with subtle coordinate-based rotation for organic feel (if it's a floor tile)
           if (tileType.includes('floor') || tileType.includes('carpet')) {
               const rotSeed = (x * 13 + y * 7) % 4;
               ctx.save();
               ctx.translate(px + ts/2, py + ts/2);
               ctx.rotate((rotSeed * Math.PI) / 2);
-              drawSprite(ctx, this.atlas, spriteKey, -ts/2, -ts/2, ts, ts);
+              
+              if (isThroneRoom) {
+                ctx.filter = 'brightness(1.25) contrast(1.1)';
+              }
+              
+              drawTile(ctx, this.atlas, spriteKey, -ts/2, -ts/2, ts, ts, metadata?.color);
               ctx.restore();
           } else {
-              drawSprite(ctx, this.atlas, spriteKey, px, py, ts, ts);
+              drawTile(ctx, this.atlas, spriteKey, px, py, ts, ts, metadata?.color);
           }
 
-          // --- AMBIENT OCCLUSION LITE ---
-          if (grid.id === 'castle') {
-              ctx.fillStyle = 'rgba(0,0,0,0.04)';
-              ctx.fillRect(px, py + ts - 1, ts, 1); // Bottom seam
-              ctx.fillRect(px + ts - 1, py, 1, ts); // Right seam
+          if (isThroneRoom) {
+              ctx.fillStyle = 'rgba(0,0,0,0.03)';
+              ctx.fillRect(px, py + ts - 1, ts, 1);
+              ctx.fillRect(px + ts - 1, py, 1, ts);
           }
         }
       }
     };
 
-    // If the map has multiple layers, draw the ground layers first
-    if (Array.isArray(grid.layers)) {
-      grid.layers.forEach(layer => {
-        if (!layer.zIndex || layer.zIndex <= 0) {
+    if (Array.isArray(grid.layers) && grid.layers.length > 0) {
+      grid.layers.sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0)).forEach(layer => {
           drawTileGrid(layer.tiles, grid.legend);
-        }
       });
     } else {
       drawTileGrid(grid.tiles, grid.legend);
     }
 
     if (grid.safe) {
-      ctx.fillStyle = grid.id === 'castle' ? 'rgba(255, 235, 200, 0.08)' : 'rgba(255, 255, 255, 0.06)';
+      ctx.fillStyle = grid.id === 'castle' ? 'rgba(255, 245, 220, 0.12)' : 'rgba(255, 255, 255, 0.06)';
       ctx.fillRect(this.offsetX, this.offsetY, this.mapPixelWidth, this.mapPixelHeight);
     }
   }

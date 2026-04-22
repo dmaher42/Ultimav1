@@ -252,6 +252,7 @@ export function drawTile(ctx, atlas, tileName, x, y, width, height, fallbackColo
   if (fallbackColor) {
     ctx.fillStyle = fallbackColor;
     ctx.fillRect(x, y, width, height);
+    return true;
   }
 
   return false;
