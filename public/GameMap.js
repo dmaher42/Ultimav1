@@ -43,7 +43,13 @@ export const TileInfo = {
   royal_carpet: { 
     name: 'Royal Runner', desc: 'gold-trimmed ceremonial carpet', color: '#e53935', passable: true
   },
-  ruins_floor: { name: 'Ancient Ruins', desc: 'shattered stone blocks and ivy', color: '#5a5a5a', passable: true, encounterChance: 0.15 }
+  ruins_floor: { name: 'Ancient Ruins', desc: 'shattered stone blocks and ivy', color: '#5a5a5a', passable: true, encounterChance: 0.15 },
+  deep_ocean: { name: 'Deep Ocean', desc: 'bottomless dark blue waters', color: '#1a2e4d', passable: false },
+  sand: { name: 'Sand', desc: 'fine golden grains', color: '#e6d5a7', passable: true },
+  wood_dock: { name: 'Wood Dock', desc: 'sturdy cedar planks', color: '#7a5a3a', passable: true },
+  cobblestone: { name: 'Cobblestone', desc: 'smooth river stones', color: '#6e6e6e', passable: true },
+  shingle_roof: { name: 'Shingle Roof', desc: 'weathered wooden shingles', color: '#4a3d34', passable: false },
+  thatch_roof: { name: 'Thatch Roof', desc: 'dried straw and reeds', color: '#8b7a4b', passable: false }
 };
 
 export function createWorld() {
@@ -298,40 +304,75 @@ export function createWorld() {
   const village = new GameMap({
     id: 'village', name: 'Britanny Bay', width: 30, height: 30, safe: true, defaultTile: 'grass',
     layout: [
+      'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+      'T........P...................T',
+      'T........P...................T',
+      'T..SSSS..P....SSSSSSSSS......T',
+      'T..S..S..P....S.......S......T',
+      'T..S..S..P....S...F...S......T',
+      'T..SSSS..P....S.......S......T',
+      'T........P....SSSSSSSSS......T',
+      'T...P....P...................T',
+      'T...PPPPPP.......PPPPPP......T',
+      'T................P....P......T',
+      'T......SSSS......P....P......T',
+      'T......S..S......P....P......T',
+      'T......SSSS......P....P......T',
+      'T................P....P......T',
+      'T....PPPPPPPPPPPPP....P......T',
+      'T....P................P......T',
+      'T....P....SSSSSS......P......T',
+      'T....P....S....S......P......T',
+      'T....P....SSSSSS......P......T',
+      'T....P................P......T',
+      'PPPPPP................PPPPPPPP',
       '..............................',
-      '..............................',
-      '..............................',
-      '..............................',
-      '....WWW................WWW....',
-      '...W...W..............W...W...',
-      '..W.....W............W.....W..',
-      '...W...W..............W...W...',
-      '....WWW................WWW....',
-      '..............................',
-      '..............................',
-      '...........PPPPPPP............',
-      '...........P.....P............',
-      '...........P..F..P............',
-      '...........P.....P............',
-      '...........PPPPPPP............',
-      '..............................',
-      '..............................',
-      '..............................',
-      '..GGGGGGGG..........GGGGGGGG..',
-      '..G......G..........G......G..',
-      '..G..WW..G..........G..WW..G..',
-      '..G..W.W.G..........G..W.W.G..',
-      '..G..WW..G..........G..WW..G..',
-      '..G......G..........G......G..',
-      '..GGGGGGGG..........GGGGGGGG..',
-      '..............................',
-      '..............................',
-      '..............................',
-      '..............................'
+      '.................sssssssssssss',
+      'sssssssssssssssssDDDDDDDDDDDDD',
+      'DDDDDDDDDDDDDDDDDDDDDDDDDDDDDD',
+      'DDDDDDDDDDDDDDDDDDDDDDDDDDDDDD',
+      'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+      'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+      'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW'
     ],
-    legend: { 'T': 'trees', '.': 'grass', 'P': 'path', 'G': 'path', 'W': 'water', 'F': 'path' },
+    legend: { 
+        'T': 'trees', '.': 'grass', 'P': 'cobblestone', 's': 'sand', 
+        'D': 'wood_dock', 'W': 'azure_water', 'S': 'grass', 'F': 'cobblestone' 
+    },
+    layersData: [
+        {
+          zIndex: 1,
+          layout: [
+            '                              ',
+            '                              ',
+            '                              ',
+            '   RRRR       RRRRRRRRR       ',
+            '   RRRR       RRRRRRRRR       ',
+            '   RRRR       RRRRRRRRR       ',
+            '   RRRR       RRRRRRRRR       ',
+            '                              ',
+            '                              ',
+            '                              ',
+            '                              ',
+            '       RRRR                   ',
+            '       RRRR                   ',
+            '       RRRR                   ',
+            '                              ',
+            '                              ',
+            '                              ',
+            '          RRRRRR              ',
+            '          RRRRRR              ',
+            '          RRRRRR              '
+          ],
+          legend: { 'R': 'shingle_roof' }
+        }
+    ],
     objects: [
-      { x: 15, y: 13, sprite: 'fountain', width: 2, height: 2 }
+      { x: 15, y: 5, sprite: 'fountain', width: 2, height: 2 },
+      { x: 2, y: 24, sprite: 'ship', width: 4, height: 3, passable: false },
+      { x: 22, y: 23, sprite: 'barrel', width: 1, height: 1 },
+      { x: 24, y: 23, sprite: 'barrel', width: 1, height: 1 },
+      { x: 23, y: 24, sprite: 'chest', width: 1, height: 1 }
     ],
     npcs: [
       {

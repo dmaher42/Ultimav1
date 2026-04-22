@@ -406,6 +406,8 @@ export default class RenderEngine {
 
       if (grid.id === 'castle') {
         this.drawCastleThroneRoomStage(ctx, grid);
+      } else if (grid.id === 'village') {
+        this.drawBritannyBayStage(ctx, grid);
       }
 
       // 2. Depth Sort Entities (Player, NPCs, Objects)
@@ -1094,6 +1096,72 @@ export default class RenderEngine {
     ctx.restore();
   }
 
+  drawBritannyBayStage(ctx, grid) {
+    const ts = this.tileSize;
+    const time = Date.now() * 0.001;
+
+    ctx.save();
+    
+    // 1. Water Ripple Effect (on southern ocean)
+    for (let y = 27; y < grid.height; y++) {
+      for (let x = 0; x < grid.width; x++) {
+        const char = grid.tiles[y][x];
+        const tileType = grid.legend ? grid.legend[char] : char;
+        if (tileType === 'azure_water' || tileType === 'deep_ocean' || tileType === 'water') {
+          const px = this.offsetX + x * ts;
+          const py = this.offsetY + y * ts;
+          const ripple = Math.sin(time * 1.2 + x * 0.5 + y * 0.8) * 0.15;
+          
+          ctx.fillStyle = `rgba(255, 255, 255, ${0.05 + ripple})`;
+          ctx.fillRect(px, py, ts, ts);
+        }
+      }
+    }
+
+    // 2. Sea Mist (Large soft white motes)
+    ctx.globalCompositeOperation = 'screen';
+    for (let i = 0; i < 15; i++) {
+      const mx = this.offsetX + (Math.sin(time * 0.12 + i * 22) * this.mapPixelWidth * 0.6) + this.mapPixelWidth * 0.5;
+      const my = this.offsetY + (Math.cos(time * 0.08 + i * 33) * this.mapPixelHeight * 0.4) + this.mapPixelHeight * 0.7;
+      const size = 30 + Math.sin(time * 0.5 + i) * 10;
+      const mistAlpha = 0.03 + Math.sin(time * 0.4 + i) * 0.02;
+      
+      const mistGrad = ctx.createRadialGradient(mx, my, 0, mx, my, size * 3);
+      mistGrad.addColorStop(0, `rgba(230, 245, 255, ${mistAlpha})`);
+      mistGrad.addColorStop(1, 'rgba(230, 245, 255, 0)');
+      
+      ctx.fillStyle = mistGrad;
+      ctx.beginPath();
+      ctx.arc(mx, my, size * 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // 3. Harbor Lanterns (Glow on wood_dock)
+    const lanterns = [
+      { x: 17, y: 24.5 },
+      { x: 25, y: 24.5 },
+      { x: 5, y: 24.5 }
+    ];
+    
+    lanterns.forEach(l => {
+      const lx = this.offsetX + l.x * ts;
+      const ly = this.offsetY + l.y * ts;
+      const flicker = 1 + Math.sin(time * 5 + l.x) * 0.12;
+      
+      const lGrad = ctx.createRadialGradient(lx, ly, 0, lx, ly, ts * 5);
+      lGrad.addColorStop(0, `rgba(255, 210, 120, ${0.28 * flicker})`);
+      lGrad.addColorStop(0.5, `rgba(255, 160, 60, ${0.1 * flicker})`);
+      lGrad.addColorStop(1, 'rgba(255, 120, 40, 0)');
+      
+      ctx.fillStyle = lGrad;
+      ctx.beginPath();
+      ctx.arc(lx, ly, ts * 5, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    ctx.restore();
+  }
+
   drawSoftShadowForEntity(ctx, entity) {
     const data = entity.data;
     if (data?.shadow === false) {
@@ -1171,6 +1239,8 @@ export default class RenderEngine {
       tiles = map.data;
     } else if (Array.isArray(map?.layersData?.[0]?.layout)) {
       tiles = map.layersData[0].layout;
+    } else if (Array.isArray(map?.layout)) {
+      tiles = map.layout;
     }
 
     if (!Array.isArray(tiles) || !tiles.length) {
@@ -1182,11 +1252,11 @@ export default class RenderEngine {
     const height = tiles.length;
     return {
       id: map.id || null,
+      legend: map.legend || null,
+      layers: map.layersData || map.layers || [],
       tiles,
       width,
       height,
-      legend: map.legend || null,
-      layers: map.layers || [],
       safe: Boolean(map.safe),
       name: map.name || '',
       discovered: Boolean(map.discovered)
@@ -1411,6 +1481,11 @@ export default class RenderEngine {
 
       if (sprite === 'throne') {
         this.drawRoyalThrone(ctx, px, py, width, height);
+        return;
+      }
+
+      if (sprite === 'ship') {
+        this.drawShip(ctx, px, py, width, height);
         return;
       }
 
@@ -1869,5 +1944,58 @@ export default class RenderEngine {
       width: this.mapPixelWidth,
       height: this.mapPixelHeight
     };
+  }
+
+  drawShip(ctx, px, py, width, height) {
+    ctx.save();
+    
+    // Hull (Dark Wood with gradient)
+    const hullGrad = ctx.createLinearGradient(px, py + height * 0.6, px, py + height);
+    hullGrad.addColorStop(0, '#5a3c2e');
+    hullGrad.addColorStop(1, '#2a1a10');
+    ctx.fillStyle = hullGrad;
+    
+    ctx.beginPath();
+    ctx.moveTo(px, py + height * 0.5); // Bow
+    ctx.quadraticCurveTo(px + width * 0.5, py + height * 0.7, px + width, py + height * 0.5); // Stern
+    ctx.lineTo(px + width * 0.85, py + height * 0.9);
+    ctx.lineTo(px + width * 0.15, py + height * 0.9);
+    ctx.closePath();
+    ctx.fill();
+    
+    // Deck detail
+    ctx.fillStyle = 'rgba(0,0,0,0.2)';
+    ctx.fillRect(px + width * 0.2, py + height * 0.55, width * 0.6, height * 0.05);
+    
+    // Masts (Main and Fore)
+    ctx.fillStyle = '#3d2516';
+    ctx.fillRect(px + width * 0.47, py + height * 0.1, width * 0.06, height * 0.5);
+    ctx.fillRect(px + width * 0.25, py + height * 0.2, width * 0.04, height * 0.4);
+    
+    // Sails (Cream with shadow)
+    ctx.fillStyle = '#fdf5e6';
+    // Main Sail
+    ctx.beginPath();
+    ctx.moveTo(px + width * 0.5, py + height * 0.15);
+    ctx.quadraticCurveTo(px + width * 0.85, py + height * 0.3, px + width * 0.5, py + height * 0.45);
+    ctx.fill();
+    // Fore Sail
+    ctx.fillStyle = '#ede4d5';
+    ctx.beginPath();
+    ctx.moveTo(px + width * 0.28, py + height * 0.25);
+    ctx.quadraticCurveTo(px + width * 0.45, py + height * 0.35, px + width * 0.28, py + height * 0.45);
+    ctx.fill();
+    
+    // Rigging (Subtle lines)
+    ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(px + width * 0.5, py + height * 0.15);
+    ctx.lineTo(px + width * 0.15, py + height * 0.5);
+    ctx.moveTo(px + width * 0.5, py + height * 0.15);
+    ctx.lineTo(px + width * 0.85, py + height * 0.5);
+    ctx.stroke();
+
+    ctx.restore();
   }
 }
