@@ -1280,6 +1280,10 @@ function setupEventListeners() {
       if (key === 'escape' && combatEngine.isItemMenuOpen()) {
         event.preventDefault();
         combatEngine.closeItemMenu();
+        return;
+      }
+      if (combatEngine.handleKeyAction(key)) {
+        event.preventDefault();
       }
       return;
     }
@@ -1345,7 +1349,7 @@ function setupEventListeners() {
 }
 
 // ... (Bootstrap)
-window.gameApp = { state, renderer, creator, itemGenerator, SaveManager };
+window.gameApp = { state, renderer, creator, itemGenerator, SaveManager, combatEngine, startEncounter, startSpecialEncounter };
 async function bootstrap() {
     try {
         const atlas = await loadAtlas(null, './assets/atlas.json');
@@ -1402,6 +1406,7 @@ window.render_game_to_text = () => {
   const player = state.player;
   const enemy = combatEngine.enemy;
   const objective = state.character ? getObjectiveState() : null;
+  const combatSnapshot = typeof combatEngine.getSnapshot === 'function' ? combatEngine.getSnapshot() : null;
   return JSON.stringify({
     origin: 'top-left',
     mapId: state.map?.id || null,
@@ -1417,7 +1422,14 @@ window.render_game_to_text = () => {
     combat: state.inCombat ? {
       active: true,
       enemy: enemy ? { name: enemy.name, hp: enemy.currentHP, maxHp: enemy.maxHP } : null,
-      mode: combatEngine.playerMode || 'melee'
+      mode: combatEngine.playerMode || 'melee',
+      turn: combatSnapshot?.turn || null,
+      intent: combatSnapshot?.intent || null,
+      stagger: combatSnapshot ? {
+        current: combatSnapshot.enemyStagger,
+        threshold: combatSnapshot.staggerThreshold
+      } : null,
+      opening: combatSnapshot?.playerOpening || 0
     } : { active: false },
     objective: objective ? {
       text: objective.text,

@@ -470,6 +470,139 @@
       #hud-gold {
         color: var(--accent-strong);
       }
+      #combat-ui {
+        width: min(680px, 96vw);
+        background:
+          radial-gradient(circle at top center, rgba(212, 175, 55, 0.18), transparent 42%),
+          linear-gradient(180deg, rgba(8, 12, 22, 0.96), rgba(6, 8, 16, 0.94));
+      }
+      .combat-scene {
+        display: grid;
+        gap: 14px;
+        margin-bottom: 16px;
+      }
+      .combat-turn-indicator {
+        text-align: center;
+        font-family: 'Cinzel', serif;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        font-size: 12px;
+        color: var(--accent-strong);
+      }
+      .combat-overview {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+      }
+      .combatant-card {
+        padding: 14px;
+        border-radius: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.09);
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+        min-height: 118px;
+      }
+      .combatant-label {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.14em;
+        color: var(--text-muted);
+        margin-bottom: 6px;
+      }
+      .combatant-name {
+        font-family: 'Cinzel', serif;
+        font-size: 18px;
+        color: var(--text-main);
+        margin-bottom: 4px;
+      }
+      .combatant-vitals {
+        font-size: 13px;
+        color: var(--text-muted);
+      }
+      .combat-state {
+        margin-top: 10px;
+        font-size: 12px;
+        line-height: 1.5;
+        color: var(--text-main);
+      }
+      .combat-bar {
+        position: relative;
+        width: 100%;
+        height: 10px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.08);
+        overflow: hidden;
+        margin-top: 12px;
+      }
+      .combat-bar-fill {
+        height: 100%;
+        width: 100%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, #34d399, #10b981);
+        transition: width 0.2s ease;
+      }
+      .combat-bar-fill.enemy {
+        background: linear-gradient(90deg, #f97316, #ef4444);
+      }
+      .combat-intent {
+        padding: 14px 16px;
+        border-radius: 14px;
+        border: 1px solid rgba(212, 175, 55, 0.3);
+        background: linear-gradient(135deg, rgba(212, 175, 55, 0.08), rgba(255, 255, 255, 0.02));
+      }
+      .combat-intent-label {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.14em;
+        color: var(--text-muted);
+        margin-bottom: 6px;
+      }
+      #combat-intent-title {
+        font-family: 'Cinzel', serif;
+        font-size: 18px;
+        color: var(--accent-strong);
+        margin-bottom: 4px;
+      }
+      #combat-intent-hint {
+        font-size: 13px;
+        line-height: 1.5;
+        color: var(--text-main);
+      }
+      .combat-meter {
+        padding: 12px 14px;
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      .combat-meter-label {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        font-size: 12px;
+        color: var(--text-muted);
+        margin-bottom: 10px;
+      }
+      .combat-meter-track {
+        height: 10px;
+        width: 100%;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.08);
+        overflow: hidden;
+      }
+      .combat-meter-fill {
+        height: 100%;
+        width: 0;
+        border-radius: inherit;
+        background: linear-gradient(90deg, rgba(212, 175, 55, 0.6), rgba(255, 215, 0, 0.95));
+        transition: width 0.2s ease;
+      }
+      #combat-ui[data-intent-tone="arcane"] .combat-intent {
+        border-color: rgba(120, 180, 255, 0.4);
+        background: linear-gradient(135deg, rgba(87, 160, 255, 0.12), rgba(255, 255, 255, 0.02));
+      }
+      #combat-ui[data-intent-tone="ember"] .combat-intent {
+        border-color: rgba(249, 115, 22, 0.45);
+        background: linear-gradient(135deg, rgba(249, 115, 22, 0.14), rgba(255, 255, 255, 0.02));
+      }
       #combat-status {
         text-align: center;
         margin-bottom: 12px;
@@ -484,15 +617,39 @@
         font-size: 13px;
         color: var(--text-muted);
       }
+      .combat-log div + div {
+        margin-top: 8px;
+      }
       .combat-actions {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
         gap: 8px;
       }
+      .combat-action.is-recommended {
+        border-color: rgba(255, 215, 0, 0.9);
+        box-shadow: 0 0 0 1px rgba(255, 215, 0, 0.22), 0 10px 24px rgba(212, 175, 55, 0.15);
+        color: var(--accent-strong);
+      }
+      .combat-action:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+        box-shadow: none;
+      }
       #combat-item-list {
         margin-top: 16px;
         border-top: 1px solid var(--panel-border);
         padding-top: 12px;
+      }
+      @media (max-width: 640px) {
+        .combat-overview {
+          grid-template-columns: 1fr;
+        }
+        .combat-actions {
+          grid-template-columns: repeat(2, 1fr);
+        }
+        #combat-ui {
+          padding: 24px;
+        }
       }
     </style>
   </head>
@@ -566,8 +723,41 @@
       <button class="close" data-close="orb">Close (O)</button>
     </aside>
 
-    <section id="combat-ui" class="modal glass-panel hidden">
+    <section id="combat-ui" class="modal glass-panel hidden" data-intent-tone="steel">
       <h2>In Combat</h2>
+      <div class="combat-scene">
+        <div id="combat-turn-indicator" class="combat-turn-indicator">Your turn</div>
+        <div class="combat-overview">
+          <div class="combatant-card">
+            <div class="combatant-label">Avatar</div>
+            <div id="combat-player-name" class="combatant-name">Adventurer</div>
+            <div id="combat-player-vitals" class="combatant-vitals">HP 0/0  MP 0/0</div>
+            <div class="combat-bar"><div id="combat-player-bar" class="combat-bar-fill"></div></div>
+            <div id="combat-player-state" class="combat-state">Hold your ground.</div>
+          </div>
+          <div class="combatant-card">
+            <div class="combatant-label">Foe</div>
+            <div id="combat-enemy-name" class="combatant-name">Enemy</div>
+            <div id="combat-enemy-vitals" class="combatant-vitals">HP 0/0</div>
+            <div class="combat-bar"><div id="combat-enemy-bar" class="combat-bar-fill enemy"></div></div>
+            <div id="combat-enemy-state" class="combat-state">Watching you closely.</div>
+          </div>
+        </div>
+        <div id="combat-intent" class="combat-intent">
+          <div class="combat-intent-label">Enemy Intent</div>
+          <div id="combat-intent-title">Measured Strike</div>
+          <div id="combat-intent-hint">Read the motion before you answer.</div>
+        </div>
+        <div class="combat-meter">
+          <div class="combat-meter-label">
+            <span>Pressure on foe</span>
+            <span id="combat-stagger-text">0/0 stagger</span>
+          </div>
+          <div class="combat-meter-track">
+            <div id="combat-stagger-fill" class="combat-meter-fill"></div>
+          </div>
+        </div>
+      </div>
       <div id="combat-status"></div>
       <div id="combat-log" class="combat-log"></div>
       <div id="combat-actions" class="combat-actions">
@@ -588,7 +778,7 @@
 
     <div id="tooltip" class="hidden"></div>
 
-    <script type="module" src="./public/game.js?v=13"></script>
+    <script type="module" src="./public/game.js?v=14"></script>
 
   </body>
 </html>
