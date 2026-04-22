@@ -3,7 +3,7 @@ import QuestManager from './QuestManager.js';
 
 export const AVATAR_SPRITE = 'assets/sprites/avatar.png';
 export const LORD_BRITISH_SPRITE_SHEET = 'assets/sprites/lord_british_v2_seated.png';
-export const CASTLE_BRITANNIA_SENTINEL_SPRITE = 'assets/sprites/castle_britannia_sentinel.png';
+export const CASTLE_BRITANNIA_SENTINEL_SPRITE = 'assets/sprites/castle_britannia_sentinel_v2.png';
 export const CHEST_SPRITE_SHEET = 'assets/sprites/chest.png';
 
 export const TileInfo = {
