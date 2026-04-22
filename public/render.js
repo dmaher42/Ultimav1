@@ -1299,9 +1299,23 @@ export default class RenderEngine {
           const px = this.offsetX + x * ts;
           const py = this.offsetY + y * ts;
           const isThroneRoom = grid.id === 'castle';
+          const isWallTile = tileType.includes('wall');
 
           const isFloorTile = tileType.includes('floor');
           const isCarpetTile = tileType.includes('carpet');
+
+          if (isThroneRoom && metadata?.color) {
+            let baseAlpha = 0.72;
+            if (isWallTile) baseAlpha = 0.94;
+            else if (tileType === 'marble_edge' || tileType === 'dais_floor') baseAlpha = 0.9;
+            else if (isCarpetTile) baseAlpha = 0.86;
+
+            ctx.save();
+            ctx.globalAlpha = baseAlpha;
+            ctx.fillStyle = metadata.color;
+            ctx.fillRect(px, py, ts, ts);
+            ctx.restore();
+          }
 
           if (isFloorTile || isCarpetTile) {
               ctx.save();
