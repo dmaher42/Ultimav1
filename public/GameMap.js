@@ -124,7 +124,7 @@ export function createWorld() {
           shadow: false,
           color: '#ffdd00',
           behavior: 'static',
-          job: 'I rule this land with the help of the Eight Virtues.',
+          job: 'I am but a steward of these Eight Virtues, Avatar. To rule is to serve, and to serve is to sacrifice.',
         responses: {
           'BRITANNIA': 'Our land is troubled by the Gargoyle incursions. They strike with a precision that suggests a deep-seated grievance.',
           'GARGOYLE': 'Winged creatures of the underworld. They were once thought simple beasts, but they coordinate their attacks around our Shrines.',
@@ -142,6 +142,22 @@ export function createWorld() {
           if (stage >= 2) return "You have returned! Use the keyword ORB to discuss our next steps.";
           return "Welcome, Avatar. Britain is safe for now, but the world at large is in peril.";
         }
+      },
+      {
+        id: 'guard_left', name: 'Royal Sentinel', x: 12, y: 8,
+        spriteSheet: 'assets/sprites/guard_captain.png',
+        spriteFrame: 'player_south_1',
+        color: '#ffcc00',
+        behavior: 'static',
+        job: 'Hail, seeker of Virtue.',
+      },
+      {
+        id: 'guard_right', name: 'Royal Sentinel', x: 17, y: 8,
+        spriteSheet: 'assets/sprites/guard_captain.png',
+        spriteFrame: 'player_south_1',
+        color: '#ffcc00',
+        behavior: 'static',
+        job: 'The King awaits your word.',
       },
       {
         id: 'castle_guard', name: 'Sentinel', x: 11, y: 15,

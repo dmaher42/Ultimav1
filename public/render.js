@@ -584,22 +584,52 @@ export default class RenderEngine {
           });
           ctx.restore();
 
-          // E. Sovereign Aura (Lord British Glow)
+          // E. Sovereign Aura (Lord British Divine Presence)
           const lb = this.npcs.find(n => n.id === 'lord_british');
           if (lb) {
               const lbx = this.offsetX + (lb.x + 0.5) * this.tileSize;
-              const lby = this.offsetY + (lb.y + 0.5) * this.tileSize;
-              const auraSize = this.tileSize * (1.5 + Math.sin(time * 2) * 0.3);
-              const auraGrad = ctx.createRadialGradient(lbx, lby, 0, lbx, lby, auraSize);
-              auraGrad.addColorStop(0, 'rgba(255, 255, 200, 0.5)');
-              auraGrad.addColorStop(1, 'rgba(255, 215, 0, 0)');
+              const lby = this.offsetY + (lb.y - 0.2) * this.tileSize;
               
               ctx.save();
               ctx.globalCompositeOperation = 'screen';
+              
+              // 1. Divine Pillar of Light (Arthurian Connection)
+              const pillarGrad = ctx.createLinearGradient(lbx - 20, 0, lbx + 20, 0);
+              pillarGrad.addColorStop(0, 'rgba(255, 255, 255, 0)');
+              pillarGrad.addColorStop(0.5, 'rgba(255, 255, 200, 0.15)');
+              pillarGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+              ctx.fillStyle = pillarGrad;
+              ctx.fillRect(lbx - this.tileSize * 1.5, 0, this.tileSize * 3, lby);
+
+              // 2. Main Sovereign Halo
+              const auraSize = this.tileSize * (1.8 + Math.sin(time * 2) * 0.2);
+              const auraGrad = ctx.createRadialGradient(lbx, lby, 0, lbx, lby, auraSize);
+              auraGrad.addColorStop(0, 'rgba(255, 255, 200, 0.5)');
+              auraGrad.addColorStop(0.6, 'rgba(255, 215, 0, 0.2)');
+              auraGrad.addColorStop(1, 'rgba(255, 215, 0, 0)');
               ctx.fillStyle = auraGrad;
               ctx.beginPath();
               ctx.arc(lbx, lby, auraSize, 0, Math.PI * 2);
               ctx.fill();
+
+              // 3. The Eight Virtues (Orbiting Orbs of Light)
+              const orbitRadius = this.tileSize * 1.4;
+              for (let i = 0; i < 8; i++) {
+                  const angle = (time * 0.8) + (i * (Math.PI * 2 / 8));
+                  const ox = lbx + Math.cos(angle) * orbitRadius;
+                  const oy = lby + Math.sin(angle) * orbitRadius * 0.4; // Elliptical orbit
+                  
+                  const orbGrad = ctx.createRadialGradient(ox, oy, 0, ox, oy, 8);
+                  orbGrad.addColorStop(0, '#fff');
+                  orbGrad.addColorStop(0.5, 'rgba(255, 230, 100, 0.8)');
+                  orbGrad.addColorStop(1, 'rgba(255, 200, 50, 0)');
+                  
+                  ctx.fillStyle = orbGrad;
+                  ctx.beginPath();
+                  ctx.arc(ox, oy, 8, 0, Math.PI * 2);
+                  ctx.fill();
+              }
+              
               ctx.restore();
           }
       }

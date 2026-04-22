@@ -1126,22 +1126,30 @@ async function startEncounter(category = null) {
     renderer.stopAllMovement();
   }
   state.inCombat = true;
-  
-  const level = state.map.areaLevel || 1;
-  const enemy = createEnemy(category || state.map.encounterGroup || state.map.id, level);
-  const result = await combatEngine.start(state.player, enemy);
-  await resolveCombat(result, enemy);
-  
-  // Flag guardian as defeated if victory
-  if (category === 'dungeon_boss' && result.outcome === 'victory') {
-      state.guardianDefeated = true;
-  }
-  if (category === 'throne_ambush' && result.outcome === 'victory') {
-      state.throneIntroComplete = true;
-  }
+  let result = null;
+  let enemy = null;
 
-  state.inCombat = false;
-  renderGame();
+  try {
+    const level = state.map.areaLevel || 1;
+    enemy = createEnemy(category || state.map.encounterGroup || state.map.id, level);
+    result = await combatEngine.start(state.player, enemy);
+    await resolveCombat(result, enemy);
+
+    // Flag guardian as defeated if victory
+    if (category === 'dungeon_boss' && result.outcome === 'victory') {
+        state.guardianDefeated = true;
+    }
+    if (category === 'throne_ambush' && result.outcome === 'victory') {
+        state.throneIntroComplete = true;
+    }
+  } catch (error) {
+    console.error('Combat encounter failed:', error);
+  } finally {
+    state.inCombat = false;
+    activeMovementDirections.clear();
+    renderer.stopAllMovement();
+    renderGame();
+  }
 }
 
 async function startSpecialEncounter(category) {
