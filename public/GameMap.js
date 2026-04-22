@@ -152,16 +152,26 @@ export function createWorld() {
       },
       {
         id: 'guard_left', name: 'Royal Sentinel', x: 12, y: 8,
-        spriteSheet: 'assets/sprites/guard_captain.png',
+        spriteSheet: CASTLE_BRITANNIA_SENTINEL_SPRITE,
         spriteFrame: 'player_south_1',
+        spriteTileWidth: 1.2,
+        spriteTileHeight: 1.35,
+        spriteAnchorX: 0.5,
+        spriteAnchorY: 1,
+        spriteOffsetTileY: -1.28,
         color: '#ffcc00',
         behavior: 'static',
         job: 'Hail, seeker of Virtue.',
       },
       {
         id: 'guard_right', name: 'Royal Sentinel', x: 17, y: 8,
-        spriteSheet: 'assets/sprites/guard_captain.png',
+        spriteSheet: CASTLE_BRITANNIA_SENTINEL_SPRITE,
         spriteFrame: 'player_south_1',
+        spriteTileWidth: 1.2,
+        spriteTileHeight: 1.35,
+        spriteAnchorX: 0.5,
+        spriteAnchorY: 1,
+        spriteOffsetTileY: -1.28,
         color: '#ffcc00',
         behavior: 'static',
         job: 'The King awaits your word.',
@@ -370,9 +380,9 @@ export function createWorld() {
     objects: [
       { x: 15, y: 5, sprite: 'fountain', width: 2, height: 2 },
       { x: 2, y: 24, sprite: 'ship', width: 4, height: 3, passable: false },
-      { x: 22, y: 23, sprite: 'barrel', width: 1, height: 1 },
-      { x: 24, y: 23, sprite: 'barrel', width: 1, height: 1 },
-      { x: 23, y: 24, sprite: 'chest', width: 1, height: 1 }
+      { x: 22, y: 23, type: 'item', sprite: 'barrel', data: { id: 'salted_fish', name: 'Salted Fish', type: 'food', value: 5, lore: 'A staple of the maritime diet.' } },
+      { x: 24, y: 23, type: 'item', sprite: 'barrel', data: { id: 'rum_bottle', name: 'Bottle of Rum', type: 'food', value: 15, lore: 'Strong Britannian spirits.' } },
+      { x: 23, y: 24, type: 'item', sprite: 'chest', color: '#8b4513', data: { id: 'black_pearl', name: 'Black Pearl', type: 'reagent', value: 100, lore: 'A rare pearl harvested from the deep ocean.' } }
     ],
     npcs: [
       {
