@@ -3,12 +3,12 @@ import QuestManager from './QuestManager.js';
 
 export const AVATAR_SPRITE = 'assets/sprites/avatar.png';
 export const LORD_BRITISH_SPRITE_SHEET = 'assets/sprites/lord_british_v2_seated.png';
+export const CASTLE_BRITANNIA_SENTINEL_SPRITE = 'assets/sprites/guard_captain.png';
 export const CHEST_SPRITE_SHEET = 'assets/sprites/chest.png';
 
 export const TileInfo = {
   grass: { 
-    name: 'Grass', desc: 'green fields', color: '#3b7f3a', passable: true,
-    variations: ['grass', 'grass_1', 'grass_2', 'grass_3']
+    name: 'Grass', desc: 'green fields', color: '#3b7f3a', passable: true
   },
   trees: { name: 'Woodland', desc: 'densely packed trees', color: '#1f3d1b', passable: false },
   water: { name: 'Stream', desc: 'cool, flowing water', color: '#264c7d', passable: false },
@@ -30,8 +30,7 @@ export const TileInfo = {
     variations: ['marble_floor', 'marble_floor_1', 'marble_floor_2', 'marble_floor_3']
   },
   meadow: { 
-    name: 'Meadow', desc: 'fertile soil and lush grass', color: '#4a7c44', passable: true, alternate: 'grass',
-    variations: ['meadow', 'meadow_1', 'meadow_2', 'meadow_3']
+    name: 'Meadow', desc: 'fertile soil and lush grass', color: '#4a7c44', passable: true, alternate: 'grass'
   },
   azure_water: { name: 'Azure Sea', desc: 'deep blue Mediterranean waters', color: '#4da6ff', passable: false, alternate: 'water' },
   lycaeum_roof: { name: 'Lycaeum Roof', desc: 'terracotta tiles', color: '#325aa8', passable: false },
@@ -39,9 +38,11 @@ export const TileInfo = {
   marble_edge: { name: 'Marble Edge', desc: 'decorative trim', color: '#ccc', passable: true },
   red_carpet: { 
     name: 'Royal Carpet', desc: 'gold-trimmed ceremonial carpet', color: '#b00', passable: true,
-    variations: ['red_carpet']
+    variations: ['red_carpet', 'red_carpet_1', 'red_carpet_2']
   },
-  royal_carpet: { name: 'Royal Runner', desc: 'gold-trimmed ceremonial carpet', color: '#b00', passable: true },
+  royal_carpet: { 
+    name: 'Royal Runner', desc: 'gold-trimmed ceremonial carpet', color: '#b00', passable: true
+  },
   ruins_floor: { name: 'Ancient Ruins', desc: 'shattered stone blocks and ivy', color: '#5a5a5a', passable: true, encounterChance: 0.15 }
 };
 
@@ -161,8 +162,13 @@ export function createWorld() {
       },
       {
         id: 'castle_guard', name: 'Sentinel', x: 11, y: 15,
-        spriteSheet: 'assets/sprites/guard_captain.png',
+        spriteSheet: CASTLE_BRITANNIA_SENTINEL_SPRITE,
         spriteFrame: 'player_south_1',
+        spriteTileWidth: 1.2,
+        spriteTileHeight: 1.35,
+        spriteAnchorX: 0.5,
+        spriteAnchorY: 1,
+        spriteOffsetTileY: -1.28,
         color: '#ffcc00',
         behavior: 'static',
         job: 'I stand watch over the gates of Castle Britannia.',
