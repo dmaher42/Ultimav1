@@ -967,15 +967,15 @@ export default class RenderEngine {
     ctx.globalCompositeOperation = 'source-over';
 
     const sanctuary = ctx.createLinearGradient(0, hallTop, 0, hallTop + hallHeight);
-    sanctuary.addColorStop(0, 'rgba(255, 247, 233, 0.08)');
-    sanctuary.addColorStop(0.45, 'rgba(214, 183, 122, 0.045)');
-    sanctuary.addColorStop(1, 'rgba(66, 44, 31, 0.02)');
+    sanctuary.addColorStop(0, 'rgba(255, 249, 238, 0.05)');
+    sanctuary.addColorStop(0.45, 'rgba(230, 200, 150, 0.028)');
+    sanctuary.addColorStop(1, 'rgba(66, 44, 31, 0.01)');
     ctx.fillStyle = sanctuary;
     ctx.fillRect(hallLeft, hallTop, hallWidth, hallHeight);
 
     const lowerFalloff = ctx.createLinearGradient(0, this.offsetY + 7.8 * ts, 0, this.offsetY + 18.8 * ts);
     lowerFalloff.addColorStop(0, 'rgba(0, 0, 0, 0)');
-    lowerFalloff.addColorStop(1, 'rgba(255, 235, 200, 0.05)');
+    lowerFalloff.addColorStop(1, 'rgba(255, 235, 200, 0.02)');
     ctx.fillStyle = lowerFalloff;
     ctx.fillRect(this.offsetX + 2 * ts, this.offsetY + 7.8 * ts, ts * 26, ts * 11);
 
@@ -1036,12 +1036,12 @@ export default class RenderEngine {
     ctx.fillRect(runnerX + ts * 1.86, runnerY, ts * 0.06, ts * 8.5);
 
     const aisleShadeLeft = ctx.createLinearGradient(hallLeft, 0, hallLeft + ts * 2.4, 0);
-    aisleShadeLeft.addColorStop(0, 'rgba(36, 18, 12, 0.14)');
+    aisleShadeLeft.addColorStop(0, 'rgba(36, 18, 12, 0.07)');
     aisleShadeLeft.addColorStop(1, 'rgba(0, 0, 0, 0)');
     ctx.fillStyle = aisleShadeLeft;
     ctx.fillRect(hallLeft, hallTop + ts * 0.5, ts * 2.4, hallHeight);
     const aisleShadeRight = ctx.createLinearGradient(hallLeft + hallWidth, 0, hallLeft + hallWidth - ts * 2.4, 0);
-    aisleShadeRight.addColorStop(0, 'rgba(36, 18, 12, 0.14)');
+    aisleShadeRight.addColorStop(0, 'rgba(36, 18, 12, 0.07)');
     aisleShadeRight.addColorStop(1, 'rgba(0, 0, 0, 0)');
     ctx.fillStyle = aisleShadeRight;
     ctx.fillRect(hallLeft + hallWidth - ts * 2.4, hallTop + ts * 0.5, ts * 2.4, hallHeight);
@@ -1051,7 +1051,7 @@ export default class RenderEngine {
       const laneX = this.offsetX + lane * ts;
       const laneShade = ctx.createLinearGradient(laneX - ts * 0.85, 0, laneX + ts * 0.85, 0);
       laneShade.addColorStop(0, 'rgba(66, 45, 31, 0)');
-      laneShade.addColorStop(0.5, 'rgba(92, 62, 42, 0.11)');
+      laneShade.addColorStop(0.5, 'rgba(92, 62, 42, 0.05)');
       laneShade.addColorStop(1, 'rgba(66, 45, 31, 0)');
       ctx.fillStyle = laneShade;
       ctx.fillRect(laneX - ts * 0.85, this.offsetY + 1.8 * ts, ts * 1.7, ts * 16.2);
@@ -1059,6 +1059,113 @@ export default class RenderEngine {
       ctx.fillStyle = 'rgba(255, 242, 210, 0.05)';
       ctx.fillRect(laneX - ts * 0.45, this.offsetY + 2.3 * ts, ts * 0.9, ts * 15.3);
     });
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    const marbleWash = ctx.createLinearGradient(0, hallTop + ts * 1.4, 0, this.offsetY + 18.6 * ts);
+    marbleWash.addColorStop(0, 'rgba(255, 248, 236, 0.26)');
+    marbleWash.addColorStop(0.52, 'rgba(255, 243, 224, 0.18)');
+    marbleWash.addColorStop(1, 'rgba(255, 232, 204, 0.12)');
+    ctx.fillStyle = marbleWash;
+    ctx.fillRect(this.offsetX + ts * 2.1, this.offsetY + ts * 2.2, ts * 25.8, ts * 16.1);
+    ctx.restore();
+
+    ctx.save();
+    const marbleMatte = ctx.createLinearGradient(0, hallTop, 0, this.offsetY + 18.6 * ts);
+    marbleMatte.addColorStop(0, 'rgba(220, 214, 204, 0.18)');
+    marbleMatte.addColorStop(0.55, 'rgba(205, 196, 184, 0.14)');
+    marbleMatte.addColorStop(1, 'rgba(188, 176, 164, 0.12)');
+    ctx.fillStyle = marbleMatte;
+    ctx.fillRect(this.offsetX + ts * 2.1, this.offsetY + ts * 2.2, ts * 25.8, ts * 16.1);
+    ctx.restore();
+
+    ctx.save();
+    ctx.strokeStyle = 'rgba(120, 102, 82, 0.26)';
+    ctx.lineWidth = 1.2;
+    for (let gx = 2; gx <= 28; gx += 1) {
+      const seamX = this.offsetX + gx * ts;
+      ctx.beginPath();
+      ctx.moveTo(seamX, this.offsetY + ts * 2.2);
+      ctx.lineTo(seamX, this.offsetY + ts * 18.3);
+      ctx.stroke();
+    }
+    for (let gy = 2; gy <= 18; gy += 1) {
+      const seamY = this.offsetY + gy * ts;
+      ctx.beginPath();
+      ctx.moveTo(this.offsetX + ts * 2.1, seamY);
+      ctx.lineTo(this.offsetX + ts * 27.9, seamY);
+      ctx.stroke();
+    }
+    ctx.strokeStyle = 'rgba(255, 246, 230, 0.10)';
+    ctx.lineWidth = 1;
+    for (let gx = 2; gx <= 28; gx += 1) {
+      const seamX = this.offsetX + gx * ts + 1;
+      ctx.beginPath();
+      ctx.moveTo(seamX, this.offsetY + ts * 2.2);
+      ctx.lineTo(seamX, this.offsetY + ts * 18.3);
+      ctx.stroke();
+    }
+    for (let gy = 2; gy <= 18; gy += 1) {
+      const seamY = this.offsetY + gy * ts + 1;
+      ctx.beginPath();
+      ctx.moveTo(this.offsetX + ts * 2.1, seamY);
+      ctx.lineTo(this.offsetX + ts * 27.9, seamY);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    const layoutRows = Array.isArray(grid?.layout) ? grid.layout : [];
+    const legend = grid?.legend || {};
+    for (let y = 0; y < layoutRows.length; y += 1) {
+      const row = layoutRows[y];
+      if (!row) continue;
+      for (let x = 0; x < row.length; x += 1) {
+        const tileType = legend[row[x]] || row[x];
+        const isRoyalMarbleTile = tileType === 'dais_floor'
+          || tileType === 'marble_edge'
+          || tileType === 'marble_floor';
+        if (!isRoyalMarbleTile) continue;
+
+        const tileX = this.offsetX + x * ts;
+        const tileY = this.offsetY + y * ts;
+
+        const checker = (x + y) % 2;
+        ctx.save();
+        ctx.fillStyle = tileType === 'dais_floor'
+          ? (checker === 0 ? 'rgba(246, 238, 220, 0.52)' : 'rgba(235, 224, 204, 0.48)')
+          : tileType === 'marble_edge'
+            ? 'rgba(244, 232, 205, 0.54)'
+            : (checker === 0 ? 'rgba(232, 224, 210, 0.42)' : 'rgba(214, 204, 190, 0.38)');
+        ctx.fillRect(tileX, tileY, ts, ts);
+
+        ctx.lineWidth = tileType === 'dais_floor' ? 2.4 : 1.8;
+        ctx.strokeStyle = tileType === 'dais_floor'
+          ? 'rgba(148, 118, 84, 0.72)'
+          : tileType === 'marble_edge'
+            ? 'rgba(176, 144, 98, 0.72)'
+            : 'rgba(124, 102, 82, 0.52)';
+        ctx.strokeRect(tileX + 0.5, tileY + 0.5, ts - 1, ts - 1);
+
+        ctx.strokeStyle = tileType === 'dais_floor'
+          ? 'rgba(255, 252, 246, 0.32)'
+          : 'rgba(255, 250, 242, 0.22)';
+        ctx.beginPath();
+        ctx.moveTo(tileX + 1, tileY + 1);
+        ctx.lineTo(tileX + ts - 2, tileY + 1);
+        ctx.moveTo(tileX + 1, tileY + 1);
+        ctx.lineTo(tileX + 1, tileY + ts - 2);
+        ctx.stroke();
+
+        if (tileType !== 'marble_edge') {
+          ctx.lineWidth = tileType === 'dais_floor' ? 1.5 : 1.1;
+          ctx.strokeStyle = tileType === 'dais_floor'
+            ? 'rgba(255, 249, 238, 0.34)'
+            : 'rgba(244, 238, 228, 0.18)';
+          ctx.strokeRect(tileX + ts * 0.18, tileY + ts * 0.18, ts * 0.64, ts * 0.64);
+        }
+        ctx.restore();
+      }
+    }
 
     // --- THE ROYAL SEAL (Floor Ornament) ---
     const sealX = this.offsetX + 14.5 * ts;
@@ -1300,26 +1407,23 @@ export default class RenderEngine {
           const py = this.offsetY + y * ts;
           const isThroneRoom = grid.id === 'castle';
           const isWallTile = tileType.includes('wall');
-
           const isFloorTile = tileType.includes('floor');
           const isCarpetTile = tileType.includes('carpet');
+          const isRoyalMarbleTile = tileType === 'dais_floor'
+            || tileType === 'marble_edge'
+            || tileType.startsWith('marble_floor');
 
           if (isThroneRoom && metadata?.color) {
-            let baseAlpha = 1.0; // Must be 1.0 to prevent underlying map layers from bleeding through
-            let baseColor = metadata.color;
-
-            if (isFloorTile && !isCarpetTile) {
-              // Override the pure white metadata color with a light cool gray base for the marble
-              baseColor = '#c0c4c8'; 
-            } else if (isWallTile) {
-              baseAlpha = 0.94;
-            } else if (isCarpetTile) {
-              baseAlpha = 0.86;
-            }
+            // Keep a light underpaint so translucent marble sprites stay readable
+            // without collapsing back into the old dark-brown floor regression.
+            let baseAlpha = 0.72;
+            if (isWallTile) baseAlpha = 0.94;
+            else if (isRoyalMarbleTile) baseAlpha = 0.92;
+            else if (isCarpetTile) baseAlpha = 0.86;
 
             ctx.save();
             ctx.globalAlpha = baseAlpha;
-            ctx.fillStyle = baseColor;
+            ctx.fillStyle = metadata.color;
             ctx.fillRect(px, py, ts, ts);
             ctx.restore();
           }
