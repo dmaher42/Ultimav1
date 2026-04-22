@@ -965,9 +965,9 @@ export default class RenderEngine {
     ctx.globalCompositeOperation = 'source-over';
 
     const sanctuary = ctx.createLinearGradient(0, hallTop, 0, hallTop + hallHeight);
-    sanctuary.addColorStop(0, 'rgba(255, 247, 233, 0.15)');
-    sanctuary.addColorStop(0.45, 'rgba(214, 183, 122, 0.10)');
-    sanctuary.addColorStop(1, 'rgba(66, 44, 31, 0.05)');
+    sanctuary.addColorStop(0, 'rgba(255, 247, 233, 0.08)');
+    sanctuary.addColorStop(0.45, 'rgba(214, 183, 122, 0.045)');
+    sanctuary.addColorStop(1, 'rgba(66, 44, 31, 0.02)');
     ctx.fillStyle = sanctuary;
     ctx.fillRect(hallLeft, hallTop, hallWidth, hallHeight);
 
