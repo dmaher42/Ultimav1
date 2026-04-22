@@ -1305,14 +1305,21 @@ export default class RenderEngine {
           const isCarpetTile = tileType.includes('carpet');
 
           if (isThroneRoom && metadata?.color) {
-            let baseAlpha = 0.72;
-            if (isWallTile) baseAlpha = 0.94;
-            else if (tileType === 'marble_edge' || tileType === 'dais_floor') baseAlpha = 0.9;
-            else if (isCarpetTile) baseAlpha = 0.86;
+            let baseAlpha = 1.0; // Must be 1.0 to prevent underlying map layers from bleeding through
+            let baseColor = metadata.color;
+
+            if (isFloorTile && !isCarpetTile) {
+              // Override the pure white metadata color with a solid dark base for the marble
+              baseColor = '#181818'; 
+            } else if (isWallTile) {
+              baseAlpha = 0.94;
+            } else if (isCarpetTile) {
+              baseAlpha = 0.86;
+            }
 
             ctx.save();
             ctx.globalAlpha = baseAlpha;
-            ctx.fillStyle = metadata.color;
+            ctx.fillStyle = baseColor;
             ctx.fillRect(px, py, ts, ts);
             ctx.restore();
           }
