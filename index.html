@@ -73,8 +73,8 @@
         display: block;
         width: 100%;
         height: 100%;
+        image-rendering: -webkit-optimize-contrast;
         image-rendering: pixelated;
-        image-rendering: crisp-edges;
         background:
           radial-gradient(circle at 50% 28%, rgba(96, 116, 180, 0.18), transparent 30%),
           radial-gradient(circle at 50% 65%, rgba(144, 92, 48, 0.08), transparent 36%),
@@ -104,8 +104,8 @@
         border: 1px solid var(--panel-border);
         border-radius: 16px;
         box-shadow: var(--glass-shadow), var(--glass-inset);
-        backdrop-filter: blur(16px);
         -webkit-backdrop-filter: blur(16px);
+        backdrop-filter: blur(16px);
       }
 
       h1, h2, h3 {
@@ -460,6 +460,39 @@
           min-height: 300px;
         }
       }
+      .hud-gold-container {
+        margin-top: 8px;
+        border-top: 1px solid rgba(255,255,255,0.1);
+        padding-top: 6px;
+        color: var(--accent-strong);
+      }
+      #hud-gold {
+        color: var(--accent-strong);
+      }
+      #combat-status {
+        text-align: center;
+        margin-bottom: 12px;
+        font-family: 'Cinzel', serif;
+        color: var(--accent);
+        font-size: 14px;
+      }
+      .combat-log {
+        max-height: 200px;
+        overflow-y: auto;
+        margin-bottom: 16px;
+        font-size: 13px;
+        color: var(--text-muted);
+      }
+      .combat-actions {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+      }
+      #combat-item-list {
+        margin-top: 16px;
+        border-top: 1px solid var(--panel-border);
+        padding-top: 12px;
+      }
     </style>
   </head>
   <body>
@@ -473,8 +506,8 @@
           <div><strong>XP:</strong> <span id="hud-xp">0</span></div>
           <div><strong>Area:</strong> <span id="hud-area">Unknown</span></div>
           <span class="keys">I: Inventory | C: Stats | J: Journal | T: Talk | G: Get | O: Orb</span>
-          <div style="margin-top: 8px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 6px; color: var(--accent-strong);">
-            Gold: <strong id="hud-gold" style="color: var(--accent-strong);">0</strong>
+          <div class="hud-gold-container">
+            Gold: <strong id="hud-gold">0</strong>
           </div>
         </section>
 
@@ -534,12 +567,12 @@
 
     <section id="combat-ui" class="modal glass-panel hidden">
       <h2>In Combat</h2>
-      <div id="combat-status" style="text-align: center; margin-bottom: 12px; font-family: 'Cinzel', serif; color: var(--accent); font-size: 14px;"></div>
-      <div id="combat-log" class="combat-log" style="max-height: 200px; overflow-y: auto; margin-bottom: 16px; font-size: 13px; color: var(--text-muted);"></div>
-      <div id="combat-actions" class="combat-actions" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
+      <div id="combat-status"></div>
+      <div id="combat-log" class="combat-log"></div>
+      <div id="combat-actions" class="combat-actions">
         <!-- Buttons are dynamically injected by CombatEngine.js -->
       </div>
-      <div id="combat-item-list" class="hidden" style="margin-top: 16px; border-top: 1px solid var(--panel-border); padding-top: 12px;"></div>
+      <div id="combat-item-list" class="hidden"></div>
     </section>
 
     <section id="dialogue-ui" class="modal glass-panel hidden">
