@@ -1420,7 +1420,7 @@ export default class RenderEngine {
               if (isThroneRoom && isFloorTile) {
                 ctx.filter = isRoyalMarbleTile
                   ? 'brightness(0.96) contrast(1.08)'
-                  : 'brightness(1.0) contrast(1.06)';
+                  : 'brightness(1.03) contrast(1.12) saturate(1.18)';
               }
               
               drawTile(ctx, this.atlas, spriteKey, -ts/2, -ts/2, ts, ts, metadata?.color);
@@ -1540,7 +1540,7 @@ export default class RenderEngine {
           
           ctx.save();
           ctx.strokeStyle = '#ffd700'; // Gold
-          ctx.lineWidth = 2;
+          ctx.lineWidth = 2.5;
           
           const matchesRunnerFamily = (candidate) => candidate === 'royal_carpet' || (typeof candidate === 'string' && candidate.startsWith('red_carpet'));
 
@@ -1568,8 +1568,10 @@ export default class RenderEngine {
             ctx.lineTo(px + this.tileSize, py + this.tileSize - 1);
             ctx.stroke();
           }
-          ctx.fillStyle = 'rgba(255, 235, 160, 0.08)';
-          ctx.fillRect(px + this.tileSize * 0.42, py + 3, this.tileSize * 0.16, this.tileSize - 6);
+          ctx.fillStyle = 'rgba(255, 230, 120, 0.16)';
+          ctx.fillRect(px + this.tileSize * 0.39, py + 2, this.tileSize * 0.22, this.tileSize - 4);
+          ctx.fillStyle = 'rgba(120, 12, 18, 0.08)';
+          ctx.fillRect(px + 3, py + 2, this.tileSize - 6, this.tileSize - 4);
           ctx.restore();
         }
       }
