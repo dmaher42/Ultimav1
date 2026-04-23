@@ -1322,10 +1322,10 @@ export default class RenderEngine {
     }
 
     if (isRoyalSentinel) {
-      by += this.tileSize * 0.035;
+      by -= this.tileSize * 0.05;
       shadowWidth = this.tileSize * 1.15;
-      shadowHeight = this.tileSize * 0.28;
-      opacity = 0.34;
+      shadowHeight = this.tileSize * 0.22;
+      opacity = 0.36;
     }
 
     this.drawSoftShadow(ctx, cx, by, shadowWidth, shadowHeight, opacity);

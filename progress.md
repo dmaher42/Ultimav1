@@ -39,3 +39,4 @@ Original prompt: Continue this repo from its current state until there is a play
 - Throne room carpet tune: shifted the visible runner toward a deeper regal red (`#c32a2a`) with darker edge bands and a softer inner highlight so it reads richer without the earlier pale wash.
 - Live browser capture confirmed the throne room still renders correctly with the new runner color and the carpet reads as a solid ceremonial red rather than a faded strip.
 - Follow-up throne room grounding pass: royal sentinels now get a slightly heavier contact shadow so the guards feel planted on the floor instead of hovering above the palace tiles.
+- Shadow placement follow-up: lifted the sentinel shadow slightly so it reads under the boots instead of out in front of the guards, which matches the user’s visual read in the throne room.
