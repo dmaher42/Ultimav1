@@ -472,9 +472,15 @@
       }
       #combat-ui {
         width: min(680px, 96vw);
+        max-height: calc(100vh - 28px);
+        overflow-y: auto;
+        padding: 20px;
         background:
           radial-gradient(circle at top center, rgba(212, 175, 55, 0.18), transparent 42%),
           linear-gradient(180deg, rgba(8, 12, 22, 0.96), rgba(6, 8, 16, 0.94));
+      }
+      #combat-ui h2 {
+        margin-bottom: 14px;
       }
       .combat-scene {
         display: grid;
@@ -488,6 +494,171 @@
         letter-spacing: 0.12em;
         font-size: 12px;
         color: var(--accent-strong);
+      }
+      .combat-battlefield {
+        display: grid;
+        grid-template-columns: minmax(0, 1.2fr) minmax(100px, 0.5fr) minmax(0, 1.6fr);
+        gap: 10px;
+        padding: 12px;
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.035);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      .combat-field-chip {
+        min-width: 0;
+      }
+      .combat-scene > .combat-field-chip {
+        padding: 12px;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(255, 255, 255, 0.03);
+      }
+      .combat-field-chip span {
+        display: block;
+        margin-bottom: 4px;
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.14em;
+        color: var(--text-muted);
+      }
+      .combat-field-chip strong,
+      .combat-field-chip em {
+        display: block;
+        color: var(--text-main);
+        font-size: 12px;
+        line-height: 1.4;
+        overflow-wrap: anywhere;
+      }
+      .combat-field-chip em {
+        color: var(--accent);
+        font-style: normal;
+      }
+      .combat-space {
+        padding: 12px;
+        border-radius: 16px;
+        border: 1px solid rgba(212, 175, 55, 0.18);
+        background:
+          radial-gradient(circle at 12% 50%, rgba(16, 185, 129, 0.12), transparent 24%),
+          radial-gradient(circle at 86% 42%, rgba(239, 68, 68, 0.12), transparent 28%),
+          rgba(255, 255, 255, 0.035);
+      }
+      .combat-space-label {
+        margin-bottom: 10px;
+        font-size: 12px;
+        line-height: 1.45;
+        color: var(--text-main);
+      }
+      .combat-lane-track {
+        position: relative;
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px;
+        min-height: 92px;
+      }
+      .combat-lane {
+        position: relative;
+        overflow: hidden;
+        padding: 9px 8px;
+        border-radius: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.018));
+        color: var(--text-muted);
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+      }
+      .combat-lane::after {
+        content: '';
+        position: absolute;
+        inset: auto 8px 9px;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.28), transparent);
+      }
+      .combat-lane:nth-child(1) {
+        grid-column: 1;
+        grid-row: 1;
+      }
+      .combat-lane:nth-child(2) {
+        grid-column: 2;
+        grid-row: 1;
+      }
+      .combat-lane:nth-child(3) {
+        grid-column: 3;
+        grid-row: 1;
+      }
+      .combat-marker {
+        align-self: center;
+        justify-self: center;
+        z-index: 2;
+        max-width: calc(100% - 14px);
+        padding: 6px 9px;
+        border-radius: 999px;
+        font-size: 11px;
+        line-height: 1.2;
+        text-align: center;
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.26);
+      }
+      #combat-enemy-marker {
+        grid-row: 1;
+        border: 1px solid rgba(248, 113, 113, 0.5);
+        background: rgba(127, 29, 29, 0.82);
+        color: #fee2e2;
+        transform: translateY(27px);
+        transition: grid-column 0.2s ease, transform 0.2s ease;
+      }
+      #combat-threat-marker {
+        grid-row: 1;
+        border: 1px solid rgba(212, 175, 55, 0.55);
+        background: rgba(212, 175, 55, 0.18);
+        color: var(--accent-strong);
+        transform: translateY(-20px);
+        animation: threat-marker-pulse 1.6s ease-in-out infinite;
+      }
+      #combat-ui[data-enemy-slot="close"] #combat-enemy-marker,
+      #combat-ui[data-threat-slot="close"] #combat-threat-marker {
+        grid-column: 1;
+      }
+      #combat-ui[data-enemy-slot="mid"] #combat-enemy-marker,
+      #combat-ui[data-threat-slot="mid"] #combat-threat-marker {
+        grid-column: 2;
+      }
+      #combat-ui[data-enemy-slot="far"] #combat-enemy-marker,
+      #combat-ui[data-threat-slot="far"] #combat-threat-marker {
+        grid-column: 3;
+      }
+      #combat-ui[data-range="closing"] #combat-enemy-marker {
+        animation: enemy-rush 0.6s ease-out;
+      }
+      .combat-terrain-cue {
+        margin-top: 9px;
+        font-size: 11px;
+        color: var(--text-muted);
+      }
+      .combat-party-formation {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px;
+        margin-top: 10px;
+      }
+      .combat-party-member {
+        padding: 8px;
+        border-radius: 12px;
+        border: 1px solid rgba(16, 185, 129, 0.18);
+        background: rgba(16, 185, 129, 0.07);
+        min-width: 0;
+      }
+      .combat-party-member strong {
+        display: block;
+        font-family: 'Cinzel', serif;
+        color: var(--text-main);
+        font-size: 13px;
+      }
+      .combat-party-member span {
+        display: block;
+        margin-top: 3px;
+        color: var(--text-muted);
+        font-size: 11px;
+        line-height: 1.35;
       }
       .combat-overview {
         display: grid;
@@ -611,7 +782,7 @@
         font-size: 14px;
       }
       .combat-log {
-        max-height: 200px;
+        max-height: 128px;
         overflow-y: auto;
         margin-bottom: 16px;
         font-size: 13px;
@@ -625,6 +796,13 @@
         grid-template-columns: repeat(3, 1fr);
         gap: 8px;
       }
+      #combat-ui .combat-actions {
+        position: sticky;
+        bottom: -1px;
+        z-index: 4;
+        padding-top: 8px;
+        background: linear-gradient(180deg, rgba(6, 8, 16, 0), rgba(6, 8, 16, 0.98) 34%);
+      }
       .combat-action.is-recommended {
         border-color: rgba(255, 215, 0, 0.9);
         box-shadow: 0 0 0 1px rgba(255, 215, 0, 0.22), 0 10px 24px rgba(212, 175, 55, 0.15);
@@ -635,20 +813,102 @@
         cursor: not-allowed;
         box-shadow: none;
       }
+      .combat-action span {
+        display: block;
+        margin-top: 3px;
+        font-size: 10px;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+      #combat-ui.threat-steel .combat-intent,
+      #combat-ui.threat-arcane .combat-intent,
+      #combat-ui.threat-ember .combat-intent {
+        animation: threat-pulse 0.36s ease-out;
+      }
+      #combat-ui.physical-hit .combatant-card:last-child,
+      #combat-ui.magic-hit .combatant-card:last-child,
+      #combat-ui.impact-physical .combatant-card:first-child,
+      #combat-ui.impact-lightning .combatant-card:first-child,
+      #combat-ui.impact-fire .combatant-card:first-child,
+      #combat-ui.impact-magic .combatant-card:first-child {
+        animation: combat-impact 0.42s ease-out;
+      }
+      #combat-ui.read-success .combatant-card:first-child,
+      #combat-ui.read-stance .combatant-card:first-child {
+        animation: guard-read 0.46s ease-out;
+      }
+      #combat-ui.guard-break .combat-meter-fill {
+        animation: guard-break-flare 0.52s ease-out;
+      }
+      @keyframes threat-pulse {
+        0% { transform: scale(1); box-shadow: 0 0 0 rgba(255, 215, 0, 0); }
+        45% { transform: scale(1.012); box-shadow: 0 0 24px rgba(255, 215, 0, 0.18); }
+        100% { transform: scale(1); box-shadow: 0 0 0 rgba(255, 215, 0, 0); }
+      }
+      @keyframes threat-marker-pulse {
+        0% { box-shadow: 0 10px 20px rgba(0, 0, 0, 0.26); filter: brightness(1); }
+        50% { box-shadow: 0 0 22px rgba(212, 175, 55, 0.3); filter: brightness(1.2); }
+        100% { box-shadow: 0 10px 20px rgba(0, 0, 0, 0.26); filter: brightness(1); }
+      }
+      @keyframes combat-impact {
+        0% { transform: translateX(0); filter: brightness(1); }
+        35% { transform: translateX(-3px); filter: brightness(1.35); }
+        100% { transform: translateX(0); filter: brightness(1); }
+      }
+      @keyframes guard-read {
+        0% { box-shadow: 0 0 0 rgba(16, 185, 129, 0); }
+        45% { box-shadow: 0 0 28px rgba(16, 185, 129, 0.22); }
+        100% { box-shadow: 0 0 0 rgba(16, 185, 129, 0); }
+      }
+      @keyframes guard-break-flare {
+        0% { filter: brightness(1); }
+        50% { filter: brightness(1.8); }
+        100% { filter: brightness(1); }
+      }
+      @keyframes enemy-rush {
+        0% { transform: translate(36px, 27px) scale(0.94); }
+        60% { transform: translate(-4px, 27px) scale(1.04); }
+        100% { transform: translateY(27px) scale(1); }
+      }
       #combat-item-list {
         margin-top: 16px;
         border-top: 1px solid var(--panel-border);
         padding-top: 12px;
       }
       @media (max-width: 640px) {
+        .combat-battlefield {
+          grid-template-columns: 1fr;
+        }
+        .combat-lane-track,
+        .combat-party-formation {
+          grid-template-columns: 1fr;
+        }
+        .combat-lane:nth-child(1),
+        .combat-lane:nth-child(2),
+        .combat-lane:nth-child(3) {
+          grid-column: 1;
+          grid-row: auto;
+        }
+        #combat-enemy-marker,
+        #combat-threat-marker {
+          grid-column: 1 !important;
+          grid-row: auto;
+          transform: none;
+        }
         .combat-overview {
           grid-template-columns: 1fr;
         }
         .combat-actions {
           grid-template-columns: repeat(2, 1fr);
         }
+        #combat-ui .combat-actions {
+          position: static;
+          padding-top: 0;
+          background: transparent;
+        }
         #combat-ui {
-          padding: 24px;
+          padding: 18px;
         }
       }
     </style>
@@ -727,6 +987,36 @@
       <h2>In Combat</h2>
       <div class="combat-scene">
         <div id="combat-turn-indicator" class="combat-turn-indicator">Your turn</div>
+        <div class="combat-battlefield">
+          <div class="combat-field-chip">
+            <span>Ground</span>
+            <strong id="combat-field-context">Battlefield - unsteady ground</strong>
+          </div>
+          <div class="combat-field-chip">
+            <span>Range</span>
+            <em id="combat-field-range">MID range</em>
+          </div>
+          <div class="combat-field-chip">
+            <span>Field</span>
+            <strong id="combat-field-threat">Reading the line.</strong>
+          </div>
+        </div>
+        <div class="combat-space">
+          <div id="combat-space-label" class="combat-space-label">Party line steady. Enemy at mid range.</div>
+          <div class="combat-lane-track" aria-label="Battlefield range lanes">
+            <div class="combat-lane">Close</div>
+            <div class="combat-lane">Mid</div>
+            <div class="combat-lane">Far</div>
+            <div id="combat-threat-marker" class="combat-marker">Reading</div>
+            <div id="combat-enemy-marker" class="combat-marker">Foe</div>
+          </div>
+          <div id="combat-terrain-cue" class="combat-terrain-cue">Battlefield: Unsteady ground</div>
+          <div id="combat-party-formation" class="combat-party-formation" aria-label="Party formation">
+            <div class="combat-party-member"><strong>Dupre</strong><span>Shield - holding the front</span></div>
+            <div class="combat-party-member"><strong>Iolo</strong><span>Bow - watching the lane</span></div>
+            <div class="combat-party-member"><strong>Shamino</strong><span>Scout - guarding the flank</span></div>
+          </div>
+        </div>
         <div class="combat-overview">
           <div class="combatant-card">
             <div class="combatant-label">Avatar</div>
@@ -756,6 +1046,10 @@
           <div class="combat-meter-track">
             <div id="combat-stagger-fill" class="combat-meter-fill"></div>
           </div>
+        </div>
+        <div class="combat-field-chip">
+          <span>Party</span>
+          <strong id="combat-field-party">Your companions hold the line around you.</strong>
         </div>
       </div>
       <div id="combat-status"></div>

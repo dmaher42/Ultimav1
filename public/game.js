@@ -1132,7 +1132,7 @@ async function startEncounter(category = null) {
   try {
     const level = state.map.areaLevel || 1;
     enemy = createEnemy(category || state.map.encounterGroup || state.map.id, level);
-    result = await combatEngine.start(state.player, enemy);
+    result = await combatEngine.start(state.player, enemy, { map: state.map, category });
     await resolveCombat(result, enemy, category);
 
     // Flag guardian as defeated if victory
@@ -1429,7 +1429,8 @@ window.render_game_to_text = () => {
         current: combatSnapshot.enemyStagger,
         threshold: combatSnapshot.staggerThreshold
       } : null,
-      opening: combatSnapshot?.playerOpening || 0
+      opening: combatSnapshot?.playerOpening || 0,
+      battlefield: combatSnapshot?.battlefield || null
     } : { active: false },
     objective: objective ? {
       text: objective.text,

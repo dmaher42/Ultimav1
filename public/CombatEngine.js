@@ -42,60 +42,299 @@ const ACTION_SHORTCUTS = {
 const INTENT_TEMPLATES = {
   strike: {
     id: 'strike',
-    title: 'Measured Strike',
-    hint: 'Steel answers steel, but a shielded stance is the safer read.',
+    title: 'Blade Line',
+    hint: 'It squares up at close range; steel or a braced guard can meet the blow.',
     counterMode: 'melee',
     action: 'enemyAttack',
-    tone: 'steel'
+    tone: 'steel',
+    range: 'close',
+    hazardSlot: 'close',
+    marker: 'Blade lane',
+    threat: 'A weapon lane opens directly in front of you.',
+    preview: 'The foe plants its feet and draws a clean line toward your ribs.'
   },
   pressure: {
     id: 'pressure',
-    title: 'Relentless Pressure',
-    hint: 'Arcane force or a disciplined guard can slow the advance.',
+    title: 'Crushing Advance',
+    hint: 'Arcane force or a disciplined guard can slow the closing pressure.',
     counterMode: 'spell',
     action: 'enemyPressure',
-    tone: 'steel'
+    tone: 'steel',
+    range: 'close',
+    hazardSlot: 'close',
+    marker: 'Pressing line',
+    threat: 'The front line is being squeezed.',
+    preview: 'The foe crowds the space, trying to make the fight small and ugly.'
   },
   rush: {
     id: 'rush',
-    title: 'Diving Rush',
-    hint: 'A fast bow shot can catch the lunge before it lands.',
+    title: 'Winged Rush',
+    hint: 'A fast bow shot can catch the lunge before it crashes into the line.',
     counterMode: 'bow',
     action: 'enemyAggressiveStrike',
-    tone: 'steel'
+    tone: 'steel',
+    range: 'closing',
+    hazardSlot: 'close',
+    marker: 'Rush lane',
+    threat: 'The enemy is about to collapse the distance.',
+    preview: 'Muscle tightens and the whole battlefield seems to lean forward.'
   },
   lightning: {
     id: 'lightning',
-    title: 'Lightning Chant',
-    hint: 'Close in with melee before the chant peaks.',
+    title: 'Charged Lightning Chant',
+    hint: 'Close in with melee before the charge finds a path through you.',
     counterMode: 'melee',
     action: 'enemyLightning',
-    tone: 'arcane'
+    tone: 'arcane',
+    range: 'far',
+    hazardSlot: 'far',
+    marker: 'Charged arc',
+    threat: 'A blue-white charge builds over the battlefield.',
+    preview: 'The air tastes of iron as the chant pulls sparks from the floor.'
   },
   breath: {
     id: 'breath',
-    title: 'Inferno Breath',
-    hint: "Spell pressure can break the drake's inhale before the fire blooms.",
+    title: 'Inferno Cone',
+    hint: "Spell pressure can break the drake's inhale before the cone blooms.",
     counterMode: 'spell',
     action: 'enemyBreath',
-    tone: 'ember'
+    tone: 'ember',
+    range: 'far',
+    hazardSlot: 'far',
+    marker: 'Heat cone',
+    threat: 'A cone of heat threatens the whole line.',
+    preview: 'Heat rolls outward before the flame, turning the ground amber.'
   },
   burst: {
     id: 'burst',
-    title: 'Eye Burst',
-    hint: "A precise bow shot can spoil the gazer's focus.",
+    title: 'Unstable Eye Burst',
+    hint: "A precise bow shot can spoil the gazer's focus before it ruptures.",
     counterMode: 'bow',
     action: 'enemyBurst',
-    tone: 'arcane'
+    tone: 'arcane',
+    range: 'mid',
+    hazardSlot: 'mid',
+    marker: 'Warped zone',
+    threat: 'A warped blast zone gathers around the eye.',
+    preview: 'The air buckles around the gaze, as if the world is about to blink.'
   },
   fortify: {
     id: 'fortify',
-    title: 'Guarded Posture',
+    title: 'Guarded Shell',
     hint: 'Spellwork slips through a raised guard better than brute force.',
     counterMode: 'spell',
     action: 'enemyFortify',
-    tone: 'steel'
+    tone: 'steel',
+    range: 'mid',
+    hazardSlot: 'mid',
+    marker: 'Guard shell',
+    threat: 'The foe has withdrawn into a hard shell.',
+    preview: 'Its guard closes like a door, daring you to strike first.'
   }
+};
+
+const MODE_FIELD_EFFECTS = {
+  melee: {
+    range: 'close',
+    posture: 'Committed',
+    text: 'You step into the front line where blades, claws, and breath all feel close.'
+  },
+  bow: {
+    range: 'far',
+    posture: 'Measured',
+    text: 'You give ground and look for a clean shot through the chaos.'
+  },
+  spell: {
+    range: 'mid',
+    posture: 'Channeling',
+    text: 'You hold the middle distance and shape the air into force.'
+  },
+  defend: {
+    posture: 'Braced',
+    text: 'You lower your stance and let the enemy reveal its weight.'
+  }
+};
+
+const BATTLE_CONTEXTS = {
+  castle: {
+    label: 'Throne Room',
+    ground: 'Marble underfoot',
+    partyLine: 'Dupre braces the royal line beside you.'
+  },
+  lycaeum_entrance: {
+    label: 'Lycaeum Grounds',
+    ground: 'Stone steps and open air',
+    partyLine: 'Iolo watches the angles between columns.'
+  },
+  village: {
+    label: 'Britanny Bay',
+    ground: 'Packed earth and market stones',
+    partyLine: 'Shamino keeps one eye on the bystanders.'
+  },
+  dungeon_1: {
+    label: 'Dark Caverns',
+    ground: 'Wet stone and narrow walls',
+    partyLine: 'Dupre keeps his shield close in the tunnel.'
+  },
+  overworld: {
+    label: 'Wilds',
+    ground: 'Grass, mud, and broken trail',
+    partyLine: 'Iolo calls distances through the wind.'
+  },
+  default: {
+    label: 'Battlefield',
+    ground: 'Unsteady ground',
+    partyLine: 'Your companions hold the line around you.'
+  }
+};
+
+const ENEMY_PROFILES = {
+  gargoyle: {
+    family: 'Gargoyle',
+    entrance: '{enemy} lands with drilled, brutal discipline.',
+    stance: '{enemy} fights like a soldier, not a beast.',
+    hit: {
+      melee: "You meet {enemy}'s disciplined guard and force it back for {damage} damage.",
+      bow: 'Your shot catches {enemy} between wingbeats for {damage} damage.',
+      spell: 'Spellfire crawls across {enemy} for {damage} damage.'
+    },
+    attack: {
+      pressure: '{enemy} hammers forward, step after disciplined step',
+      rush: '{enemy} folds its wings and crashes into the line'
+    },
+    breakLine: "{enemy}'s drilled guard finally buckles."
+  },
+  reaper: {
+    family: 'Reaper',
+    entrance: '{enemy} rises like a curse from the edge of sight.',
+    stance: 'The air around {enemy} feels colder than the room.',
+    hit: {
+      melee: 'You cut through the dead hush around {enemy} for {damage} damage.',
+      bow: 'Your arrow vanishes into the gloom around {enemy}, dealing {damage} damage.',
+      spell: 'Your spell tears a bright wound through {enemy} for {damage} damage.'
+    },
+    attack: {
+      pressure: '{enemy} presses its shadow across your footing',
+      lightning: '{enemy} lifts a claw and the chant becomes lightning'
+    },
+    breakLine: "{enemy}'s chant falters into a rasping hiss."
+  },
+  drake: {
+    family: 'Drake',
+    entrance: '{enemy} drags heat and weight into the fight.',
+    stance: 'Every breath from {enemy} makes the battlefield feel smaller.',
+    hit: {
+      melee: 'You strike hot scale for {damage} damage.',
+      bow: 'Your arrow punches beneath a scale ridge for {damage} damage.',
+      spell: 'Your spell bites through the heat haze for {damage} damage.'
+    },
+    attack: {
+      pressure: '{enemy} uses its weight to grind the line backward',
+      breath: '{enemy} draws in a furnace-breath'
+    },
+    breakLine: "{enemy}'s massive stance slips and the heat breaks around it."
+  },
+  gazer: {
+    family: 'Gazer',
+    entrance: '{enemy} floats into view, every eye twitching with force.',
+    stance: '{enemy} makes the space around it feel wrong.',
+    hit: {
+      melee: 'You slash through the warped air around {enemy} for {damage} damage.',
+      bow: 'Your shot pierces the wobbling focus around {enemy} for {damage} damage.',
+      spell: 'Magic snaps back against {enemy}, dealing {damage} damage.'
+    },
+    attack: {
+      pressure: '{enemy} crowds your senses without moving',
+      burst: '{enemy} gathers a sickly pulse behind its eye'
+    },
+    breakLine: "{enemy}'s focus fractures into a dozen twitching glances."
+  },
+  wolf: {
+    family: 'Beast',
+    entrance: '{enemy} circles low, teeth bright in the dim light.',
+    stance: '{enemy} tests the edge of the line for weakness.',
+    hit: {
+      melee: 'You catch {enemy} as it darts in, dealing {damage} damage.',
+      bow: 'Your shot clips {enemy} mid-step for {damage} damage.',
+      spell: 'Your spell sends {enemy} skidding for {damage} damage.'
+    },
+    attack: {
+      strike: '{enemy} snaps at your lead side',
+      pressure: '{enemy} circles and herds you toward bad footing'
+    },
+    breakLine: "{enemy}'s rhythm breaks into a panicked skid."
+  },
+  default: {
+    family: 'Foe',
+    entrance: '{enemy} pushes into the fight.',
+    stance: '{enemy} watches for a mistake.',
+    hit: {
+      melee: 'You drive in and strike {enemy} for {damage} damage.',
+      bow: 'Your shot lands on {enemy} for {damage} damage.',
+      spell: 'Your spell strikes {enemy} for {damage} damage.'
+    },
+    attack: {
+      strike: '{enemy} cuts into your space',
+      pressure: '{enemy} presses forward',
+      rush: '{enemy} rushes the line',
+      lightning: '{enemy} releases a charged bolt',
+      breath: '{enemy} breathes fire across the line',
+      burst: '{enemy} releases a burst of force'
+    },
+    breakLine: "{enemy}'s guard breaks."
+  }
+};
+
+const PARTY_CALLOUTS = {
+  read: ['Dupre: Hold it there. Now answer!', 'Iolo: That is the opening. Take it!'],
+  counter: ['Iolo: Clean line!', 'Shamino: You caught its reach.'],
+  break: ['Dupre: Its guard is gone!', 'Iolo: Press it before it recovers!'],
+  danger: ['Shamino: Watch the ground!', 'Dupre: Line holds. Brace!']
+};
+
+const PARTY_FORMATIONS = {
+  steady: [
+    { id: 'dupre', name: 'Dupre', role: 'Shield', state: 'holding the front' },
+    { id: 'iolo', name: 'Iolo', role: 'Bow', state: 'watching the lane' },
+    { id: 'shamino', name: 'Shamino', role: 'Scout', state: 'guarding the flank' }
+  ],
+  melee: [
+    { id: 'dupre', name: 'Dupre', role: 'Shield', state: 'steps in beside you' },
+    { id: 'iolo', name: 'Iolo', role: 'Bow', state: 'covers the back line' },
+    { id: 'shamino', name: 'Shamino', role: 'Scout', state: 'keeps the flank clear' }
+  ],
+  bow: [
+    { id: 'dupre', name: 'Dupre', role: 'Shield', state: 'buys you space' },
+    { id: 'iolo', name: 'Iolo', role: 'Bow', state: 'calls the shot' },
+    { id: 'shamino', name: 'Shamino', role: 'Scout', state: 'marks the escape line' }
+  ],
+  spell: [
+    { id: 'dupre', name: 'Dupre', role: 'Shield', state: 'locks the front' },
+    { id: 'iolo', name: 'Iolo', role: 'Bow', state: 'keeps pressure off you' },
+    { id: 'shamino', name: 'Shamino', role: 'Scout', state: 'watches the casting space' }
+  ],
+  defend: [
+    { id: 'dupre', name: 'Dupre', role: 'Shield', state: 'braces the line' },
+    { id: 'iolo', name: 'Iolo', role: 'Bow', state: 'waits for the recovery' },
+    { id: 'shamino', name: 'Shamino', role: 'Scout', state: 'reads the footing' }
+  ],
+  danger: [
+    { id: 'dupre', name: 'Dupre', role: 'Shield', state: 'absorbs the shock' },
+    { id: 'iolo', name: 'Iolo', role: 'Bow', state: 'shouts a warning' },
+    { id: 'shamino', name: 'Shamino', role: 'Scout', state: 'pulls the flank back' }
+  ],
+  break: [
+    { id: 'dupre', name: 'Dupre', role: 'Shield', state: 'pushes forward' },
+    { id: 'iolo', name: 'Iolo', role: 'Bow', state: 'has a clean angle' },
+    { id: 'shamino', name: 'Shamino', role: 'Scout', state: 'cuts off retreat' }
+  ]
+};
+
+const RANGE_SLOT_LABELS = {
+  close: 'Close',
+  closing: 'Close',
+  mid: 'Mid',
+  far: 'Far'
 };
 
 function clamp(value, min, max) {
@@ -123,6 +362,38 @@ function getEnemyCondition(enemy) {
   if (ratio <= 0.4) return 'is badly wounded and slowing';
   if (ratio <= 0.7) return 'is showing cracks in its guard';
   return null;
+}
+
+function formatLine(template, values = {}) {
+  return Object.entries(values).reduce(
+    (line, [key, value]) => line.replaceAll(`{${key}}`, String(value)),
+    template
+  );
+}
+
+function getEnemyProfile(enemy) {
+  const key = enemy?.tactic && enemy.tactic !== 'default' ? enemy.tactic : (enemy?.id || 'default');
+  return ENEMY_PROFILES[key] || ENEMY_PROFILES[enemy?.id] || ENEMY_PROFILES.default;
+}
+
+function getBattleContext(context = {}) {
+  const mapId = context.map?.id || context.mapId || 'default';
+  const base = BATTLE_CONTEXTS[mapId] || BATTLE_CONTEXTS.default;
+  return {
+    key: mapId,
+    label: base.label || context.map?.name || 'Battlefield',
+    ground: base.ground,
+    partyLine: base.partyLine
+  };
+}
+
+function getRangeSlot(range = 'mid') {
+  return RANGE_SLOT_LABELS[range] ? range : 'mid';
+}
+
+function getPartyFormation(focus = 'steady') {
+  const formation = PARTY_FORMATIONS[focus] || PARTY_FORMATIONS.steady;
+  return formation.map((member) => ({ ...member }));
 }
 
 function getIntentForEnemy(enemy, turnCount = 0) {
@@ -179,6 +450,15 @@ export default class CombatEngine {
     this.enemyStateElement = root.querySelector('#combat-enemy-state');
     this.staggerFillElement = root.querySelector('#combat-stagger-fill');
     this.staggerTextElement = root.querySelector('#combat-stagger-text');
+    this.fieldContextElement = root.querySelector('#combat-field-context');
+    this.fieldRangeElement = root.querySelector('#combat-field-range');
+    this.fieldThreatElement = root.querySelector('#combat-field-threat');
+    this.fieldPartyElement = root.querySelector('#combat-field-party');
+    this.spaceLabelElement = root.querySelector('#combat-space-label');
+    this.enemyMarkerElement = root.querySelector('#combat-enemy-marker');
+    this.threatMarkerElement = root.querySelector('#combat-threat-marker');
+    this.terrainCueElement = root.querySelector('#combat-terrain-cue');
+    this.partyFormationElement = root.querySelector('#combat-party-formation');
     this.generator = new ItemGenerator();
     this.boundActionHandler = (event) => this.handleAction(event);
     this.actionsElement.addEventListener('click', this.boundActionHandler);
@@ -198,9 +478,11 @@ export default class CombatEngine {
     });
   }
 
-  start(player, enemy) {
+  start(player, enemy, context = {}) {
     this.player = player;
     this.enemy = enemy;
+    this.enemyProfile = getEnemyProfile(enemy);
+    this.battlefield = this.createBattlefieldState(context);
     this.playerGuard = { defense: 1, damage: 1, readiedIntentId: null };
     this.enemyGuard = { defense: 1, damage: 1 };
     this.turnCount = 0;
@@ -213,12 +495,14 @@ export default class CombatEngine {
     this.lastPlayerAction = null;
     this.repeatedActionCount = 0;
     this.lastEnemyCondition = null;
+    this.partyCalloutCooldown = 0;
     this.enemyIntent = getIntentForEnemy(enemy, this.turnCount);
+    this.updateBattlefieldForIntent(this.enemyIntent);
     this.logElement.innerHTML = '';
     this.itemList.classList.add('hidden');
     this.root.classList.remove('hidden');
     this.renderActionButtons();
-    this.appendLog(`A ${enemy.name} emerges!`);
+    this.appendLog(formatLine(this.enemyProfile.entrance, { enemy: enemy.name }));
     this.appendLog(`${enemy.name} telegraphs ${this.enemyIntent.title.toLowerCase()}. ${this.enemyIntent.hint}`);
     this.updateStatus();
     this.syncActionButtonStates();
@@ -238,6 +522,103 @@ export default class CombatEngine {
     }
   }
 
+  createBattlefieldState(context) {
+    const battleContext = getBattleContext(context);
+    return {
+      contextKey: battleContext.key,
+      contextLabel: battleContext.label,
+      ground: battleContext.ground,
+      range: 'mid',
+      posture: 'Ready',
+      enemySlot: 'mid',
+      hazardSlot: 'mid',
+      hazardLabel: 'Reading',
+      spaceLine: 'Party line steady. Enemy at mid range.',
+      partyFormation: getPartyFormation('steady'),
+      threat: 'The fight opens at weapon-call distance.',
+      partyLine: battleContext.partyLine
+    };
+  }
+
+  updateBattlefieldForIntent(intent) {
+    if (!this.battlefield || !intent) return;
+    this.battlefield.threat = intent.threat || intent.preview || 'The foe is reading the line.';
+    const range = getRangeSlot(intent.range);
+    this.battlefield.range = range;
+    this.battlefield.enemySlot = range === 'closing' ? 'close' : range;
+    this.battlefield.hazardSlot = getRangeSlot(intent.hazardSlot || intent.range);
+    this.battlefield.hazardLabel = intent.marker || intent.title || 'Threat';
+    this.battlefield.spaceLine = `${this.enemy.name} threatens ${RANGE_SLOT_LABELS[this.battlefield.hazardSlot].toLowerCase()} range. ${this.enemyProfile.family} pressure is ${intent.title.toLowerCase()}.`;
+  }
+
+  updateBattlefieldForPlayerAction(mode, counteredIntent) {
+    if (!this.battlefield) return;
+    const effect = MODE_FIELD_EFFECTS[mode] || MODE_FIELD_EFFECTS.melee;
+    const range = getRangeSlot(effect.range || this.battlefield.range);
+    this.battlefield.range = range;
+    this.battlefield.enemySlot = range;
+    this.battlefield.posture = counteredIntent ? 'Exploiting' : effect.posture;
+    this.battlefield.hazardSlot = counteredIntent && this.enemyIntent
+      ? getRangeSlot(this.enemyIntent.hazardSlot || this.enemyIntent.range)
+      : range;
+    this.battlefield.hazardLabel = counteredIntent && this.enemyIntent
+      ? `Disrupted ${this.enemyIntent.marker || this.enemyIntent.title}`
+      : effect.posture;
+    this.battlefield.partyFormation = getPartyFormation(mode);
+    this.battlefield.spaceLine = counteredIntent
+      ? `The party pivots through ${RANGE_SLOT_LABELS[this.battlefield.hazardSlot].toLowerCase()} range and steals the lane.`
+      : `The party shifts to support your ${effect.posture.toLowerCase()} ${mode} stance.`;
+    this.battlefield.threat = counteredIntent && this.enemyIntent
+      ? `You cut across ${this.enemyIntent.title.toLowerCase()} before it owns the space.`
+      : effect.text;
+  }
+
+  updateBattlefieldForEnemyHit({ damageType, readiedIntent, totalDamage }) {
+    if (!this.battlefield) return;
+    if (readiedIntent) {
+      this.battlefield.posture = 'Braced';
+      this.battlefield.hazardLabel = 'Read and held';
+      this.battlefield.partyFormation = getPartyFormation('defend');
+      this.battlefield.spaceLine = 'The party line absorbs the attack and turns the recovery into space.';
+      this.battlefield.threat = 'The line holds and the foe overextends into your guard.';
+      return;
+    }
+    this.battlefield.posture = totalDamage > 0 ? 'Pressed' : 'Protected';
+    this.battlefield.hazardLabel = totalDamage > 0 ? 'Impact lane' : 'Blocked lane';
+    this.battlefield.partyFormation = getPartyFormation(totalDamage > 0 ? 'danger' : 'defend');
+    this.battlefield.spaceLine = totalDamage > 0
+      ? 'The party is driven back a step but stays in formation.'
+      : 'The party holds its spacing as the attack breaks around you.';
+    const threatByType = {
+      physical: 'The impact drives through the front line.',
+      lightning: 'Lightning crawls over the battlefield and snaps away.',
+      fire: 'Heat washes through the lane and leaves smoke in its wake.',
+      magic: 'Force buckles the air around the party.'
+    };
+    this.battlefield.threat = threatByType[damageType] || 'The attack rattles the line.';
+  }
+
+  pulseCombat(className, duration = 420) {
+    this.root.classList.add(className);
+    setTimeout(() => this.root.classList.remove(className), duration);
+  }
+
+  maybeAppendPartyCallout(kind) {
+    if (!this.battlefield || this.partyCalloutCooldown > 0) {
+      this.partyCalloutCooldown = Math.max(0, this.partyCalloutCooldown - 1);
+      return;
+    }
+    const lines = PARTY_CALLOUTS[kind];
+    if (!lines?.length) return;
+    const index = (this.turnCount + this.enemy.level + this.repeatedActionCount) % lines.length;
+    const line = lines[index];
+    this.battlefield.partyLine = line;
+    const formationFocus = kind === 'counter' ? this.playerMode : (kind === 'read' ? 'defend' : kind);
+    this.battlefield.partyFormation = getPartyFormation(formationFocus);
+    this.appendLog(line);
+    this.partyCalloutCooldown = 2;
+  }
+
   getSnapshot() {
     if (!this.active) {
       return { active: false };
@@ -255,16 +636,17 @@ export default class CombatEngine {
       enemyStagger: Math.round(this.enemyStagger),
       staggerThreshold: this.getStaggerThreshold(),
       playerOpening: this.playerOpening,
-      readiedIntentId: this.playerGuard.readiedIntentId
+      readiedIntentId: this.playerGuard.readiedIntentId,
+      battlefield: this.battlefield ? { ...this.battlefield } : null
     };
   }
 
   renderActionButtons() {
     this.actionsElement.innerHTML = `
-      <button class="combat-action" data-action="melee">${ACTION_SHORTCUTS.melee} Melee</button>
-      <button class="combat-action" data-action="bow">${ACTION_SHORTCUTS.bow} Bow</button>
-      <button class="combat-action" data-action="spell">${ACTION_SHORTCUTS.spell} Spell</button>
-      <button class="combat-action" data-action="defend">${ACTION_SHORTCUTS.defend} Defend</button>
+      <button class="combat-action" data-action="melee">${ACTION_SHORTCUTS.melee} Melee <span>close</span></button>
+      <button class="combat-action" data-action="bow">${ACTION_SHORTCUTS.bow} Bow <span>far</span></button>
+      <button class="combat-action" data-action="spell">${ACTION_SHORTCUTS.spell} Spell <span>mid</span></button>
+      <button class="combat-action" data-action="defend">${ACTION_SHORTCUTS.defend} Defend <span>brace</span></button>
       <button class="combat-action" data-action="item">${ACTION_SHORTCUTS.item} Item</button>
       <button class="combat-action" data-action="flee">${ACTION_SHORTCUTS.flee} Flee</button>
     `;
@@ -473,6 +855,7 @@ export default class CombatEngine {
 
   prepareNextIntent(announce = true) {
     this.enemyIntent = getIntentForEnemy(this.enemy, this.turnCount);
+    this.updateBattlefieldForIntent(this.enemyIntent);
     if (announce) {
       this.announceNextIntent();
     }
@@ -491,6 +874,7 @@ export default class CombatEngine {
 
     const intent = this.enemyIntent;
     const counteredIntent = Boolean(intent && intent.counterMode === mode);
+    this.updateBattlefieldForPlayerAction(mode, counteredIntent);
     const attackPower = this.getPlayerAttackPower(mode);
     const variance = 0.85 + Math.random() * 0.3;
     const baseDefense = this.enemy.defense * this.enemyGuard.defense * config.defenseFactor;
@@ -507,7 +891,8 @@ export default class CombatEngine {
     this.playerGuard.damage = 1;
     this.enemy.takeDamage(damage);
 
-    let message = `You ${config.verb} the ${this.enemy.name} for ${damage} damage.`;
+    const hitTemplate = this.enemyProfile.hit?.[mode] || ENEMY_PROFILES.default.hit[mode];
+    let message = formatLine(hitTemplate, { enemy: this.enemy.name, damage });
     if (counteredIntent) {
       message += ` The ${intent.title.toLowerCase()} is disrupted.`;
     }
@@ -518,15 +903,26 @@ export default class CombatEngine {
       message += ` The ${this.enemy.name} is starting to read that rhythm.`;
     }
     this.appendLog(message);
+    if (counteredIntent) {
+      this.maybeAppendPartyCallout('counter');
+    }
     this.notePlayerAction(mode, counteredIntent);
 
     const staggered = this.applyEnemyStagger(this.calculateStaggerGain(damage, counteredIntent));
     this.playerOpening = 0;
-    this.triggerHitFlash();
+    this.triggerHitFlash(mode === 'spell' ? 'rgba(120, 180, 255, 0.45)' : 'rgba(255, 240, 180, 0.35)');
+    this.pulseCombat(mode === 'spell' ? 'magic-hit' : 'physical-hit');
     if (damage > 10 || staggered) this.triggerScreenShake();
     this.reportEnemyConditionShift();
     if (staggered) {
-      this.appendLog(`The ${this.enemy.name}'s guard breaks under the pressure.`);
+      this.battlefield.posture = 'Guard broken';
+      this.battlefield.hazardLabel = 'Open lane';
+      this.battlefield.partyFormation = getPartyFormation('break');
+      this.battlefield.spaceLine = 'The formation surges forward through the broken guard.';
+      this.battlefield.threat = formatLine(this.enemyProfile.breakLine || ENEMY_PROFILES.default.breakLine, { enemy: this.enemy.name });
+      this.appendLog(this.battlefield.threat);
+      this.pulseCombat('guard-break', 520);
+      this.maybeAppendPartyCallout('break');
     }
     this.updateStatus();
     if (!this.enemy.isAlive()) {
@@ -542,11 +938,22 @@ export default class CombatEngine {
     this.playerGuard.defense = 1.7;
     this.playerGuard.damage = 0.65;
     this.playerGuard.readiedIntentId = this.enemyIntent?.id || null;
+    if (this.battlefield) {
+      this.battlefield.posture = MODE_FIELD_EFFECTS.defend.posture;
+      this.battlefield.hazardSlot = getRangeSlot(this.enemyIntent?.hazardSlot || this.enemyIntent?.range || this.battlefield.hazardSlot);
+      this.battlefield.hazardLabel = 'Guard read';
+      this.battlefield.partyFormation = getPartyFormation('defend');
+      this.battlefield.spaceLine = 'Dupre locks the line while Iolo and Shamino wait for the recovery.';
+      this.battlefield.threat = this.enemyIntent
+        ? `You brace into ${this.enemyIntent.title.toLowerCase()} and let the threat come to you.`
+        : MODE_FIELD_EFFECTS.defend.text;
+    }
     if (this.enemyIntent) {
       this.appendLog(`You brace for ${this.enemyIntent.title.toLowerCase()} and watch for the recovery.`);
     } else {
       this.appendLog('You brace yourself for the next attack.');
     }
+    this.pulseCombat('read-stance', 360);
     this.turn = 'enemy';
     this.enemyTurn();
   }
@@ -577,6 +984,8 @@ export default class CombatEngine {
 
     this.turnCount += 1;
     const intent = this.enemyIntent || getIntentForEnemy(this.enemy, this.turnCount - 1);
+    this.updateBattlefieldForIntent(intent);
+    this.pulseCombat(`threat-${intent.tone || 'steel'}`, 360);
     if (typeof this[intent.action] === 'function') {
       this[intent.action](intent);
       return;
@@ -586,7 +995,7 @@ export default class CombatEngine {
 
   enemyAttack(intent = null) {
     this.resolveIncomingAttack({
-      label: `The ${this.enemy.name} hits you`,
+      label: formatLine(this.enemyProfile.attack?.strike || ENEMY_PROFILES.default.attack.strike, { enemy: this.enemy.name }),
       damageType: 'physical',
       multiplier: 1,
       intent
@@ -595,7 +1004,7 @@ export default class CombatEngine {
 
   enemyPressure(intent = null) {
     this.resolveIncomingAttack({
-      label: `The ${this.enemy.name} presses in`,
+      label: formatLine(this.enemyProfile.attack?.pressure || ENEMY_PROFILES.default.attack.pressure, { enemy: this.enemy.name }),
       damageType: 'physical',
       multiplier: 1.05,
       intent
@@ -604,7 +1013,7 @@ export default class CombatEngine {
 
   enemyAggressiveStrike(intent = null) {
     this.resolveIncomingAttack({
-      label: `The ${this.enemy.name} dives at you in a savage rush`,
+      label: formatLine(this.enemyProfile.attack?.rush || ENEMY_PROFILES.default.attack.rush, { enemy: this.enemy.name }),
       damageType: 'physical',
       multiplier: 1.2,
       intent
@@ -613,7 +1022,7 @@ export default class CombatEngine {
 
   enemyLightning(intent = null) {
     this.resolveIncomingAttack({
-      label: `The ${this.enemy.name} hurls lightning`,
+      label: formatLine(this.enemyProfile.attack?.lightning || ENEMY_PROFILES.default.attack.lightning, { enemy: this.enemy.name }),
       damageType: 'lightning',
       multiplier: 1.15,
       intent
@@ -622,7 +1031,7 @@ export default class CombatEngine {
 
   enemyBreath(intent = null) {
     this.resolveIncomingAttack({
-      label: `The ${this.enemy.name} breathes a cone of fire`,
+      label: formatLine(this.enemyProfile.attack?.breath || ENEMY_PROFILES.default.attack.breath, { enemy: this.enemy.name }),
       damageType: 'fire',
       multiplier: 1.35,
       intent
@@ -631,7 +1040,7 @@ export default class CombatEngine {
 
   enemyBurst(intent = null) {
     this.resolveIncomingAttack({
-      label: `The ${this.enemy.name} unleashes a burst of force`,
+      label: formatLine(this.enemyProfile.attack?.burst || ENEMY_PROFILES.default.attack.burst, { enemy: this.enemy.name }),
       damageType: 'magic',
       multiplier: 1.2,
       intent
@@ -642,7 +1051,17 @@ export default class CombatEngine {
     this.enemyGuard.defense = 1.45;
     this.enemyGuard.damage = 1.08;
     this.decayEnemyStagger(14);
-    this.appendLog(`The ${this.enemy.name} settles into a guarded stance, waiting for you to overcommit.`);
+    if (this.battlefield) {
+      this.battlefield.range = 'mid';
+      this.battlefield.enemySlot = 'mid';
+      this.battlefield.hazardSlot = 'mid';
+      this.battlefield.hazardLabel = intent?.marker || 'Guard shell';
+      this.battlefield.partyFormation = getPartyFormation('steady');
+      this.battlefield.spaceLine = `${this.enemy.name} gives ground into a guarded middle lane.`;
+      this.battlefield.posture = 'Guarded enemy';
+      this.battlefield.threat = intent?.preview || `${this.enemy.name} settles into a guarded shell.`;
+    }
+    this.appendLog(`${this.enemy.name} settles into a guarded shell, waiting for you to overcommit.`);
     this.turn = 'player';
     this.prepareNextIntent(true);
   }
@@ -671,6 +1090,7 @@ export default class CombatEngine {
     this.playerGuard.defense = 1;
     this.playerGuard.readiedIntentId = null;
     this.decayEnemyStagger(8);
+    this.updateBattlefieldForEnemyHit({ damageType, readiedIntent, totalDamage });
 
     if (totalDamage <= 0) {
       this.appendLog('The Storm Cloak repels the attack.');
@@ -681,13 +1101,24 @@ export default class CombatEngine {
         message += ' Your guard turns the worst of it aside.';
       }
       this.appendLog(message);
-      this.triggerHitFlash(damageType === 'physical' ? 'rgba(255, 0, 0, 0.4)' : 'rgba(120, 180, 255, 0.45)');
+      const flashColors = {
+        physical: 'rgba(255, 0, 0, 0.4)',
+        lightning: 'rgba(130, 190, 255, 0.5)',
+        fire: 'rgba(255, 112, 32, 0.48)',
+        magic: 'rgba(180, 120, 255, 0.45)'
+      };
+      this.triggerHitFlash(flashColors[damageType] || flashColors.physical);
+      this.pulseCombat(`impact-${damageType}`, 440);
       if (totalDamage > 10) this.triggerScreenShake();
     }
 
     if (readiedIntent) {
       this.playerOpening = Math.min(2, this.playerOpening + 1);
       this.appendLog('You spot an opening in the recovery.');
+      this.pulseCombat('read-success', 520);
+      this.maybeAppendPartyCallout('read');
+    } else if (totalDamage > 8) {
+      this.maybeAppendPartyCallout('danger');
     }
 
     this.updateStatus();
@@ -720,6 +1151,20 @@ export default class CombatEngine {
     this.logElement.scrollTop = this.logElement.scrollHeight;
   }
 
+  renderPartyFormation() {
+    if (!this.partyFormationElement || !this.battlefield?.partyFormation) return;
+    this.partyFormationElement.innerHTML = '';
+    this.battlefield.partyFormation.forEach((member) => {
+      const chip = document.createElement('div');
+      chip.className = 'combat-party-member';
+      chip.innerHTML = `
+        <strong>${member.name}</strong>
+        <span>${member.role} - ${member.state}</span>
+      `;
+      this.partyFormationElement.appendChild(chip);
+    });
+  }
+
   renderBattleState() {
     if (!this.active || !this.player?.character || !this.enemy) return;
     const playerCharacter = this.player.character;
@@ -728,6 +1173,9 @@ export default class CombatEngine {
     const mode = getModeConfig(this.playerMode)?.label || 'Melee';
 
     this.root.dataset.intentTone = this.enemyIntent?.tone || 'steel';
+    this.root.dataset.range = this.battlefield?.range || 'mid';
+    this.root.dataset.enemySlot = this.battlefield?.enemySlot || 'mid';
+    this.root.dataset.threatSlot = this.battlefield?.hazardSlot || 'mid';
     this.turnElement.textContent = this.enemyStunnedTurns > 0
       ? `${this.enemy.name} is reeling`
       : (this.turn === 'player' ? 'Your turn' : `${this.enemy.name}'s turn`);
@@ -737,7 +1185,7 @@ export default class CombatEngine {
       this.intentHintElement.textContent = `${this.enemy.name} is staggered. Press the advantage before it recovers.`;
     } else if (this.enemyIntent) {
       this.intentTitleElement.textContent = this.enemyIntent.title;
-      this.intentHintElement.textContent = this.enemyIntent.hint;
+      this.intentHintElement.textContent = `${this.enemyIntent.preview} ${this.enemyIntent.hint}`;
     } else {
       this.intentTitleElement.textContent = 'Watch the foe';
       this.intentHintElement.textContent = 'Read the field before you commit.';
@@ -767,6 +1215,32 @@ export default class CombatEngine {
     this.staggerTextElement.textContent = this.enemyStunnedTurns > 0
       ? 'Guard broken'
       : `${Math.round(this.enemyStagger)}/${threshold} stagger`;
+
+    if (this.fieldContextElement) {
+      this.fieldContextElement.textContent = `${this.battlefield.contextLabel} - ${this.battlefield.ground}`;
+    }
+    if (this.fieldRangeElement) {
+      this.fieldRangeElement.textContent = `${this.battlefield.range.toUpperCase()} range`;
+    }
+    if (this.fieldThreatElement) {
+      this.fieldThreatElement.textContent = this.battlefield.threat;
+    }
+    if (this.fieldPartyElement) {
+      this.fieldPartyElement.textContent = this.battlefield.partyLine;
+    }
+    if (this.spaceLabelElement) {
+      this.spaceLabelElement.textContent = this.battlefield.spaceLine;
+    }
+    if (this.enemyMarkerElement) {
+      this.enemyMarkerElement.textContent = `${this.enemyProfile.family}: ${this.enemy.name}`;
+    }
+    if (this.threatMarkerElement) {
+      this.threatMarkerElement.textContent = this.battlefield.hazardLabel;
+    }
+    if (this.terrainCueElement) {
+      this.terrainCueElement.textContent = `${this.battlefield.contextLabel}: ${this.battlefield.ground}`;
+    }
+    this.renderPartyFormation();
   }
 
   updateStatus() {
