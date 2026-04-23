@@ -40,3 +40,5 @@ Original prompt: Continue this repo from its current state until there is a play
 - Live browser capture confirmed the throne room still renders correctly with the new runner color and the carpet reads as a solid ceremonial red rather than a faded strip.
 - Follow-up throne room grounding pass: royal sentinels now get a slightly heavier contact shadow so the guards feel planted on the floor instead of hovering above the palace tiles.
 - Shadow placement follow-up: lifted the sentinel shadow slightly so it reads under the boots instead of out in front of the guards, which matches the user’s visual read in the throne room.
+- Current polish pass: strengthened the castle throne-room renderer with a richer stone backdrop, a faint upper wall frieze, a clearer dais inset, stronger throne-end sheen, and denser marble veining so the hall feels closer to the ornate reference image without changing the room layout.
+- Browser verification after the latest pass still loads Castle Britannia cleanly and keeps the throne, runner, sentinels, and marble floor readable with no console errors during the live capture.
