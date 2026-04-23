@@ -1068,14 +1068,14 @@ export default class RenderEngine {
 
     const runnerX = this.offsetX + 13.5 * ts;
     const runnerY = this.offsetY + 9.0 * ts;
-    ctx.fillStyle = '#b11828';
+    ctx.fillStyle = '#c32a2a';
     ctx.fillRect(runnerX, runnerY, ts * 2.0, ts * 8.5);
 
-    ctx.fillStyle = '#82101c';
+    ctx.fillStyle = '#911b24';
     ctx.fillRect(runnerX + ts * 0.08, runnerY, ts * 0.06, ts * 8.5);
     ctx.fillRect(runnerX + ts * 1.86, runnerY, ts * 0.06, ts * 8.5);
-    ctx.fillStyle = '#d72b39';
-    ctx.fillRect(runnerX + ts * 0.14, runnerY + ts * 0.2, ts * 1.72, ts * 8.1);
+    ctx.fillStyle = '#d95c5c';
+    ctx.fillRect(runnerX + ts * 0.14, runnerY + ts * 0.18, ts * 1.72, ts * 8.12);
 
     const aisleShadeLeft = ctx.createLinearGradient(hallLeft, 0, hallLeft + ts * 2.4, 0);
     aisleShadeLeft.addColorStop(0, 'rgba(100, 82, 64, 0.014)');
@@ -1185,12 +1185,15 @@ export default class RenderEngine {
         if (!runnerMatches(tileType)) continue;
         const px = this.offsetX + x * this.tileSize;
         const py = this.offsetY + y * this.tileSize;
-        ctx.fillStyle = '#c4172d';
+        ctx.fillStyle = '#c32a2a';
         ctx.fillRect(px, py, this.tileSize, this.tileSize);
-        ctx.fillStyle = '#a01022';
+        ctx.fillStyle = '#861723';
         ctx.fillRect(px + 1, py + 1, this.tileSize - 2, this.tileSize - 2);
-        ctx.fillStyle = '#e12b3d';
+        ctx.fillStyle = '#ce4c4c';
         ctx.fillRect(px + 3, py + 3, this.tileSize - 6, this.tileSize - 6);
+        ctx.strokeStyle = 'rgba(214, 186, 110, 0.28)';
+        ctx.lineWidth = 1.25;
+        ctx.strokeRect(px + 1.5, py + 1.5, this.tileSize - 3, this.tileSize - 3);
       }
     }
     ctx.restore();
