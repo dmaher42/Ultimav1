@@ -406,6 +406,7 @@ export default class RenderEngine {
 
       if (grid.id === 'castle') {
         this.drawCastleThroneRoomStage(ctx, grid);
+        this.drawCastleCarpetOverlay(ctx, grid);
       } else if (grid.id === 'village') {
         this.drawBritannyBayStage(ctx, grid);
       }
@@ -535,17 +536,17 @@ export default class RenderEngine {
           // B. Royal Floor Specularity (Corrected legend lookup)
           ctx.save();
           ctx.globalCompositeOperation = 'overlay';
-          ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.06)';
           ctx.lineWidth = 1;
           for (let y = 0; y < grid.height; y++) {
             for (let x = 0; x < grid.width; x++) {
               const char = grid.tiles[y][x];
-              const tileType = grid.legend ? grid.legend[char] : char;
+              const tileType = grid.legend?.[char] || char;
               if (tileType && (tileType.includes('marble') || tileType === 'dais_floor')) {
                 const px = this.offsetX + x * this.tileSize;
                 const py = this.offsetY + y * this.tileSize;
                 const spark = Math.sin(time + x * 0.3 + y * 0.4);
-                if (spark > 0.92) {
+                if (spark > 0.975) {
                     ctx.beginPath();
                     ctx.moveTo(px, py + (spark - 0.8) * 100);
                     ctx.lineTo(px + this.tileSize, py + (spark - 0.8) * 100 - 10);
@@ -683,10 +684,6 @@ export default class RenderEngine {
         ctx.restore();
     }
 
-    if (grid?.id === 'castle') {
-      this.drawCastleCarpetOverlay(ctx, grid);
-    }
-
     if (this.flashLayer.hasActive()) {
       if (grid) {
         this.camera.apply(ctx);
@@ -760,14 +757,14 @@ export default class RenderEngine {
     const flicker = 1 + Math.sin(time * 3) * 0.1;
     const isCastle = this.map?.id === 'castle';
     const radius = this.tileSize * (torch.sprite === 'royal_brazier'
-      ? (isCastle ? 1.9 : 2.8)
-      : (isCastle ? 2.2 : 3.35)) * flicker;
+      ? (isCastle ? 2.35 : 2.8)
+      : (isCastle ? 2.55 : 3.35)) * flicker;
 
     const grad = ctx.createRadialGradient(tx, ty, 0, tx, ty, radius);
     if (isCastle) {
-      grad.addColorStop(0, 'rgba(255, 235, 170, 0.12)');
-      grad.addColorStop(0.28, 'rgba(255, 194, 80, 0.08)');
-      grad.addColorStop(0.55, 'rgba(255, 130, 35, 0.035)');
+      grad.addColorStop(0, 'rgba(255, 235, 170, 0.18)');
+      grad.addColorStop(0.28, 'rgba(255, 194, 80, 0.12)');
+      grad.addColorStop(0.58, 'rgba(255, 130, 35, 0.052)');
     } else {
       grad.addColorStop(0, 'rgba(255, 235, 170, 0.30)');
       grad.addColorStop(0.28, 'rgba(255, 194, 80, 0.24)');
@@ -781,6 +778,16 @@ export default class RenderEngine {
     ctx.beginPath();
     ctx.arc(tx, ty, radius, 0, Math.PI * 2);
     ctx.fill();
+    if (isCastle) {
+      const pool = ctx.createRadialGradient(tx, ty + this.tileSize * 0.72, 0, tx, ty + this.tileSize * 0.72, radius * 0.72);
+      pool.addColorStop(0, 'rgba(255, 203, 110, 0.08)');
+      pool.addColorStop(0.55, 'rgba(255, 139, 48, 0.025)');
+      pool.addColorStop(1, 'rgba(255, 139, 48, 0)');
+      ctx.fillStyle = pool;
+      ctx.beginPath();
+      ctx.ellipse(tx, ty + this.tileSize * 0.82, radius * 0.55, radius * 0.20, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
       ctx.restore();
     }
 
@@ -799,7 +806,7 @@ export default class RenderEngine {
         
         // Check floor tile beneath
         const char = grid.tiles[baseY]?.[baseX];
-        const tileType = grid.legend ? grid.legend[char] : char;
+        const tileType = grid.legend?.[char] || char;
         
         if (tileType && (tileType.includes('marble') || tileType === 'dais_floor' || tileType.includes('carpet'))) {
             ctx.save();
@@ -1041,23 +1048,51 @@ export default class RenderEngine {
     ctx.fillRect(hallLeft, hallTop, hallWidth, hallHeight);
 
     const wallRelief = ctx.createLinearGradient(0, this.offsetY + 1.0 * ts, 0, this.offsetY + 4.2 * ts);
-    wallRelief.addColorStop(0, 'rgba(255, 249, 240, 0.06)');
-    wallRelief.addColorStop(0.6, 'rgba(239, 229, 213, 0.03)');
-    wallRelief.addColorStop(1, 'rgba(214, 196, 168, 0.01)');
+    wallRelief.addColorStop(0, 'rgba(255, 249, 240, 0.075)');
+    wallRelief.addColorStop(0.6, 'rgba(239, 229, 213, 0.038)');
+    wallRelief.addColorStop(1, 'rgba(214, 196, 168, 0.015)');
     ctx.fillStyle = wallRelief;
     ctx.fillRect(hallLeft - ts * 0.05, this.offsetY + 1.0 * ts, hallWidth + ts * 0.1, ts * 3.25);
 
-    ctx.strokeStyle = 'rgba(204, 172, 106, 0.08)';
+    ctx.strokeStyle = 'rgba(204, 172, 106, 0.12)';
     ctx.lineWidth = 1;
     ctx.beginPath();
     const reliefTop = this.offsetY + 1.32 * ts;
     const reliefBottom = this.offsetY + 3.6 * ts;
-    [0, 3.1, 6.2, 8.9, 11.8, 14.6, 17.5, 20.4, 23.1, 26.2].forEach((offset) => {
-      const x = hallLeft + offset * ts * 0.55;
+    const panelCount = 8;
+    for (let panel = 0; panel <= panelCount; panel += 1) {
+      const x = hallLeft + (hallWidth / panelCount) * panel;
       ctx.moveTo(x, reliefTop);
       ctx.lineTo(x, reliefBottom);
-    });
+    }
+    ctx.moveTo(hallLeft, reliefTop);
+    ctx.lineTo(hallLeft + hallWidth, reliefTop);
+    ctx.moveTo(hallLeft, reliefBottom);
+    ctx.lineTo(hallLeft + hallWidth, reliefBottom);
     ctx.stroke();
+
+    ctx.strokeStyle = 'rgba(111, 92, 70, 0.07)';
+    for (let row = 0; row < 4; row += 1) {
+      const y = this.offsetY + ts * (1.45 + row * 0.48);
+      ctx.beginPath();
+      ctx.moveTo(hallLeft + ts * 0.15, y);
+      ctx.lineTo(hallLeft + hallWidth - ts * 0.15, y);
+      ctx.stroke();
+    }
+
+    for (let panel = 0; panel < panelCount; panel += 1) {
+      const panelX = hallLeft + (hallWidth / panelCount) * panel + ts * 0.23;
+      const panelW = hallWidth / panelCount - ts * 0.46;
+      ctx.strokeStyle = 'rgba(255, 248, 226, 0.055)';
+      ctx.strokeRect(panelX, reliefTop + ts * 0.2, panelW, ts * 1.45);
+      ctx.strokeStyle = 'rgba(142, 116, 76, 0.06)';
+      ctx.beginPath();
+      ctx.moveTo(panelX + panelW * 0.22, reliefTop + ts * 0.86);
+      ctx.lineTo(panelX + panelW * 0.78, reliefTop + ts * 0.86);
+      ctx.moveTo(panelX + panelW * 0.50, reliefTop + ts * 0.45);
+      ctx.lineTo(panelX + panelW * 0.50, reliefTop + ts * 1.24);
+      ctx.stroke();
+    }
 
     const lowerFalloff = ctx.createLinearGradient(0, this.offsetY + 7.8 * ts, 0, this.offsetY + 18.8 * ts);
     lowerFalloff.addColorStop(0, 'rgba(0, 0, 0, 0)');
@@ -1119,6 +1154,24 @@ export default class RenderEngine {
     floorSheen.addColorStop(1, 'rgba(255, 247, 224, 0)');
     ctx.fillStyle = floorSheen;
     ctx.fillRect(throneCenterX - ts * 4.0, this.offsetY + 6.5 * ts, ts * 8.0, ts * 5.8);
+
+    ctx.globalCompositeOperation = 'screen';
+    [
+      { x: 10.5, y: 7.4, r: 2.1 },
+      { x: 19.5, y: 7.4, r: 2.1 },
+      { x: 8.5, y: 3.6, r: 1.7 },
+      { x: 21.5, y: 3.6, r: 1.7 }
+    ].forEach((lamp) => {
+      const lx = this.offsetX + lamp.x * ts;
+      const ly = this.offsetY + lamp.y * ts;
+      const pool = ctx.createRadialGradient(lx, ly, 0, lx, ly, ts * lamp.r);
+      pool.addColorStop(0, 'rgba(255, 199, 92, 0.095)');
+      pool.addColorStop(0.45, 'rgba(255, 148, 60, 0.035)');
+      pool.addColorStop(1, 'rgba(255, 128, 30, 0)');
+      ctx.fillStyle = pool;
+      ctx.fillRect(lx - ts * lamp.r, ly - ts * lamp.r, ts * lamp.r * 2, ts * lamp.r * 2);
+    });
+    ctx.globalCompositeOperation = 'source-over';
 
     const runnerX = this.offsetX + 13.5 * ts;
     const runnerY = this.offsetY + 9.0 * ts;
@@ -1229,26 +1282,129 @@ export default class RenderEngine {
   drawCastleCarpetOverlay(ctx, grid) {
     if (!grid || grid.id !== 'castle') return;
     const runnerMatches = (candidate) => candidate === 'royal_carpet' || (typeof candidate === 'string' && candidate.startsWith('red_carpet'));
+    const tileAt = (tx, ty) => {
+      if (tx < 0 || ty < 0 || tx >= grid.width || ty >= grid.height) return null;
+      const char = grid.tiles[ty]?.[tx];
+      return grid.legend?.[char] || char;
+    };
 
+    const runnerCells = [];
     ctx.save();
     ctx.globalCompositeOperation = 'source-over';
     for (let y = 0; y < grid.height; y += 1) {
       for (let x = 0; x < grid.width; x += 1) {
         const char = grid.tiles[y]?.[x];
-        const tileType = grid.legend ? grid.legend[char] : char;
+        const tileType = grid.legend?.[char] || char;
         if (!runnerMatches(tileType)) continue;
+        runnerCells.push({ x, y, tileType });
         const px = this.offsetX + x * this.tileSize;
         const py = this.offsetY + y * this.tileSize;
-        ctx.fillStyle = '#c32a2a';
-        ctx.fillRect(px, py, this.tileSize, this.tileSize);
-        ctx.fillStyle = '#861723';
-        ctx.fillRect(px + 1, py + 1, this.tileSize - 2, this.tileSize - 2);
-        ctx.fillStyle = '#ce4c4c';
-        ctx.fillRect(px + 3, py + 3, this.tileSize - 6, this.tileSize - 6);
-        ctx.strokeStyle = 'rgba(214, 186, 110, 0.28)';
-        ctx.lineWidth = 1.25;
-        ctx.strokeRect(px + 1.5, py + 1.5, this.tileSize - 3, this.tileSize - 3);
+        const ts = this.tileSize;
+        const hasLeft = runnerMatches(tileAt(x - 1, y));
+        const hasRight = runnerMatches(tileAt(x + 1, y));
+        const hasTop = runnerMatches(tileAt(x, y - 1));
+        const hasBottom = runnerMatches(tileAt(x, y + 1));
+        const centerX = px + ts * 0.5;
+        const centerY = py + ts * 0.5;
+
+        const pile = ctx.createLinearGradient(px, py, px + ts, py + ts);
+        pile.addColorStop(0, '#951624');
+        pile.addColorStop(0.45, '#d13e42');
+        pile.addColorStop(1, '#7d1020');
+        ctx.fillStyle = pile;
+        ctx.fillRect(px, py, ts, ts);
+
+        ctx.fillStyle = 'rgba(255, 154, 154, 0.10)';
+        ctx.fillRect(px + ts * 0.30, py + 2, ts * 0.11, ts - 4);
+        ctx.fillRect(px + ts * 0.60, py + 2, ts * 0.10, ts - 4);
+
+        ctx.fillStyle = 'rgba(90, 9, 24, 0.62)';
+        if (!hasLeft) ctx.fillRect(px, py, ts * 0.12, ts);
+        if (!hasRight) ctx.fillRect(px + ts * 0.88, py, ts * 0.12, ts);
+        if (!hasTop) ctx.fillRect(px, py, ts, ts * 0.12);
+        if (!hasBottom) ctx.fillRect(px, py + ts * 0.88, ts, ts * 0.12);
+
+        ctx.strokeStyle = 'rgba(255, 218, 113, 0.95)';
+        ctx.lineWidth = 2.4;
+        if (!hasLeft) {
+          ctx.beginPath();
+          ctx.moveTo(px + ts * 0.14, py + 2);
+          ctx.lineTo(px + ts * 0.14, py + ts - 2);
+          ctx.stroke();
+        }
+        if (!hasRight) {
+          ctx.beginPath();
+          ctx.moveTo(px + ts * 0.86, py + 2);
+          ctx.lineTo(px + ts * 0.86, py + ts - 2);
+          ctx.stroke();
+        }
+        if (!hasTop) {
+          ctx.beginPath();
+          ctx.moveTo(px + 2, py + ts * 0.14);
+          ctx.lineTo(px + ts - 2, py + ts * 0.14);
+          ctx.stroke();
+        }
+        if (!hasBottom) {
+          ctx.beginPath();
+          ctx.moveTo(px + 2, py + ts * 0.86);
+          ctx.lineTo(px + ts - 2, py + ts * 0.86);
+          ctx.stroke();
+        }
+
+        if ((y + x) % 2 === 0 || tileType === 'red_carpet_end') {
+          ctx.save();
+          ctx.translate(centerX, centerY);
+          ctx.strokeStyle = 'rgba(255, 224, 122, 0.82)';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.ellipse(0, 0, ts * 0.23, ts * 0.32, 0, 0, Math.PI * 2);
+          ctx.moveTo(0, -ts * 0.28);
+          ctx.lineTo(0, ts * 0.28);
+          ctx.moveTo(-ts * 0.13, 0);
+          ctx.lineTo(ts * 0.13, 0);
+          ctx.stroke();
+          ctx.restore();
+        }
       }
+    }
+
+    if (runnerCells.length) {
+      const ts = this.tileSize;
+      const minX = Math.min(...runnerCells.map((cell) => cell.x));
+      const maxX = Math.max(...runnerCells.map((cell) => cell.x));
+      const minY = Math.min(...runnerCells.map((cell) => cell.y));
+      const maxY = Math.max(...runnerCells.map((cell) => cell.y));
+      const px = this.offsetX + minX * ts;
+      const py = this.offsetY + minY * ts;
+      const width = (maxX - minX + 1) * ts;
+      const height = (maxY - minY + 1) * ts;
+
+      ctx.strokeStyle = 'rgba(255, 224, 116, 0.96)';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(px + ts * 0.18, py + ts * 0.18, width - ts * 0.36, height - ts * 0.36);
+      ctx.strokeStyle = 'rgba(95, 7, 24, 0.62)';
+      ctx.lineWidth = 1.6;
+      ctx.strokeRect(px + ts * 0.28, py + ts * 0.28, width - ts * 0.56, height - ts * 0.56);
+
+      ctx.save();
+      ctx.translate(px + width / 2, py + height * 0.56);
+      ctx.strokeStyle = 'rgba(255, 218, 108, 0.76)';
+      ctx.lineWidth = 2.2;
+      for (let i = -2; i <= 2; i += 1) {
+        const y = i * ts * 1.08;
+        ctx.beginPath();
+        ctx.ellipse(0, y, width * 0.20, ts * 0.52, 0, 0, Math.PI * 2);
+        ctx.moveTo(-width * 0.18, y);
+        ctx.bezierCurveTo(-width * 0.05, y - ts * 0.35, width * 0.05, y + ts * 0.35, width * 0.18, y);
+        ctx.moveTo(0, y - ts * 0.45);
+        ctx.lineTo(0, y + ts * 0.45);
+        ctx.moveTo(-width * 0.08, y - ts * 0.24);
+        ctx.lineTo(width * 0.08, y + ts * 0.24);
+        ctx.moveTo(width * 0.08, y - ts * 0.24);
+        ctx.lineTo(-width * 0.08, y + ts * 0.24);
+        ctx.stroke();
+      }
+      ctx.restore();
     }
     ctx.restore();
   }
@@ -1263,7 +1419,7 @@ export default class RenderEngine {
     for (let y = 27; y < grid.height; y++) {
       for (let x = 0; x < grid.width; x++) {
         const char = grid.tiles[y][x];
-        const tileType = grid.legend ? grid.legend[char] : char;
+        const tileType = grid.legend?.[char] || char;
         if (tileType === 'azure_water' || tileType === 'deep_ocean' || tileType === 'water') {
           const px = this.offsetX + x * ts;
           const py = this.offsetY + y * ts;
@@ -1536,9 +1692,9 @@ export default class RenderEngine {
                 ? 0.34
                 : tileType === 'marble_edge'
                   ? 0.28
-                  : 0.24;
-              ctx.strokeStyle = `rgba(164, 148, 128, ${groutAlpha})`;
-              ctx.lineWidth = 1.25;
+                  : 0.30;
+              ctx.strokeStyle = `rgba(142, 132, 120, ${groutAlpha})`;
+              ctx.lineWidth = 1.45;
               ctx.strokeRect(px + 0.5, py + 0.5, ts - 1, ts - 1);
 
               ctx.strokeStyle = tileType === 'dais_floor'
@@ -1554,16 +1710,27 @@ export default class RenderEngine {
               if (tileType.startsWith('marble_floor')) {
                 const veinSeed = (x * 17 + y * 11) % 6;
                 if (veinSeed === 1 || veinSeed === 3 || veinSeed === 4) {
-                  ctx.strokeStyle = 'rgba(150, 144, 138, 0.18)';
+                  ctx.strokeStyle = 'rgba(112, 106, 100, 0.32)';
                   ctx.beginPath();
                   ctx.moveTo(px + ts * 0.18, py + ts * (veinSeed === 1 ? 0.72 : 0.28));
                   ctx.lineTo(px + ts * 0.82, py + ts * (veinSeed === 1 ? 0.38 : 0.66));
                   ctx.stroke();
 
-                  ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+                  ctx.strokeStyle = 'rgba(255, 255, 255, 0.10)';
                   ctx.beginPath();
                   ctx.moveTo(px + ts * 0.2, py + ts * (veinSeed === 1 ? 0.62 : 0.34));
                   ctx.lineTo(px + ts * 0.78, py + ts * (veinSeed === 1 ? 0.34 : 0.54));
+                  ctx.stroke();
+                }
+
+                const crackSeed = (x * 31 + y * 19) % 13;
+                if (crackSeed === 2 || crackSeed === 9) {
+                  ctx.strokeStyle = 'rgba(80, 74, 68, 0.26)';
+                  ctx.beginPath();
+                  ctx.moveTo(px + ts * 0.16, py + ts * 0.18);
+                  ctx.lineTo(px + ts * 0.36, py + ts * 0.34);
+                  ctx.lineTo(px + ts * 0.30, py + ts * 0.52);
+                  ctx.lineTo(px + ts * 0.62, py + ts * 0.78);
                   ctx.stroke();
                 }
               }
@@ -1602,7 +1769,7 @@ export default class RenderEngine {
       if (!row) continue;
       for (let x = 0; x < grid.width; x += 1) {
         const char = row[x];
-        const tileType = grid.legend ? grid.legend[char] : char;
+        const tileType = grid.legend?.[char] || char;
         if (!tileType || tileType === 'empty' || tileType === 'none') continue;
         
         const info = TileInfo[tileType];
@@ -1627,7 +1794,7 @@ export default class RenderEngine {
           const getTileType = (tx, ty) => {
             if (tx < 0 || tx >= grid.width || ty < 0 || ty >= grid.height) return null;
             const char = tiles[ty][tx];
-            return grid.legend ? grid.legend[char] : char;
+            return grid.legend?.[char] || char;
           };
 
           const leftType = getTileType(x - 1, y);
@@ -1855,14 +2022,32 @@ export default class RenderEngine {
 
     ctx.fillStyle = '#7d7263';
     ctx.fillRect(shaftX - width * 0.10, py + height - baseH, shaftW + width * 0.20, baseH);
+    ctx.fillStyle = '#5f564b';
+    ctx.fillRect(shaftX - width * 0.14, py + height - baseH * 0.55, shaftW + width * 0.28, baseH * 0.22);
     ctx.fillStyle = shaft;
     ctx.fillRect(shaftX, py + capH, shaftW, height - capH - baseH);
     ctx.fillStyle = '#ece6db';
     ctx.fillRect(shaftX - width * 0.06, py, shaftW + width * 0.12, capH);
     ctx.fillRect(shaftX - width * 0.08, py + height - baseH - capH * 0.12, shaftW + width * 0.16, capH * 0.6);
+    ctx.fillStyle = '#d3c28b';
+    ctx.fillRect(shaftX - width * 0.10, py + capH * 0.72, shaftW + width * 0.20, Math.max(2, height * 0.018));
+    ctx.fillRect(shaftX - width * 0.10, py + height - baseH - capH * 0.08, shaftW + width * 0.20, Math.max(2, height * 0.018));
 
     ctx.fillStyle = 'rgba(0,0,0,0.14)';
     ctx.fillRect(shaftX + shaftW * 0.60, py + capH, shaftW * 0.10, height - capH - baseH);
+    ctx.strokeStyle = 'rgba(130, 116, 98, 0.22)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(shaftX + shaftW * 0.28, py + capH + height * 0.08);
+    ctx.lineTo(shaftX + shaftW * 0.66, py + capH + height * 0.34);
+    ctx.moveTo(shaftX + shaftW * 0.18, py + capH + height * 0.52);
+    ctx.lineTo(shaftX + shaftW * 0.58, py + capH + height * 0.68);
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,0.34)';
+    ctx.beginPath();
+    ctx.moveTo(shaftX + shaftW * 0.36, py + capH + height * 0.03);
+    ctx.lineTo(shaftX + shaftW * 0.26, py + height - baseH - height * 0.03);
+    ctx.stroke();
     ctx.restore();
   }
 
