@@ -683,6 +683,10 @@ export default class RenderEngine {
         ctx.restore();
     }
 
+    if (grid?.id === 'castle') {
+      this.drawCastleCarpetOverlay(ctx, grid);
+    }
+
     if (this.flashLayer.hasActive()) {
       if (grid) {
         this.camera.apply(ctx);
@@ -1064,18 +1068,14 @@ export default class RenderEngine {
 
     const runnerX = this.offsetX + 13.5 * ts;
     const runnerY = this.offsetY + 9.0 * ts;
-    const runner = ctx.createLinearGradient(runnerX, runnerY, runnerX, runnerY + ts * 8.5);
-    runner.addColorStop(0, 'rgba(255, 231, 171, 0.0)');
-    runner.addColorStop(0.16, 'rgba(95, 6, 10, 0.30)');
-    runner.addColorStop(0.48, 'rgba(176, 27, 34, 0.32)');
-    runner.addColorStop(0.76, 'rgba(128, 10, 18, 0.30)');
-    runner.addColorStop(1, 'rgba(255, 231, 171, 0.0)');
-    ctx.fillStyle = runner;
+    ctx.fillStyle = '#b11828';
     ctx.fillRect(runnerX, runnerY, ts * 2.0, ts * 8.5);
 
-    ctx.fillStyle = 'rgba(255, 230, 160, 0.14)';
+    ctx.fillStyle = '#82101c';
     ctx.fillRect(runnerX + ts * 0.08, runnerY, ts * 0.06, ts * 8.5);
     ctx.fillRect(runnerX + ts * 1.86, runnerY, ts * 0.06, ts * 8.5);
+    ctx.fillStyle = '#d72b39';
+    ctx.fillRect(runnerX + ts * 0.14, runnerY + ts * 0.2, ts * 1.72, ts * 8.1);
 
     const aisleShadeLeft = ctx.createLinearGradient(hallLeft, 0, hallLeft + ts * 2.4, 0);
     aisleShadeLeft.addColorStop(0, 'rgba(100, 82, 64, 0.014)');
@@ -1169,6 +1169,30 @@ export default class RenderEngine {
     
     ctx.restore();
 
+    ctx.restore();
+  }
+
+  drawCastleCarpetOverlay(ctx, grid) {
+    if (!grid || grid.id !== 'castle') return;
+    const runnerMatches = (candidate) => candidate === 'royal_carpet' || (typeof candidate === 'string' && candidate.startsWith('red_carpet'));
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'source-over';
+    for (let y = 0; y < grid.height; y += 1) {
+      for (let x = 0; x < grid.width; x += 1) {
+        const char = grid.tiles[y]?.[x];
+        const tileType = grid.legend ? grid.legend[char] : char;
+        if (!runnerMatches(tileType)) continue;
+        const px = this.offsetX + x * this.tileSize;
+        const py = this.offsetY + y * this.tileSize;
+        ctx.fillStyle = '#c4172d';
+        ctx.fillRect(px, py, this.tileSize, this.tileSize);
+        ctx.fillStyle = '#a01022';
+        ctx.fillRect(px + 1, py + 1, this.tileSize - 2, this.tileSize - 2);
+        ctx.fillStyle = '#e12b3d';
+        ctx.fillRect(px + 3, py + 3, this.tileSize - 6, this.tileSize - 6);
+      }
+    }
     ctx.restore();
   }
 
@@ -1398,7 +1422,7 @@ export default class RenderEngine {
                 baseColor = '#c4bdb5';
               }
             }
-            else if (isCarpetTile) baseAlpha = 0.92;
+            else if (isCarpetTile) baseAlpha = 1;
 
             ctx.save();
             ctx.globalAlpha = baseAlpha;
@@ -1521,7 +1545,7 @@ export default class RenderEngine {
 
         this.drawAtlasTile(ctx, spriteToDraw, x, y, fallback);
 
-        // 5. Special Case: Royal Carpet Runner (Golden Fringe)
+        // 5. Special Case: Royal Carpet Runner
         const isRunnerTile = tileType === 'royal_carpet' || (typeof tileType === 'string' && tileType.startsWith('red_carpet'));
         if (isRunnerTile) {
           const px = this.offsetX + x * this.tileSize;
@@ -1539,39 +1563,15 @@ export default class RenderEngine {
           const bottomType = getTileType(x, y + 1);
           
           ctx.save();
-          ctx.strokeStyle = '#ffd700'; // Gold
-          ctx.lineWidth = 2.5;
-          
-          const matchesRunnerFamily = (candidate) => candidate === 'royal_carpet' || (typeof candidate === 'string' && candidate.startsWith('red_carpet'));
-
-          if (!matchesRunnerFamily(leftType)) {
-            ctx.beginPath();
-            ctx.moveTo(px + 1, py);
-            ctx.lineTo(px + 1, py + this.tileSize);
-            ctx.stroke();
-          }
-          if (!matchesRunnerFamily(rightType)) {
-            ctx.beginPath();
-            ctx.moveTo(px + this.tileSize - 1, py);
-            ctx.lineTo(px + this.tileSize - 1, py + this.tileSize);
-            ctx.stroke();
-          }
-          if (!matchesRunnerFamily(topType)) {
-            ctx.beginPath();
-            ctx.moveTo(px, py + 1);
-            ctx.lineTo(px + this.tileSize, py + 1);
-            ctx.stroke();
-          }
-          if (!matchesRunnerFamily(bottomType)) {
-            ctx.beginPath();
-            ctx.moveTo(px, py + this.tileSize - 1);
-            ctx.lineTo(px + this.tileSize, py + this.tileSize - 1);
-            ctx.stroke();
-          }
-          ctx.fillStyle = 'rgba(255, 230, 120, 0.16)';
-          ctx.fillRect(px + this.tileSize * 0.39, py + 2, this.tileSize * 0.22, this.tileSize - 4);
-          ctx.fillStyle = 'rgba(120, 12, 18, 0.08)';
-          ctx.fillRect(px + 3, py + 2, this.tileSize - 6, this.tileSize - 4);
+          ctx.fillStyle = '#b31424';
+          ctx.fillRect(px, py, this.tileSize, this.tileSize);
+          ctx.fillStyle = '#8c0d1b';
+          ctx.fillRect(px + 1, py + 1, this.tileSize - 2, this.tileSize - 2);
+          ctx.fillStyle = '#d12234';
+          ctx.fillRect(px + 3, py + 3, this.tileSize - 6, this.tileSize - 6);
+          ctx.fillStyle = 'rgba(255, 214, 214, 0.12)';
+          ctx.fillRect(px + this.tileSize * 0.18, py + 4, this.tileSize * 0.08, this.tileSize - 8);
+          ctx.fillRect(px + this.tileSize * 0.74, py + 4, this.tileSize * 0.08, this.tileSize - 8);
           ctx.restore();
         }
       }
