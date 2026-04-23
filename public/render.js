@@ -901,9 +901,9 @@ export default class RenderEngine {
     if (isCastle) {
       const throneFocus = this.getCastleThroneFocus();
       const ambientLift = ctx.createLinearGradient(0, 0, 0, this.viewportHeight);
-      ambientLift.addColorStop(0, 'rgba(243, 239, 232, 0.012)');
-      ambientLift.addColorStop(0.55, 'rgba(236, 231, 223, 0.006)');
-      ambientLift.addColorStop(1, 'rgba(229, 223, 214, 0.002)');
+      ambientLift.addColorStop(0, 'rgba(243, 239, 232, 0.005)');
+      ambientLift.addColorStop(0.55, 'rgba(236, 231, 223, 0.0025)');
+      ambientLift.addColorStop(1, 'rgba(229, 223, 214, 0.0008)');
       ctx.fillStyle = ambientLift;
       ctx.fillRect(0, 0, this.viewportWidth, this.viewportHeight);
 
@@ -916,8 +916,8 @@ export default class RenderEngine {
         this.offsetY + ts * 4.6,
         ts * 8.8
       );
-      throneAura.addColorStop(0, 'rgba(255, 230, 180, 0.03)');
-      throneAura.addColorStop(0.42, 'rgba(255, 220, 160, 0.012)');
+      throneAura.addColorStop(0, 'rgba(255, 230, 180, 0.018)');
+      throneAura.addColorStop(0.42, 'rgba(255, 220, 160, 0.006)');
       throneAura.addColorStop(1, 'rgba(255, 210, 150, 0)');
       ctx.fillStyle = throneAura;
       ctx.fillRect(this.offsetX + ts, this.offsetY, this.mapPixelWidth - ts * 2, ts * 13);
