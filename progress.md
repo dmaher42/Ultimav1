@@ -38,3 +38,4 @@ Original prompt: Continue this repo from its current state until there is a play
 - Second pass browser verification on `http://127.0.0.1:3001`: forced Reaper, Drake, Gazer, and defend/opening scenarios confirmed lane markers, hazard labels, party formation chips, and action buttons remain usable with no console errors. A narrow mobile viewport check caught and fixed sticky-action overlap.
 - Throne room carpet tune: shifted the visible runner toward a deeper regal red (`#c32a2a`) with darker edge bands and a softer inner highlight so it reads richer without the earlier pale wash.
 - Live browser capture confirmed the throne room still renders correctly with the new runner color and the carpet reads as a solid ceremonial red rather than a faded strip.
+- Follow-up throne room grounding pass: royal sentinels now get a slightly heavier contact shadow so the guards feel planted on the floor instead of hovering above the palace tiles.

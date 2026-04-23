@@ -1273,6 +1273,9 @@ export default class RenderEngine {
     if (data?.sprite === 'banner') {
       return;
     }
+    const isRoyalSentinel = entity.type === 'npc'
+      && typeof data?.name === 'string'
+      && /(sentinel|guard)/i.test(data.name);
     let cx = this.offsetX + (data.x + 0.5) * this.tileSize;
     let by = this.offsetY + (data.y + 1) * this.tileSize;
 
@@ -1316,6 +1319,13 @@ export default class RenderEngine {
       shadowWidth = this.tileSize * 0.9;
       shadowHeight = this.tileSize * 0.3;
       opacity = 0.20;
+    }
+
+    if (isRoyalSentinel) {
+      by += this.tileSize * 0.035;
+      shadowWidth = this.tileSize * 1.15;
+      shadowHeight = this.tileSize * 0.28;
+      opacity = 0.34;
     }
 
     this.drawSoftShadow(ctx, cx, by, shadowWidth, shadowHeight, opacity);
