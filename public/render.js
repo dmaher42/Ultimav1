@@ -1398,7 +1398,7 @@ export default class RenderEngine {
                 baseColor = '#c4bdb5';
               }
             }
-            else if (isCarpetTile) baseAlpha = 0.8;
+            else if (isCarpetTile) baseAlpha = 0.92;
 
             ctx.save();
             ctx.globalAlpha = baseAlpha;
@@ -1420,7 +1420,7 @@ export default class RenderEngine {
               if (isThroneRoom && isFloorTile) {
                 ctx.filter = isRoyalMarbleTile
                   ? 'brightness(0.96) contrast(1.08)'
-                  : 'brightness(1.0) contrast(1.03)';
+                  : 'brightness(1.0) contrast(1.06)';
               }
               
               drawTile(ctx, this.atlas, spriteKey, -ts/2, -ts/2, ts, ts, metadata?.color);
