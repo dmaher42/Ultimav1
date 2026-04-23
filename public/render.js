@@ -672,11 +672,11 @@ export default class RenderEngine {
           ctx,
           this.viewportWidth,
           this.viewportHeight,
-          isCastleInterior ? Math.min(0.08, vignetteStrength * 0.2) : vignetteStrength
+          isCastleInterior ? Math.min(0.025, vignetteStrength * 0.08) : vignetteStrength
         );
         colorGrade(
           ctx,
-          isCastleInterior ? 'rgba(255, 215, 160, 0.025)' : tint,
+          isCastleInterior ? 'rgba(255, 235, 210, 0.008)' : tint,
           this.viewportWidth,
           this.viewportHeight
         );
