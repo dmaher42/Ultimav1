@@ -39,6 +39,15 @@ const ACTION_SHORTCUTS = {
   flee: '6'
 };
 
+const ACTION_LABELS = {
+  melee: 'Melee',
+  bow: 'Bow',
+  spell: 'Spell',
+  defend: 'Defend',
+  item: 'Item',
+  flee: 'Flee'
+};
+
 const INTENT_TEMPLATES = {
   strike: {
     id: 'strike',
@@ -440,6 +449,7 @@ export default class CombatEngine {
     this.turnElement = root.querySelector('#combat-turn-indicator');
     this.intentTitleElement = root.querySelector('#combat-intent-title');
     this.intentHintElement = root.querySelector('#combat-intent-hint');
+    this.onboardingElement = root.querySelector('#combat-onboarding');
     this.playerNameElement = root.querySelector('#combat-player-name');
     this.playerVitalsElement = root.querySelector('#combat-player-vitals');
     this.playerBarElement = root.querySelector('#combat-player-bar');
@@ -488,6 +498,9 @@ export default class CombatEngine {
     this.turnCount = 0;
     this.turn = 'player';
     this.active = true;
+    this.category = context.category || null;
+    this.showOnboarding = this.category === 'throne_ambush' || Boolean(context.onboarding);
+    this.onUpdate = typeof context.onUpdate === 'function' ? context.onUpdate : null;
     this.playerMode = 'melee';
     this.playerOpening = 0;
     this.enemyStagger = 0;
@@ -501,6 +514,7 @@ export default class CombatEngine {
     this.logElement.innerHTML = '';
     this.itemList.classList.add('hidden');
     this.root.classList.remove('hidden');
+    this.root.classList.toggle('has-onboarding', this.showOnboarding);
     this.renderActionButtons();
     this.appendLog(formatLine(this.enemyProfile.entrance, { enemy: enemy.name }));
     this.appendLog(`${enemy.name} telegraphs ${this.enemyIntent.title.toLowerCase()}. ${this.enemyIntent.hint}`);
@@ -514,8 +528,10 @@ export default class CombatEngine {
   end(result) {
     this.active = false;
     this.root.classList.add('hidden');
+    this.root.classList.remove('has-onboarding');
     this.closeItemMenu();
     this.enemyIntent = null;
+    this.onUpdate = null;
     if (this.resolve) {
       this.resolve(result);
       this.resolve = null;
@@ -637,7 +653,38 @@ export default class CombatEngine {
       staggerThreshold: this.getStaggerThreshold(),
       playerOpening: this.playerOpening,
       readiedIntentId: this.playerGuard.readiedIntentId,
+      recommendedAction: this.getRecommendedAction(),
+      onboarding: this.showOnboarding,
       battlefield: this.battlefield ? { ...this.battlefield } : null
+    };
+  }
+
+  getActionLabel(action) {
+    const label = ACTION_LABELS[action] || action;
+    const shortcut = ACTION_SHORTCUTS[action];
+    return shortcut ? `${shortcut} ${label}` : label;
+  }
+
+  getRecommendedAction() {
+    const action = this.enemyIntent?.counterMode || null;
+    if (!action) return null;
+    return {
+      action,
+      label: ACTION_LABELS[action] || action,
+      shortcut: ACTION_SHORTCUTS[action] || null,
+      display: this.getActionLabel(action)
+    };
+  }
+
+  getCurrentAdvice() {
+    if (!this.active) return null;
+    const recommended = this.getRecommendedAction();
+    const intentName = this.enemyIntent?.title || 'the next move';
+    return {
+      intent: intentName,
+      counter: recommended?.display || 'the highlighted attack',
+      defend: this.getActionLabel('defend'),
+      shortcuts: 'Use 1 Melee, 2 Bow, 3 Spell, 4 Defend, 5 Item, 6 Flee.'
     };
   }
 
@@ -714,6 +761,8 @@ export default class CombatEngine {
       button.classList.toggle('is-active', isActive);
       button.classList.toggle('is-recommended', isRecommended);
       button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+      button.setAttribute('aria-label', `${this.getActionLabel(action)}${isRecommended ? ' - recommended counter' : ''}`);
+      button.title = isRecommended ? `Recommended counter: press ${ACTION_SHORTCUTS[action]}` : `Shortcut: ${ACTION_SHORTCUTS[action]}`;
       if (isItem) {
         button.textContent = isActive ? `${ACTION_SHORTCUTS.item} Item (Open)` : `${ACTION_SHORTCUTS.item} Item`;
       }
@@ -1184,8 +1233,9 @@ export default class CombatEngine {
       this.intentTitleElement.textContent = 'Broken Guard';
       this.intentHintElement.textContent = `${this.enemy.name} is staggered. Press the advantage before it recovers.`;
     } else if (this.enemyIntent) {
+      const recommended = this.getRecommendedAction();
       this.intentTitleElement.textContent = this.enemyIntent.title;
-      this.intentHintElement.textContent = `${this.enemyIntent.preview} ${this.enemyIntent.hint}`;
+      this.intentHintElement.textContent = `${this.enemyIntent.preview} ${this.enemyIntent.hint} Recommended counter: ${recommended?.display || 'highlighted action'}.`;
     } else {
       this.intentTitleElement.textContent = 'Watch the foe';
       this.intentHintElement.textContent = 'Read the field before you commit.';
@@ -1240,6 +1290,22 @@ export default class CombatEngine {
     if (this.terrainCueElement) {
       this.terrainCueElement.textContent = `${this.battlefield.contextLabel}: ${this.battlefield.ground}`;
     }
+    if (this.onboardingElement) {
+      this.onboardingElement.classList.toggle('hidden', !this.showOnboarding);
+      if (this.showOnboarding) {
+        const recommended = this.getRecommendedAction();
+        const counter = recommended?.display || 'the highlighted counter';
+        const opening = this.playerOpening > 0
+          ? `Opening ready x${this.playerOpening}: attack now to cash it in.`
+          : `${this.getActionLabel('defend')} reads the intent, softens the hit, and can create an opening.`;
+        this.onboardingElement.innerHTML = `
+          <div><strong>Read:</strong> ${this.enemyIntent?.title || 'Watch the foe'}.</div>
+          <div><strong>Counter:</strong> press ${counter}, or choose the highlighted button.</div>
+          <div><strong>Openings:</strong> ${opening}</div>
+          <div><strong>Shortcuts:</strong> 1 Melee, 2 Bow, 3 Spell, 4 Defend, 5 Item, 6 Flee.</div>
+        `;
+      }
+    }
     this.renderPartyFormation();
   }
 
@@ -1249,6 +1315,9 @@ export default class CombatEngine {
     this.statusElement.textContent = `HP ${this.player.character.currentHP}/${this.player.character.maxHP} - MP ${this.player.character.currentMP}/${this.player.character.maxMP} - ${this.enemy.name}: ${this.enemy.currentHP}/${this.enemy.maxHP} - Mode: ${mode}${openingText}`;
     this.renderBattleState();
     this.syncActionButtonStates();
+    if (this.onUpdate) {
+      this.onUpdate();
+    }
   }
 
   triggerHitFlash(color = 'rgba(255, 255, 255, 0.5)') {

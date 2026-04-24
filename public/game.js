@@ -264,10 +264,17 @@ function getObjectiveState() {
 
   if (state.inCombat) {
     const enemyName = combatEngine.enemy?.name || 'your foe';
+    const combatSnapshot = typeof combatEngine.getSnapshot === 'function' ? combatEngine.getSnapshot() : null;
+    const combatAdvice = typeof combatEngine.getCurrentAdvice === 'function' ? combatEngine.getCurrentAdvice() : null;
+    const isThroneAmbush = combatSnapshot?.onboarding || combatEngine.category === 'throne_ambush';
     return {
       hidden: false,
-      text: `Battle ${enemyName}. Use melee, bow, spell, defend, or an item to survive.`,
-      tip: 'Combat buttons are available during battle. Storm Cloak blocks Reaper lightning.'
+      text: isThroneAmbush
+        ? `Throne ambush: read ${combatAdvice?.intent || 'the intent'}, then use ${combatAdvice?.counter || 'the highlighted counter'}.`
+        : `Battle ${enemyName}. Use melee, bow, spell, defend, or an item to survive.`,
+      tip: isThroneAmbush
+        ? `${combatAdvice?.defend || '4 Defend'} can turn the attack aside and create an opening. ${combatAdvice?.shortcuts || 'Use 1-6 for combat actions.'}`
+        : 'Combat buttons are available during battle. Storm Cloak blocks Reaper lightning.'
     };
   }
 
@@ -278,7 +285,7 @@ function getObjectiveState() {
     return {
       hidden: false,
       text: 'Clear the throne room ambush, then speak to Lord British.',
-      tip: 'Move with WASD. Stand on items and press G to get.'
+      tip: 'In the ambush, read the Enemy Intent card. Use the highlighted counter, or press 4 Defend to create an opening.'
     };
   }
 
@@ -1132,7 +1139,11 @@ async function startEncounter(category = null) {
   try {
     const level = state.map.areaLevel || 1;
     enemy = createEnemy(category || state.map.encounterGroup || state.map.id, level);
-    result = await combatEngine.start(state.player, enemy, { map: state.map, category });
+    result = await combatEngine.start(state.player, enemy, {
+      map: state.map,
+      category,
+      onUpdate: updateObjectivePanel
+    });
     await resolveCombat(result, enemy, category);
 
     // Flag guardian as defeated if victory
@@ -1148,11 +1159,16 @@ async function startEncounter(category = null) {
     state.inCombat = false;
     activeMovementDirections.clear();
     renderer.stopAllMovement();
+    updateObjectivePanel();
     renderGame();
   }
 }
 
 async function startSpecialEncounter(category) {
+    if (category === 'throne_ambush') {
+      log('Combat lesson: read the Enemy Intent, use the highlighted counter, or press 4 to defend and create an opening.');
+      updateObjectivePanel();
+    }
     await startEncounter(category);
 }
 
@@ -1425,6 +1441,8 @@ window.render_game_to_text = () => {
       mode: combatEngine.playerMode || 'melee',
       turn: combatSnapshot?.turn || null,
       intent: combatSnapshot?.intent || null,
+      recommendedAction: combatSnapshot?.recommendedAction || null,
+      onboarding: Boolean(combatSnapshot?.onboarding),
       stagger: combatSnapshot ? {
         current: combatSnapshot.enemyStagger,
         threshold: combatSnapshot.staggerThreshold

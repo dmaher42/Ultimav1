@@ -738,6 +738,23 @@
         line-height: 1.5;
         color: var(--text-main);
       }
+      .combat-onboarding {
+        display: grid;
+        gap: 7px;
+        padding: 12px 14px;
+        border-radius: 12px;
+        border: 1px solid rgba(16, 185, 129, 0.24);
+        background: rgba(16, 185, 129, 0.08);
+        font-size: 12px;
+        line-height: 1.45;
+        color: var(--text-main);
+      }
+      .combat-onboarding strong {
+        color: var(--accent-strong);
+      }
+      #combat-ui.has-onboarding .combat-onboarding {
+        margin-bottom: 92px;
+      }
       .combat-meter {
         padding: 12px 14px;
         border-radius: 12px;
@@ -1017,6 +1034,12 @@
             <div class="combat-party-member"><strong>Shamino</strong><span>Scout - guarding the flank</span></div>
           </div>
         </div>
+        <div id="combat-intent" class="combat-intent">
+          <div class="combat-intent-label">Enemy Intent</div>
+          <div id="combat-intent-title">Measured Strike</div>
+          <div id="combat-intent-hint">Read the motion before you answer.</div>
+        </div>
+        <div id="combat-onboarding" class="combat-onboarding hidden"></div>
         <div class="combat-overview">
           <div class="combatant-card">
             <div class="combatant-label">Avatar</div>
@@ -1032,11 +1055,6 @@
             <div class="combat-bar"><div id="combat-enemy-bar" class="combat-bar-fill enemy"></div></div>
             <div id="combat-enemy-state" class="combat-state">Watching you closely.</div>
           </div>
-        </div>
-        <div id="combat-intent" class="combat-intent">
-          <div class="combat-intent-label">Enemy Intent</div>
-          <div id="combat-intent-title">Measured Strike</div>
-          <div id="combat-intent-hint">Read the motion before you answer.</div>
         </div>
         <div class="combat-meter">
           <div class="combat-meter-label">
@@ -1072,7 +1090,7 @@
 
     <div id="tooltip" class="hidden"></div>
 
-    <script type="module" src="./public/game.js?v=14"></script>
+    <script type="module" src="./public/game.js?v=15"></script>
 
   </body>
 </html>

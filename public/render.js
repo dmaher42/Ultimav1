@@ -606,8 +606,11 @@ export default class RenderEngine {
           // E. Sovereign Aura (Lord British Divine Presence)
           const lb = this.npcs.find(n => n.id === 'lord_british');
           if (lb) {
-              const lbx = this.offsetX + (lb.x + 0.5) * this.tileSize;
-              const lby = this.offsetY + (lb.y - 0.2) * this.tileSize;
+              const lbPlacement = this.getNpcSpritePlacement(lb);
+              const lbx = lbPlacement?.baseX ?? this.offsetX + (lb.x + 0.5) * this.tileSize;
+              const lby = lbPlacement
+                ? lbPlacement.py + lbPlacement.height * 0.34
+                : this.offsetY + (lb.y - 0.2) * this.tileSize;
               
               ctx.save();
               ctx.globalCompositeOperation = 'screen';
@@ -797,12 +800,17 @@ export default class RenderEngine {
     
     entities.forEach(entity => {
         const data = entity.data;
+        const npcPlacement = entity.type === 'npc' ? this.getNpcSpritePlacement(data) : null;
         const x = entity.type === 'player' ? data.position.x : data.x;
         const y = entity.type === 'player' ? data.position.y : data.y;
         
         // Base of the entity
-        const baseX = Math.floor(x + (data.width || 1) * 0.5);
-        const baseY = Math.floor(y + (data.height || 1));
+        const baseX = npcPlacement
+          ? Math.floor((npcPlacement.baseX - this.offsetX) / this.tileSize)
+          : Math.floor(x + (data.width || 1) * 0.5);
+        const baseY = npcPlacement
+          ? Math.floor((npcPlacement.baseY - this.offsetY) / this.tileSize)
+          : Math.floor(y + (data.height || 1));
         
         // Check floor tile beneath
         const char = grid.tiles[baseY]?.[baseX];
@@ -816,10 +824,10 @@ export default class RenderEngine {
             ctx.globalAlpha = opacity;
             ctx.globalCompositeOperation = 'screen';
             
-            const w = (data.width || 1) * this.tileSize;
-            const h = (data.height || 1) * this.tileSize;
-            const px = this.offsetX + x * this.tileSize;
-            const py = this.offsetY + (y + (data.height || 1)) * this.tileSize;
+            const w = npcPlacement ? npcPlacement.width : (data.width || 1) * this.tileSize;
+            const h = npcPlacement ? npcPlacement.height : (data.height || 1) * this.tileSize;
+            const px = npcPlacement ? npcPlacement.px : this.offsetX + x * this.tileSize;
+            const py = npcPlacement ? npcPlacement.baseY : this.offsetY + (y + (data.height || 1)) * this.tileSize;
 
             // Transformation: Flip vertically and squish slightly
             ctx.translate(px + w/2, py);
@@ -1492,6 +1500,12 @@ export default class RenderEngine {
     if (entity.type === 'player' && data.position) {
        cx = this.offsetX + (data.position.x + 0.5) * this.tileSize;
        by = this.offsetY + (data.position.y + 1) * this.tileSize;
+    } else if (entity.type === 'npc') {
+      const placement = this.getNpcSpritePlacement(data);
+      if (placement) {
+        cx = placement.baseX;
+        by = placement.baseY;
+      }
     } else if (entity.type === 'object') {
       const metadata = data?.sprite ? (tileLoader.getTileMetadata(data.sprite) || {}) : {};
       const metadataAnchor = Array.isArray(metadata.anchor) ? metadata.anchor : null;
@@ -2077,39 +2091,17 @@ export default class RenderEngine {
     if (npc?.hidden) return;
 
     if (npc.spriteSheet) {
-      const sheetOptions = npc.spriteSheetOptions || npc.spriteOptions;
+      const sheetOptions = this.getNpcSpriteSheetOptions(npc);
       const sheet = this.getSpriteSheetSync(npc.spriteSheet, sheetOptions);
       const frameKey = npc.spriteFrame || 'player_south_1';
-      const width = typeof npc.spriteTileWidth === 'number'
-        ? npc.spriteTileWidth * this.tileSize
-        : (typeof npc.spriteWidth === 'number' ? npc.spriteWidth : this.tileSize);
-      const height = typeof npc.spriteTileHeight === 'number'
-        ? npc.spriteTileHeight * this.tileSize
-        : (typeof npc.spriteHeight === 'number' ? npc.spriteHeight : this.tileSize);
-      const offsetX = typeof npc.spriteOffsetTileX === 'number'
-        ? npc.spriteOffsetTileX * this.tileSize
-        : (typeof npc.spriteOffsetX === 'number' ? npc.spriteOffsetX : 0);
-      const offsetY = typeof npc.spriteOffsetTileY === 'number'
-        ? npc.spriteOffsetTileY * this.tileSize
-        : (typeof npc.spriteOffsetY === 'number' ? npc.spriteOffsetY : 0);
-      const hasAnchoredPlacement = typeof npc.spriteAnchorX === 'number'
-        || typeof npc.spriteAnchorY === 'number'
-        || typeof npc.spriteTileWidth === 'number'
-        || typeof npc.spriteTileHeight === 'number'
-        || typeof npc.spriteOffsetTileX === 'number'
-        || typeof npc.spriteOffsetTileY === 'number';
-      let px = this.offsetX + npc.x * this.tileSize + offsetX;
-      let py = this.offsetY + npc.y * this.tileSize + offsetY;
-      if (hasAnchoredPlacement) {
-        const anchorX = typeof npc.spriteAnchorX === 'number' ? npc.spriteAnchorX : 0;
-        const anchorY = typeof npc.spriteAnchorY === 'number' ? npc.spriteAnchorY : 0;
-        const baseX = this.offsetX + (npc.x + 0.5) * this.tileSize;
-        const baseY = this.offsetY + (npc.y + 1) * this.tileSize;
-        px = baseX - anchorX * width + offsetX;
-        py = baseY - anchorY * height + offsetY;
-      }
+      const placement = this.getNpcSpritePlacement(npc);
+      if (!placement) return;
+      const { px, py, width, height } = placement;
+
+      this.drawRoyalNpcBacking(ctx, npc, placement);
 
       if (sheet && this.drawSpriteSheetFrame(ctx, sheet, frameKey, px, py, width, height)) {
+        this.drawRoyalNpcAccent(ctx, npc, placement);
         return;
       }
 
@@ -2135,6 +2127,7 @@ export default class RenderEngine {
         if (frameKey.includes('north')) row = 3;
 
         ctx.drawImage(npc.__rawImage, col * fw, row * fh, fw, fh, px, py, width, height);
+        this.drawRoyalNpcAccent(ctx, npc, placement);
         return;
       }
     }
@@ -2142,6 +2135,115 @@ export default class RenderEngine {
     const sprite = npc?.sprite || npc?.type || 'npc';
     const color = npc?.color || '#cfa658';
     this.drawAtlasTile(ctx, sprite, npc.x, npc.y, color);
+  }
+
+  getNpcSpriteSheetOptions(npc) {
+    return npc?.spriteSheetOptions || npc?.spriteOptions || {};
+  }
+
+  getNpcSpritePlacement(npc) {
+    if (typeof npc?.x !== 'number' || typeof npc?.y !== 'number') return null;
+
+    const width = typeof npc.spriteTileWidth === 'number'
+      ? npc.spriteTileWidth * this.tileSize
+      : (typeof npc.spriteWidth === 'number' ? npc.spriteWidth : this.tileSize);
+    const height = typeof npc.spriteTileHeight === 'number'
+      ? npc.spriteTileHeight * this.tileSize
+      : (typeof npc.spriteHeight === 'number' ? npc.spriteHeight : this.tileSize);
+    const offsetX = typeof npc.spriteOffsetTileX === 'number'
+      ? npc.spriteOffsetTileX * this.tileSize
+      : (typeof npc.spriteOffsetX === 'number' ? npc.spriteOffsetX : 0);
+    const offsetY = typeof npc.spriteOffsetTileY === 'number'
+      ? npc.spriteOffsetTileY * this.tileSize
+      : (typeof npc.spriteOffsetY === 'number' ? npc.spriteOffsetY : 0);
+    const hasAnchoredPlacement = typeof npc.spriteAnchorX === 'number'
+      || typeof npc.spriteAnchorY === 'number'
+      || typeof npc.spriteTileWidth === 'number'
+      || typeof npc.spriteTileHeight === 'number'
+      || typeof npc.spriteOffsetTileX === 'number'
+      || typeof npc.spriteOffsetTileY === 'number';
+
+    let px = this.offsetX + npc.x * this.tileSize + offsetX;
+    let py = this.offsetY + npc.y * this.tileSize + offsetY;
+    let baseX = this.offsetX + (npc.x + 0.5) * this.tileSize + offsetX;
+    let baseY = this.offsetY + (npc.y + 1) * this.tileSize + offsetY;
+
+    if (hasAnchoredPlacement) {
+      const anchorX = typeof npc.spriteAnchorX === 'number' ? npc.spriteAnchorX : 0;
+      const anchorY = typeof npc.spriteAnchorY === 'number' ? npc.spriteAnchorY : 0;
+      baseX = this.offsetX + (npc.x + 0.5) * this.tileSize + offsetX;
+      baseY = this.offsetY + (npc.y + 1) * this.tileSize + offsetY;
+      px = baseX - anchorX * width;
+      py = baseY - anchorY * height;
+    }
+
+    return { px, py, width, height, baseX, baseY };
+  }
+
+  isRoyalThroneActor(npc) {
+    return this.map?.id === 'castle'
+      && (npc?.stageRole === 'sovereign' || npc?.stageRole === 'throne_sentinel');
+  }
+
+  drawRoyalNpcBacking(ctx, npc, placement) {
+    if (!this.isRoyalThroneActor(npc)) return;
+    const ts = this.tileSize;
+    const role = npc.stageRole;
+    const { baseX, baseY, px, py, width, height } = placement;
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+
+    if (role === 'sovereign') {
+      const halo = ctx.createRadialGradient(baseX, py + height * 0.28, 0, baseX, py + height * 0.28, ts * 1.9);
+      halo.addColorStop(0, 'rgba(255, 246, 190, 0.30)');
+      halo.addColorStop(0.52, 'rgba(255, 211, 96, 0.13)');
+      halo.addColorStop(1, 'rgba(255, 211, 96, 0)');
+      ctx.fillStyle = halo;
+      ctx.fillRect(baseX - ts * 2.1, py - ts * 0.45, ts * 4.2, height + ts * 0.7);
+    } else {
+      const glow = ctx.createRadialGradient(baseX, baseY - ts * 0.42, 0, baseX, baseY - ts * 0.42, ts * 1.35);
+      glow.addColorStop(0, 'rgba(255, 225, 130, 0.16)');
+      glow.addColorStop(0.68, 'rgba(255, 190, 80, 0.045)');
+      glow.addColorStop(1, 'rgba(255, 190, 80, 0)');
+      ctx.fillStyle = glow;
+      ctx.fillRect(baseX - ts * 1.4, py - ts * 0.2, ts * 2.8, height + ts * 0.5);
+    }
+
+    ctx.globalCompositeOperation = 'source-over';
+    const plinth = ctx.createRadialGradient(baseX, baseY + ts * 0.03, 0, baseX, baseY + ts * 0.03, ts * (role === 'sovereign' ? 1.3 : 0.95));
+    plinth.addColorStop(0, role === 'sovereign' ? 'rgba(255, 236, 170, 0.28)' : 'rgba(255, 220, 130, 0.22)');
+    plinth.addColorStop(0.72, 'rgba(178, 126, 45, 0.09)');
+    plinth.addColorStop(1, 'rgba(80, 48, 18, 0)');
+    ctx.fillStyle = plinth;
+    ctx.beginPath();
+    ctx.ellipse(baseX, baseY + ts * 0.02, ts * (role === 'sovereign' ? 1.1 : 0.76), ts * 0.24, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  drawRoyalNpcAccent(ctx, npc, placement) {
+    if (!this.isRoyalThroneActor(npc)) return;
+    const ts = this.tileSize;
+    const { baseX, baseY, px, py, width, height } = placement;
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    if (npc.stageRole === 'sovereign') {
+      ctx.fillStyle = 'rgba(255, 247, 210, 0.55)';
+      ctx.fillRect(baseX - ts * 0.15, py + height * 0.08, ts * 0.3, 2);
+      ctx.fillStyle = 'rgba(105, 174, 255, 0.24)';
+      ctx.fillRect(baseX - ts * 0.13, py + height * 0.23, ts * 0.26, height * 0.12);
+    } else {
+      const side = npc.id === 'guard_left' ? -1 : 1;
+      ctx.strokeStyle = 'rgba(255, 238, 176, 0.45)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(baseX + side * width * 0.28, py + height * 0.12);
+      ctx.lineTo(baseX + side * width * 0.22, baseY - ts * 0.08);
+      ctx.stroke();
+    }
+    ctx.restore();
   }
 
   drawHighlight(ctx, highlight) {
