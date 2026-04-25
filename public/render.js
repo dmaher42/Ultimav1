@@ -488,6 +488,7 @@ export default class RenderEngine {
       if (grid.id === 'castle') {
         this.drawCastleThroneRoomStage(ctx, grid);
         this.drawCastleCarpetOverlay(ctx, grid);
+        this.drawCastleFloorDetailPass(ctx, grid);
       } else if (grid.id === 'village') {
         this.drawBritannyBayStage(ctx, grid);
       }
@@ -1030,6 +1031,21 @@ export default class RenderEngine {
       ctx.fillStyle = throneAura;
       ctx.fillRect(this.offsetX + ts, this.offsetY, this.mapPixelWidth - ts * 2, ts * 13);
 
+      ctx.globalCompositeOperation = 'source-over';
+      const castleEdgeShade = ctx.createRadialGradient(
+        this.viewportWidth * 0.5,
+        this.viewportHeight * 0.48,
+        this.viewportWidth * 0.10,
+        this.viewportWidth * 0.5,
+        this.viewportHeight * 0.48,
+        Math.max(this.viewportWidth, this.viewportHeight) * 0.72
+      );
+      castleEdgeShade.addColorStop(0, 'rgba(0, 0, 0, 0)');
+      castleEdgeShade.addColorStop(0.62, 'rgba(56, 41, 29, 0.018)');
+      castleEdgeShade.addColorStop(1, 'rgba(32, 22, 16, 0.10)');
+      ctx.fillStyle = castleEdgeShade;
+      ctx.fillRect(0, 0, this.viewportWidth, this.viewportHeight);
+
       ctx.restore();
       return;
     }
@@ -1152,6 +1168,15 @@ export default class RenderEngine {
     ctx.fillStyle = wallRelief;
     ctx.fillRect(hallLeft - ts * 0.05, this.offsetY + 1.0 * ts, hallWidth + ts * 0.1, ts * 3.25);
 
+    const wallInlay = ctx.createLinearGradient(hallLeft, 0, hallLeft + hallWidth, 0);
+    wallInlay.addColorStop(0, 'rgba(107, 92, 76, 0.14)');
+    wallInlay.addColorStop(0.14, 'rgba(255, 252, 244, 0.02)');
+    wallInlay.addColorStop(0.5, 'rgba(255, 246, 230, 0.05)');
+    wallInlay.addColorStop(0.86, 'rgba(255, 252, 244, 0.02)');
+    wallInlay.addColorStop(1, 'rgba(107, 92, 76, 0.14)');
+    ctx.fillStyle = wallInlay;
+    ctx.fillRect(hallLeft, this.offsetY + ts * 1.15, hallWidth, ts * 2.95);
+
     ctx.strokeStyle = 'rgba(204, 172, 106, 0.12)';
     ctx.lineWidth = 1;
     ctx.beginPath();
@@ -1221,6 +1246,9 @@ export default class RenderEngine {
     ctx.fillStyle = 'rgba(113, 88, 52, 0.10)';
     ctx.fillRect(throneCenterX - ts * 2.9, this.offsetY + 6.72 * ts, ts * 5.8, ts * 0.26);
     ctx.fillRect(throneCenterX - ts * 2.55, this.offsetY + 6.22 * ts, ts * 5.1, ts * 0.18);
+    ctx.fillStyle = 'rgba(62, 36, 18, 0.12)';
+    ctx.fillRect(throneCenterX - ts * 2.55, this.offsetY + 6.88 * ts, ts * 5.1, ts * 0.10);
+    ctx.fillRect(throneCenterX - ts * 2.95, this.offsetY + 8.00 * ts, ts * 5.9, ts * 0.16);
 
     ctx.save();
     ctx.globalCompositeOperation = 'screen';
@@ -1272,6 +1300,8 @@ export default class RenderEngine {
     ctx.fillRect(throneCenterX - ts * 2.6, this.offsetY + 7.02 * ts, ts * 5.2, ts * 0.22);
     ctx.fillStyle = 'rgba(255, 246, 225, 0.08)';
     ctx.fillRect(throneCenterX - ts * 2.4, this.offsetY + 4.55 * ts, ts * 4.8, ts * 1.7);
+    ctx.fillStyle = 'rgba(83, 54, 31, 0.12)';
+    ctx.fillRect(throneCenterX - ts * 2.15, this.offsetY + 4.72 * ts, ts * 4.3, ts * 1.34);
 
     const landingY = this.offsetY + 6.86 * ts;
     const landingGrad = ctx.createLinearGradient(0, landingY, 0, landingY + ts * 2.22);
@@ -1323,6 +1353,13 @@ export default class RenderEngine {
     ctx.fillStyle = floorSheen;
     ctx.fillRect(throneCenterX - ts * 4.0, this.offsetY + 6.5 * ts, ts * 8.0, ts * 5.8);
 
+    const stageShadow = ctx.createRadialGradient(throneCenterX, this.offsetY + 6.95 * ts, 0, throneCenterX, this.offsetY + 6.95 * ts, ts * 4.5);
+    stageShadow.addColorStop(0, 'rgba(58, 30, 12, 0.18)');
+    stageShadow.addColorStop(0.46, 'rgba(58, 30, 12, 0.08)');
+    stageShadow.addColorStop(1, 'rgba(58, 30, 12, 0)');
+    ctx.fillStyle = stageShadow;
+    ctx.fillRect(throneCenterX - ts * 4.4, this.offsetY + 4.9 * ts, ts * 8.8, ts * 3.7);
+
     ctx.globalCompositeOperation = 'screen';
     [
       { x: 10.5, y: 7.4, r: 2.1 },
@@ -1368,13 +1405,16 @@ export default class RenderEngine {
       const laneX = this.offsetX + lane * ts;
       const laneShade = ctx.createLinearGradient(laneX - ts * 0.85, 0, laneX + ts * 0.85, 0);
       laneShade.addColorStop(0, 'rgba(92, 76, 60, 0)');
-      laneShade.addColorStop(0.5, 'rgba(130, 112, 92, 0.014)');
+      laneShade.addColorStop(0.5, 'rgba(130, 112, 92, 0.032)');
       laneShade.addColorStop(1, 'rgba(92, 76, 60, 0)');
       ctx.fillStyle = laneShade;
       ctx.fillRect(laneX - ts * 0.85, this.offsetY + 1.8 * ts, ts * 1.7, ts * 16.2);
 
-      ctx.fillStyle = 'rgba(255, 252, 242, 0.018)';
+      ctx.fillStyle = 'rgba(255, 252, 242, 0.03)';
       ctx.fillRect(laneX - ts * 0.45, this.offsetY + 2.3 * ts, ts * 0.9, ts * 15.3);
+      ctx.fillStyle = 'rgba(188, 165, 123, 0.07)';
+      ctx.fillRect(laneX - ts * 0.56, this.offsetY + 2.1 * ts, ts * 1.12, ts * 0.12);
+      ctx.fillRect(laneX - ts * 0.56, this.offsetY + 17.05 * ts, ts * 1.12, ts * 0.12);
     });
 
     ctx.save();
@@ -1447,6 +1487,146 @@ export default class RenderEngine {
     ctx.restore();
   }
 
+  drawCastleFloorDetailPass(ctx, grid) {
+    if (!grid || grid.id !== 'castle') return;
+
+    const ts = this.tileSize;
+    const throneFocus = this.getCastleThroneFocus();
+    const tileAt = (tx, ty) => {
+      if (tx < 0 || ty < 0 || tx >= grid.width || ty >= grid.height) return null;
+      const char = grid.tiles[ty]?.[tx];
+      return grid.legend?.[char] || char;
+    };
+    const isRoyalSurface = (tileType) => (
+      typeof tileType === 'string'
+      && (tileType.startsWith('marble_floor') || tileType === 'dais_floor' || tileType === 'marble_edge')
+    );
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'source-over';
+
+    const roomDepth = ctx.createRadialGradient(
+      throneFocus.centerX,
+      throneFocus.glowY + ts * 1.5,
+      ts * 1.2,
+      throneFocus.centerX,
+      throneFocus.glowY + ts * 1.5,
+      ts * 12
+    );
+    roomDepth.addColorStop(0, 'rgba(255, 249, 238, 0)');
+    roomDepth.addColorStop(0.58, 'rgba(232, 218, 200, 0.015)');
+    roomDepth.addColorStop(1, 'rgba(70, 52, 34, 0.18)');
+    ctx.fillStyle = roomDepth;
+    ctx.fillRect(this.offsetX + ts, this.offsetY + ts, this.mapPixelWidth - ts * 2, this.mapPixelHeight - ts * 1.1);
+
+    const lowerShadow = ctx.createLinearGradient(0, this.offsetY + ts * 10.2, 0, this.offsetY + ts * 19.2);
+    lowerShadow.addColorStop(0, 'rgba(56, 38, 22, 0)');
+    lowerShadow.addColorStop(1, 'rgba(56, 38, 22, 0.14)');
+    ctx.fillStyle = lowerShadow;
+    ctx.fillRect(this.offsetX + ts, this.offsetY + ts * 10.2, this.mapPixelWidth - ts * 2, ts * 9);
+
+    const sideShadowLeft = ctx.createLinearGradient(this.offsetX + ts * 2.2, 0, this.offsetX + ts * 4.8, 0);
+    sideShadowLeft.addColorStop(0, 'rgba(68, 52, 36, 0.16)');
+    sideShadowLeft.addColorStop(1, 'rgba(68, 52, 36, 0)');
+    ctx.fillStyle = sideShadowLeft;
+    ctx.fillRect(this.offsetX + ts * 2.2, this.offsetY + ts * 2.1, ts * 3.2, ts * 15.2);
+
+    const sideShadowRight = ctx.createLinearGradient(this.offsetX + ts * 27.8, 0, this.offsetX + ts * 25.2, 0);
+    sideShadowRight.addColorStop(0, 'rgba(68, 52, 36, 0.16)');
+    sideShadowRight.addColorStop(1, 'rgba(68, 52, 36, 0)');
+    ctx.fillStyle = sideShadowRight;
+    ctx.fillRect(this.offsetX + ts * 25.2, this.offsetY + ts * 2.1, ts * 3.2, ts * 15.2);
+
+    for (let y = 1; y < grid.height - 1; y += 1) {
+      for (let x = 1; x < grid.width - 1; x += 1) {
+        const tileType = tileAt(x, y);
+        if (!isRoyalSurface(tileType)) continue;
+
+        const px = this.offsetX + x * ts;
+        const py = this.offsetY + y * ts;
+        const seed = ((x * 73856093) ^ (y * 19349663)) >>> 0;
+
+        if (tileType.startsWith('marble_floor')) {
+          const cloud = ctx.createRadialGradient(
+            px + ts * (0.22 + (seed % 5) * 0.12),
+            py + ts * (0.26 + ((seed >> 3) % 5) * 0.11),
+            0,
+            px + ts * 0.5,
+            py + ts * 0.5,
+            ts * 0.82
+          );
+          cloud.addColorStop(0, `rgba(255, 252, 246, ${0.12 + (seed % 4) * 0.016})`);
+          cloud.addColorStop(0.58, 'rgba(238, 230, 220, 0.05)');
+          cloud.addColorStop(1, 'rgba(208, 198, 187, 0)');
+          ctx.fillStyle = cloud;
+          ctx.fillRect(px, py, ts, ts);
+
+          if ((seed & 5) === 1 || (seed & 11) === 3) {
+            ctx.save();
+            ctx.strokeStyle = 'rgba(94, 88, 81, 0.30)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(px + ts * 0.18, py + ts * 0.22);
+            ctx.lineTo(px + ts * 0.44, py + ts * 0.34);
+            ctx.lineTo(px + ts * 0.37, py + ts * 0.62);
+            ctx.lineTo(px + ts * 0.73, py + ts * 0.82);
+            ctx.stroke();
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+            ctx.beginPath();
+            ctx.moveTo(px + ts * 0.22, py + ts * 0.30);
+            ctx.lineTo(px + ts * 0.42, py + ts * 0.41);
+            ctx.lineTo(px + ts * 0.35, py + ts * 0.57);
+            ctx.lineTo(px + ts * 0.68, py + ts * 0.76);
+            ctx.stroke();
+            ctx.restore();
+          }
+          if ((seed % 7) === 0) {
+            ctx.fillStyle = 'rgba(140, 124, 106, 0.05)';
+            ctx.fillRect(px + ts * 0.08, py + ts * 0.08, ts * 0.84, ts * 0.06);
+            ctx.fillRect(px + ts * 0.08, py + ts * 0.86, ts * 0.84, ts * 0.06);
+          }
+        } else if (tileType === 'dais_floor') {
+          const daisShade = ctx.createLinearGradient(px, py, px + ts, py + ts);
+          daisShade.addColorStop(0, 'rgba(255, 253, 247, 0.28)');
+          daisShade.addColorStop(0.5, 'rgba(245, 235, 218, 0.12)');
+          daisShade.addColorStop(1, 'rgba(166, 143, 113, 0.12)');
+          ctx.fillStyle = daisShade;
+          ctx.fillRect(px, py, ts, ts);
+          ctx.strokeStyle = 'rgba(214, 183, 118, 0.34)';
+          ctx.lineWidth = 1.4;
+          ctx.strokeRect(px + 1, py + 1, ts - 2, ts - 2);
+        } else if (tileType === 'marble_edge') {
+          ctx.fillStyle = 'rgba(255, 247, 231, 0.18)';
+          ctx.fillRect(px, py, ts, ts);
+          ctx.strokeStyle = 'rgba(188, 159, 103, 0.32)';
+          ctx.lineWidth = 1.2;
+          ctx.strokeRect(px + 1, py + 1, ts - 2, ts - 2);
+        }
+      }
+    }
+
+    const daisFocus = ctx.createRadialGradient(throneFocus.centerX, throneFocus.baseY + ts * 0.52, 0, throneFocus.centerX, throneFocus.baseY + ts * 0.52, ts * 4.2);
+    daisFocus.addColorStop(0, 'rgba(42, 22, 8, 0.18)');
+    daisFocus.addColorStop(0.58, 'rgba(42, 22, 8, 0.06)');
+    daisFocus.addColorStop(1, 'rgba(42, 22, 8, 0)');
+    ctx.fillStyle = daisFocus;
+    ctx.fillRect(throneFocus.centerX - ts * 4.6, throneFocus.baseY - ts * 0.4, ts * 9.2, ts * 5.8);
+
+    const runnerFrame = ctx.createLinearGradient(
+      this.offsetX + ts * 12.6,
+      0,
+      this.offsetX + ts * 16.4,
+      0
+    );
+    runnerFrame.addColorStop(0, 'rgba(191, 159, 84, 0.08)');
+    runnerFrame.addColorStop(0.5, 'rgba(232, 204, 126, 0.15)');
+    runnerFrame.addColorStop(1, 'rgba(191, 159, 84, 0.08)');
+    ctx.fillStyle = runnerFrame;
+    ctx.fillRect(this.offsetX + ts * 12.65, this.offsetY + ts * 8.9, ts * 3.7, ts * 9.3);
+
+    ctx.restore();
+  }
+
   drawCastleCarpetOverlay(ctx, grid) {
     if (!grid || grid.id !== 'castle') return;
     const runnerMatches = (candidate) => candidate === 'royal_carpet' || (typeof candidate === 'string' && candidate.startsWith('red_carpet'));
@@ -1476,21 +1656,29 @@ export default class RenderEngine {
         const centerY = py + ts * 0.5;
 
         const pile = ctx.createLinearGradient(px, py, px + ts, py + ts);
-        pile.addColorStop(0, '#951624');
-        pile.addColorStop(0.45, '#d13e42');
-        pile.addColorStop(1, '#7d1020');
+        pile.addColorStop(0, '#6f0b18');
+        pile.addColorStop(0.44, '#bf202e');
+        pile.addColorStop(1, '#4f0710');
         ctx.fillStyle = pile;
         ctx.fillRect(px, py, ts, ts);
 
-        ctx.fillStyle = 'rgba(255, 154, 154, 0.10)';
-        ctx.fillRect(px + ts * 0.30, py + 2, ts * 0.11, ts - 4);
-        ctx.fillRect(px + ts * 0.60, py + 2, ts * 0.10, ts - 4);
+        ctx.fillStyle = 'rgba(255, 208, 149, 0.09)';
+        ctx.fillRect(px + ts * 0.22, py + 2, ts * 0.08, ts - 4);
+        ctx.fillRect(px + ts * 0.70, py + 2, ts * 0.08, ts - 4);
+        ctx.fillStyle = 'rgba(255, 243, 208, 0.08)';
+        ctx.fillRect(px + ts * 0.45, py + ts * 0.18, ts * 0.10, ts * 0.64);
 
         ctx.fillStyle = 'rgba(90, 9, 24, 0.62)';
         if (!hasLeft) ctx.fillRect(px, py, ts * 0.12, ts);
         if (!hasRight) ctx.fillRect(px + ts * 0.88, py, ts * 0.12, ts);
         if (!hasTop) ctx.fillRect(px, py, ts, ts * 0.12);
         if (!hasBottom) ctx.fillRect(px, py + ts * 0.88, ts, ts * 0.12);
+
+        ctx.fillStyle = 'rgba(35, 3, 11, 0.10)';
+        if (!hasLeft) ctx.fillRect(px + 1, py + 1, ts * 0.14, ts - 2);
+        if (!hasRight) ctx.fillRect(px + ts * 0.85, py + 1, ts * 0.14, ts - 2);
+        if (!hasTop) ctx.fillRect(px + 1, py + 1, ts - 2, ts * 0.14);
+        if (!hasBottom) ctx.fillRect(px + 1, py + ts * 0.85, ts - 2, ts * 0.14);
 
         ctx.strokeStyle = 'rgba(255, 218, 113, 0.95)';
         ctx.lineWidth = 2.4;
@@ -1553,6 +1741,8 @@ export default class RenderEngine {
       ctx.strokeStyle = 'rgba(95, 7, 24, 0.62)';
       ctx.lineWidth = 1.6;
       ctx.strokeRect(px + ts * 0.28, py + ts * 0.28, width - ts * 0.56, height - ts * 0.56);
+      ctx.fillStyle = 'rgba(44, 4, 13, 0.12)';
+      ctx.fillRect(px + ts * 0.30, py + ts * 0.30, width - ts * 0.60, height - ts * 0.60);
 
       ctx.save();
       ctx.translate(px + width / 2, py + height * 0.56);
@@ -1695,6 +1885,10 @@ export default class RenderEngine {
       shadowWidth = this.tileSize * 1.05;
       shadowHeight = this.tileSize * 0.5;
       opacity = 0.32;
+    } else if (data.sprite === 'royal_plant') {
+      shadowWidth = this.tileSize * 0.92;
+      shadowHeight = this.tileSize * 0.28;
+      opacity = 0.22;
     } else if (data.sprite === 'torch_wall') {
       shadowWidth = this.tileSize * 0.7;
       shadowHeight = this.tileSize * 0.24;
@@ -1716,6 +1910,10 @@ export default class RenderEngine {
       shadowWidth = this.tileSize * 1.15;
       shadowHeight = this.tileSize * 0.22;
       opacity = 0.36;
+    } else if (entity.type === 'player') {
+      shadowWidth = this.tileSize * 0.86;
+      shadowHeight = this.tileSize * 0.20;
+      opacity = 0.20;
     }
 
     this.drawSoftShadow(ctx, cx, by, shadowWidth, shadowHeight, opacity);
