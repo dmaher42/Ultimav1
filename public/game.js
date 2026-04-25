@@ -1,7 +1,7 @@
 // Feature: Living World (NPC AI + Item Pickup)
 import CharacterCreator from './CharacterCreator.js';
 import Character from './Character.js';
-import { createWorld, TileInfo, LORD_BRITISH_SPRITE_SHEET } from './GameMap.js?v=13';
+import { createWorld, TileInfo, LORD_BRITISH_SPRITE_SHEET } from './GameMap.js?v=14';
 import Renderer from './render.js?v=13';
 import Player from './Player.js';
 import CombatEngine from './CombatEngine.js';

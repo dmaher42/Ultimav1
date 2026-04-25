@@ -4,6 +4,7 @@ import QuestManager from './QuestManager.js';
 export const AVATAR_SPRITE = 'assets/sprites/avatar.png';
 export const LORD_BRITISH_SPRITE_SHEET = 'assets/sprites/lord_british.png?v=2';
 export const CASTLE_BRITANNIA_SENTINEL_SPRITE = 'assets/sprites/guard_captain.png?v=2';
+export const ROYAL_TORCH_GUARD_SPRITE = 'assets/sprites/royal_torch_guard.png?v=1';
 export const CHEST_SPRITE_SHEET = 'assets/sprites/chest.png';
 
 export const TileInfo = {
@@ -180,6 +181,21 @@ export function createWorld() {
         color: '#ffcc00',
         behavior: 'static',
         job: 'The King awaits your word.',
+      },
+      {
+        id: 'royal_torch_guard', name: 'Royal Torch Guard', x: 18, y: 10,
+        spriteSheet: ROYAL_TORCH_GUARD_SPRITE,
+        spriteSheetOptions: { columns: 3, rows: 4, directions: ['south', 'west', 'east', 'north'], framePrefix: 'player' },
+        spriteFrame: 'player_south_1',
+        spriteTileWidth: 1.08,
+        spriteTileHeight: 1.42,
+        spriteAnchorX: 0.5,
+        spriteAnchorY: 1,
+        spriteOffsetTileY: -0.42,
+        color: '#f6d06b',
+        behavior: 'static',
+        job: 'I keep the royal flame lit while the throne room stands watch.',
+        dialogue: 'The flame is steady. Lord British is guarded.'
       },
       {
         id: 'castle_guard', name: 'Sentinel', x: 11, y: 15,
