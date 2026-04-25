@@ -1184,6 +1184,49 @@ export default class RenderEngine {
     ctx.fillStyle = 'rgba(255, 246, 225, 0.08)';
     ctx.fillRect(throneCenterX - ts * 2.4, this.offsetY + 4.55 * ts, ts * 4.8, ts * 1.7);
 
+    const landingY = this.offsetY + 6.86 * ts;
+    const landingGrad = ctx.createLinearGradient(0, landingY, 0, landingY + ts * 2.22);
+    landingGrad.addColorStop(0, 'rgba(255, 241, 206, 0.16)');
+    landingGrad.addColorStop(0.48, 'rgba(184, 148, 88, 0.105)');
+    landingGrad.addColorStop(1, 'rgba(86, 60, 34, 0.08)');
+    ctx.fillStyle = landingGrad;
+    ctx.beginPath();
+    ctx.moveTo(throneCenterX - ts * 2.75, landingY);
+    ctx.lineTo(throneCenterX + ts * 2.75, landingY);
+    ctx.lineTo(throneCenterX + ts * 3.05, landingY + ts * 1.54);
+    ctx.quadraticCurveTo(throneCenterX, landingY + ts * 2.34, throneCenterX - ts * 3.05, landingY + ts * 1.54);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.strokeStyle = 'rgba(248, 215, 139, 0.34)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(throneCenterX - ts * 2.68, landingY + ts * 0.08);
+    ctx.lineTo(throneCenterX + ts * 2.68, landingY + ts * 0.08);
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(102, 72, 38, 0.16)';
+    ctx.beginPath();
+    ctx.moveTo(throneCenterX - ts * 2.9, landingY + ts * 1.35);
+    ctx.quadraticCurveTo(throneCenterX, landingY + ts * 2.02, throneCenterX + ts * 2.9, landingY + ts * 1.35);
+    ctx.stroke();
+
+    const centerRunway = ctx.createLinearGradient(0, landingY + ts * 0.18, 0, landingY + ts * 2.0);
+    centerRunway.addColorStop(0, 'rgba(255, 251, 232, 0.11)');
+    centerRunway.addColorStop(0.58, 'rgba(230, 194, 118, 0.075)');
+    centerRunway.addColorStop(1, 'rgba(255, 251, 232, 0)');
+    ctx.fillStyle = centerRunway;
+    ctx.fillRect(throneCenterX - ts * 0.72, landingY + ts * 0.12, ts * 1.44, ts * 2.18);
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    const footlight = ctx.createRadialGradient(throneCenterX, landingY + ts * 1.32, 0, throneCenterX, landingY + ts * 1.32, ts * 2.0);
+    footlight.addColorStop(0, 'rgba(255, 236, 166, 0.16)');
+    footlight.addColorStop(0.54, 'rgba(255, 198, 94, 0.045)');
+    footlight.addColorStop(1, 'rgba(255, 198, 94, 0)');
+    ctx.fillStyle = footlight;
+    ctx.fillRect(throneCenterX - ts * 2.2, landingY + ts * 0.1, ts * 4.4, ts * 2.4);
+    ctx.restore();
+
     const floorSheen = ctx.createRadialGradient(throneCenterX, this.offsetY + 9.0 * ts, 0, throneCenterX, this.offsetY + 9.0 * ts, ts * 5.2);
     floorSheen.addColorStop(0, 'rgba(255, 255, 255, 0.12)');
     floorSheen.addColorStop(0.45, 'rgba(255, 247, 224, 0.045)');
@@ -2253,6 +2296,24 @@ export default class RenderEngine {
     ctx.beginPath();
     ctx.ellipse(baseX, baseY + ts * 0.02, ts * (role === 'sovereign' ? 1.1 : 0.76), ts * 0.24, 0, 0, Math.PI * 2);
     ctx.fill();
+
+    if (role === 'sovereign') {
+      const step = ctx.createLinearGradient(0, baseY + ts * 0.18, 0, baseY + ts * 0.52);
+      step.addColorStop(0, 'rgba(250, 217, 146, 0.26)');
+      step.addColorStop(0.62, 'rgba(120, 82, 38, 0.18)');
+      step.addColorStop(1, 'rgba(62, 42, 22, 0)');
+      ctx.fillStyle = step;
+      ctx.beginPath();
+      ctx.ellipse(baseX, baseY + ts * 0.25, ts * 0.96, ts * 0.18, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = 'rgba(255, 236, 170, 0.34)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(baseX - ts * 0.58, baseY + ts * 0.12);
+      ctx.lineTo(baseX + ts * 0.58, baseY + ts * 0.12);
+      ctx.stroke();
+    }
     ctx.restore();
   }
 
