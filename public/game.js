@@ -2,7 +2,7 @@
 import CharacterCreator from './CharacterCreator.js';
 import Character from './Character.js';
 import { createWorld, TileInfo, LORD_BRITISH_SPRITE_SHEET } from './GameMap.js?v=15';
-import Renderer from './render.js?v=15';
+import Renderer from './render.js?v=16';
 import Player from './Player.js';
 import CombatEngine from './CombatEngine.js';
 import { createEnemy } from './Enemy.js';

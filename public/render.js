@@ -642,19 +642,19 @@ export default class RenderEngine {
           // C. Golden Celebration Motes (Dust in the Light)
           ctx.save();
           ctx.globalCompositeOperation = 'screen';
-          for (let i = 0; i < 18; i++) {
+          for (let i = 0; i < 9; i++) {
             const mx = throneX + (Math.sin(time * 0.2 + i * 123.45) * this.tileSize * 10);
             const my = throneY + (Math.cos(time * 0.1 + i * 543.21) * this.tileSize * 6);
-            const size = 0.8 + Math.abs(Math.sin(time * 0.7 + i)) * 1.3;
-            const moteAlpha = 0.04 + Math.abs(Math.sin(time * 0.4 + i)) * 0.12;
+            const size = 0.55 + Math.abs(Math.sin(time * 0.7 + i)) * 0.65;
+            const moteAlpha = 0.022 + Math.abs(Math.sin(time * 0.4 + i)) * 0.05;
             ctx.fillStyle = `rgba(255, 255, 220, ${moteAlpha})`;
             ctx.beginPath();
             ctx.arc(mx, my, size, 0, Math.PI * 2);
             ctx.fill();
             
             // Add a small glow to the mote
-            ctx.shadowBlur = 3;
-            ctx.shadowColor = 'rgba(255, 215, 100, 0.24)';
+            ctx.shadowBlur = 1;
+            ctx.shadowColor = 'rgba(255, 215, 100, 0.12)';
             ctx.stroke();
             ctx.shadowBlur = 0;
           }
@@ -671,16 +671,16 @@ export default class RenderEngine {
           braziers.forEach(b => {
               const bx = this.offsetX + b.x * this.tileSize;
               const by = this.offsetY + b.y * this.tileSize;
-              const flicker = 0.25 + Math.sin(time * 5 + b.x) * 0.1;
+              const flicker = 0.18 + Math.sin(time * 5 + b.x) * 0.06;
               
               const bGrad = ctx.createRadialGradient(bx, by, 0, bx, by, this.tileSize * 5);
-              bGrad.addColorStop(0, `rgba(255, 140, 40, ${flicker})`);
-              bGrad.addColorStop(0.5, `rgba(255, 80, 20, ${flicker * 0.4})`);
+              bGrad.addColorStop(0, `rgba(255, 156, 64, ${flicker})`);
+              bGrad.addColorStop(0.5, `rgba(255, 108, 34, ${flicker * 0.32})`);
               bGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
               
               ctx.fillStyle = bGrad;
               ctx.beginPath();
-              ctx.arc(bx, by, this.tileSize * 4, 0, Math.PI * 2);
+              ctx.arc(bx, by, this.tileSize * 3.1, 0, Math.PI * 2);
               ctx.fill();
           });
           ctx.restore();
@@ -706,10 +706,10 @@ export default class RenderEngine {
               ctx.fillRect(lbx - this.tileSize * 1.5, 0, this.tileSize * 3, lby);
 
               // 2. Main Sovereign Halo
-              const auraSize = this.tileSize * (1.8 + Math.sin(time * 2) * 0.2);
+              const auraSize = this.tileSize * (1.55 + Math.sin(time * 2) * 0.12);
               const auraGrad = ctx.createRadialGradient(lbx, lby, 0, lbx, lby, auraSize);
-              auraGrad.addColorStop(0, 'rgba(255, 255, 200, 0.5)');
-              auraGrad.addColorStop(0.6, 'rgba(255, 215, 0, 0.2)');
+              auraGrad.addColorStop(0, 'rgba(255, 255, 200, 0.34)');
+              auraGrad.addColorStop(0.6, 'rgba(255, 215, 0, 0.12)');
               auraGrad.addColorStop(1, 'rgba(255, 215, 0, 0)');
               ctx.fillStyle = auraGrad;
               ctx.beginPath();
@@ -723,14 +723,14 @@ export default class RenderEngine {
                   const ox = lbx + Math.cos(angle) * orbitRadius;
                   const oy = lby + Math.sin(angle) * orbitRadius * 0.4; // Elliptical orbit
                   
-                  const orbGrad = ctx.createRadialGradient(ox, oy, 0, ox, oy, 8);
+                  const orbGrad = ctx.createRadialGradient(ox, oy, 0, ox, oy, 6);
                   orbGrad.addColorStop(0, '#fff');
-                  orbGrad.addColorStop(0.5, 'rgba(255, 230, 100, 0.8)');
+                  orbGrad.addColorStop(0.5, 'rgba(255, 230, 100, 0.62)');
                   orbGrad.addColorStop(1, 'rgba(255, 200, 50, 0)');
                   
                   ctx.fillStyle = orbGrad;
                   ctx.beginPath();
-                  ctx.arc(ox, oy, 8, 0, Math.PI * 2);
+                  ctx.arc(ox, oy, 6, 0, Math.PI * 2);
                   ctx.fill();
               }
               
@@ -1025,8 +1025,8 @@ export default class RenderEngine {
         this.offsetY + ts * 4.6,
         ts * 8.8
       );
-      throneAura.addColorStop(0, 'rgba(255, 236, 190, 0.028)');
-      throneAura.addColorStop(0.42, 'rgba(255, 223, 165, 0.01)');
+      throneAura.addColorStop(0, 'rgba(255, 236, 190, 0.02)');
+      throneAura.addColorStop(0.42, 'rgba(255, 223, 165, 0.007)');
       throneAura.addColorStop(1, 'rgba(255, 210, 150, 0)');
       ctx.fillStyle = throneAura;
       ctx.fillRect(this.offsetX + ts, this.offsetY, this.mapPixelWidth - ts * 2, ts * 13);
@@ -1041,8 +1041,8 @@ export default class RenderEngine {
         Math.max(this.viewportWidth, this.viewportHeight) * 0.72
       );
       castleEdgeShade.addColorStop(0, 'rgba(0, 0, 0, 0)');
-      castleEdgeShade.addColorStop(0.62, 'rgba(56, 41, 29, 0.018)');
-      castleEdgeShade.addColorStop(1, 'rgba(32, 22, 16, 0.10)');
+      castleEdgeShade.addColorStop(0.62, 'rgba(56, 41, 29, 0.03)');
+      castleEdgeShade.addColorStop(1, 'rgba(32, 22, 16, 0.14)');
       ctx.fillStyle = castleEdgeShade;
       ctx.fillRect(0, 0, this.viewportWidth, this.viewportHeight);
 
@@ -1655,73 +1655,73 @@ export default class RenderEngine {
         const centerX = px + ts * 0.5;
         const centerY = py + ts * 0.5;
 
-        const pile = ctx.createLinearGradient(px, py, px + ts, py + ts);
-        pile.addColorStop(0, '#6f0b18');
-        pile.addColorStop(0.44, '#bf202e');
-        pile.addColorStop(1, '#4f0710');
-        ctx.fillStyle = pile;
-        ctx.fillRect(px, py, ts, ts);
+          const pile = ctx.createLinearGradient(px, py, px + ts, py + ts);
+          pile.addColorStop(0, '#5c0813');
+          pile.addColorStop(0.46, '#a91b26');
+          pile.addColorStop(1, '#3f050c');
+          ctx.fillStyle = pile;
+          ctx.fillRect(px, py, ts, ts);
 
-        ctx.fillStyle = 'rgba(255, 208, 149, 0.09)';
-        ctx.fillRect(px + ts * 0.22, py + 2, ts * 0.08, ts - 4);
-        ctx.fillRect(px + ts * 0.70, py + 2, ts * 0.08, ts - 4);
-        ctx.fillStyle = 'rgba(255, 243, 208, 0.08)';
-        ctx.fillRect(px + ts * 0.45, py + ts * 0.18, ts * 0.10, ts * 0.64);
+          ctx.fillStyle = 'rgba(255, 208, 149, 0.055)';
+          ctx.fillRect(px + ts * 0.18, py + 2, ts * 0.05, ts - 4);
+          ctx.fillRect(px + ts * 0.77, py + 2, ts * 0.05, ts - 4);
+          ctx.fillStyle = 'rgba(255, 243, 208, 0.05)';
+          ctx.fillRect(px + ts * 0.48, py + ts * 0.22, ts * 0.05, ts * 0.56);
 
-        ctx.fillStyle = 'rgba(90, 9, 24, 0.62)';
-        if (!hasLeft) ctx.fillRect(px, py, ts * 0.12, ts);
-        if (!hasRight) ctx.fillRect(px + ts * 0.88, py, ts * 0.12, ts);
-        if (!hasTop) ctx.fillRect(px, py, ts, ts * 0.12);
-        if (!hasBottom) ctx.fillRect(px, py + ts * 0.88, ts, ts * 0.12);
+          ctx.fillStyle = 'rgba(90, 9, 24, 0.62)';
+          if (!hasLeft) ctx.fillRect(px, py, ts * 0.12, ts);
+          if (!hasRight) ctx.fillRect(px + ts * 0.88, py, ts * 0.12, ts);
+          if (!hasTop) ctx.fillRect(px, py, ts, ts * 0.12);
+          if (!hasBottom) ctx.fillRect(px, py + ts * 0.88, ts, ts * 0.12);
 
-        ctx.fillStyle = 'rgba(35, 3, 11, 0.10)';
-        if (!hasLeft) ctx.fillRect(px + 1, py + 1, ts * 0.14, ts - 2);
-        if (!hasRight) ctx.fillRect(px + ts * 0.85, py + 1, ts * 0.14, ts - 2);
-        if (!hasTop) ctx.fillRect(px + 1, py + 1, ts - 2, ts * 0.14);
-        if (!hasBottom) ctx.fillRect(px + 1, py + ts * 0.85, ts - 2, ts * 0.14);
+          ctx.fillStyle = 'rgba(35, 3, 11, 0.10)';
+          if (!hasLeft) ctx.fillRect(px + 1, py + 1, ts * 0.10, ts - 2);
+          if (!hasRight) ctx.fillRect(px + ts * 0.90, py + 1, ts * 0.10, ts - 2);
+          if (!hasTop) ctx.fillRect(px + 1, py + 1, ts - 2, ts * 0.10);
+          if (!hasBottom) ctx.fillRect(px + 1, py + ts * 0.90, ts - 2, ts * 0.10);
 
-        ctx.strokeStyle = 'rgba(255, 218, 113, 0.95)';
-        ctx.lineWidth = 2.4;
-        if (!hasLeft) {
-          ctx.beginPath();
-          ctx.moveTo(px + ts * 0.14, py + 2);
-          ctx.lineTo(px + ts * 0.14, py + ts - 2);
-          ctx.stroke();
-        }
-        if (!hasRight) {
-          ctx.beginPath();
-          ctx.moveTo(px + ts * 0.86, py + 2);
-          ctx.lineTo(px + ts * 0.86, py + ts - 2);
-          ctx.stroke();
-        }
-        if (!hasTop) {
-          ctx.beginPath();
-          ctx.moveTo(px + 2, py + ts * 0.14);
-          ctx.lineTo(px + ts - 2, py + ts * 0.14);
-          ctx.stroke();
-        }
-        if (!hasBottom) {
-          ctx.beginPath();
-          ctx.moveTo(px + 2, py + ts * 0.86);
-          ctx.lineTo(px + ts - 2, py + ts * 0.86);
-          ctx.stroke();
-        }
+          ctx.strokeStyle = 'rgba(255, 218, 113, 0.82)';
+          ctx.lineWidth = 1.8;
+          if (!hasLeft) {
+            ctx.beginPath();
+            ctx.moveTo(px + ts * 0.11, py + 2);
+            ctx.lineTo(px + ts * 0.11, py + ts - 2);
+            ctx.stroke();
+          }
+          if (!hasRight) {
+            ctx.beginPath();
+            ctx.moveTo(px + ts * 0.89, py + 2);
+            ctx.lineTo(px + ts * 0.89, py + ts - 2);
+            ctx.stroke();
+          }
+          if (!hasTop) {
+            ctx.beginPath();
+            ctx.moveTo(px + 2, py + ts * 0.11);
+            ctx.lineTo(px + ts - 2, py + ts * 0.11);
+            ctx.stroke();
+          }
+          if (!hasBottom) {
+            ctx.beginPath();
+            ctx.moveTo(px + 2, py + ts * 0.89);
+            ctx.lineTo(px + ts - 2, py + ts * 0.89);
+            ctx.stroke();
+          }
 
-        if ((y + x) % 2 === 0 || tileType === 'red_carpet_end') {
-          ctx.save();
-          ctx.translate(centerX, centerY);
-          ctx.strokeStyle = 'rgba(255, 224, 122, 0.82)';
-          ctx.lineWidth = 2;
-          ctx.beginPath();
-          ctx.ellipse(0, 0, ts * 0.23, ts * 0.32, 0, 0, Math.PI * 2);
-          ctx.moveTo(0, -ts * 0.28);
-          ctx.lineTo(0, ts * 0.28);
-          ctx.moveTo(-ts * 0.13, 0);
-          ctx.lineTo(ts * 0.13, 0);
-          ctx.stroke();
-          ctx.restore();
+          if ((y + x) % 4 === 0 || tileType === 'red_carpet_end') {
+            ctx.save();
+            ctx.translate(centerX, centerY);
+            ctx.strokeStyle = 'rgba(255, 224, 122, 0.58)';
+            ctx.lineWidth = 1.3;
+            ctx.beginPath();
+            ctx.ellipse(0, 0, ts * 0.16, ts * 0.22, 0, 0, Math.PI * 2);
+            ctx.moveTo(0, -ts * 0.18);
+            ctx.lineTo(0, ts * 0.18);
+            ctx.moveTo(-ts * 0.09, 0);
+            ctx.lineTo(ts * 0.09, 0);
+            ctx.stroke();
+            ctx.restore();
+          }
         }
-      }
     }
 
     if (runnerCells.length) {
@@ -1736,30 +1736,30 @@ export default class RenderEngine {
       const height = (maxY - minY + 1) * ts;
 
       ctx.strokeStyle = 'rgba(255, 224, 116, 0.96)';
-      ctx.lineWidth = 3;
-      ctx.strokeRect(px + ts * 0.18, py + ts * 0.18, width - ts * 0.36, height - ts * 0.36);
-      ctx.strokeStyle = 'rgba(95, 7, 24, 0.62)';
-      ctx.lineWidth = 1.6;
-      ctx.strokeRect(px + ts * 0.28, py + ts * 0.28, width - ts * 0.56, height - ts * 0.56);
-      ctx.fillStyle = 'rgba(44, 4, 13, 0.12)';
-      ctx.fillRect(px + ts * 0.30, py + ts * 0.30, width - ts * 0.60, height - ts * 0.60);
+      ctx.lineWidth = 2.2;
+      ctx.strokeRect(px + ts * 0.20, py + ts * 0.20, width - ts * 0.40, height - ts * 0.40);
+      ctx.strokeStyle = 'rgba(95, 7, 24, 0.56)';
+      ctx.lineWidth = 1.2;
+      ctx.strokeRect(px + ts * 0.33, py + ts * 0.33, width - ts * 0.66, height - ts * 0.66);
+      ctx.fillStyle = 'rgba(44, 4, 13, 0.08)';
+      ctx.fillRect(px + ts * 0.36, py + ts * 0.36, width - ts * 0.72, height - ts * 0.72);
 
       ctx.save();
       ctx.translate(px + width / 2, py + height * 0.56);
-      ctx.strokeStyle = 'rgba(255, 218, 108, 0.76)';
-      ctx.lineWidth = 2.2;
+      ctx.strokeStyle = 'rgba(255, 218, 108, 0.62)';
+      ctx.lineWidth = 1.4;
       for (let i = -2; i <= 2; i += 1) {
-        const y = i * ts * 1.08;
+        const y = i * ts * 1.18;
         ctx.beginPath();
-        ctx.ellipse(0, y, width * 0.20, ts * 0.52, 0, 0, Math.PI * 2);
-        ctx.moveTo(-width * 0.18, y);
-        ctx.bezierCurveTo(-width * 0.05, y - ts * 0.35, width * 0.05, y + ts * 0.35, width * 0.18, y);
-        ctx.moveTo(0, y - ts * 0.45);
-        ctx.lineTo(0, y + ts * 0.45);
-        ctx.moveTo(-width * 0.08, y - ts * 0.24);
-        ctx.lineTo(width * 0.08, y + ts * 0.24);
-        ctx.moveTo(width * 0.08, y - ts * 0.24);
-        ctx.lineTo(-width * 0.08, y + ts * 0.24);
+        ctx.ellipse(0, y, width * 0.16, ts * 0.38, 0, 0, Math.PI * 2);
+        ctx.moveTo(-width * 0.14, y);
+        ctx.bezierCurveTo(-width * 0.05, y - ts * 0.24, width * 0.05, y + ts * 0.24, width * 0.14, y);
+        ctx.moveTo(0, y - ts * 0.30);
+        ctx.lineTo(0, y + ts * 0.30);
+        ctx.moveTo(-width * 0.06, y - ts * 0.16);
+        ctx.lineTo(width * 0.06, y + ts * 0.16);
+        ctx.moveTo(width * 0.06, y - ts * 0.16);
+        ctx.lineTo(-width * 0.06, y + ts * 0.16);
         ctx.stroke();
       }
       ctx.restore();
