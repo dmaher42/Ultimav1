@@ -1021,16 +1021,17 @@ export default class RenderEngine {
   drawCastleThroneRoomStage(ctx, grid) {
       const ts = this.tileSize;
       const throneFocus = this.getCastleThroneFocus();
-      const hallLeft = this.offsetX + 7.6 * ts;
-      const hallTop = this.offsetY + 1.0 * ts;
-      const hallWidth = 14.8 * ts;
-      const hallHeight = 8.6 * ts;
+      const roomCenterX = this.offsetX + (grid.width / 2) * ts;
       const throneCenterX = throneFocus.centerX;
       const throneCenterY = throneFocus.glowY;
-      const alcoveLeft = throneCenterX - ts * 4.0;
+      const hallWidth = 15.2 * ts;
+      const hallLeft = roomCenterX - hallWidth / 2;
+      const hallTop = this.offsetY + 1.0 * ts;
+      const hallHeight = 8.6 * ts;
+      const alcoveLeft = throneCenterX - ts * 4.4;
       const alcoveTop = this.offsetY + 0.8 * ts;
-    const alcoveWidth = ts * 8.0;
-    const alcoveHeight = ts * 5.2;
+    const alcoveWidth = ts * 8.8;
+    const alcoveHeight = ts * 5.55;
 
     ctx.save();
     ctx.globalCompositeOperation = 'screen';
@@ -1109,33 +1110,60 @@ export default class RenderEngine {
     ctx.fillRect(this.offsetX + 2 * ts, this.offsetY + 7.8 * ts, ts * 26, ts * 11);
 
     const alcoveShade = ctx.createLinearGradient(0, alcoveTop, 0, alcoveTop + alcoveHeight);
-    alcoveShade.addColorStop(0, 'rgba(116, 98, 80, 0.08)');
-    alcoveShade.addColorStop(0.5, 'rgba(145, 124, 104, 0.025)');
+    alcoveShade.addColorStop(0, 'rgba(116, 98, 80, 0.095)');
+    alcoveShade.addColorStop(0.52, 'rgba(145, 124, 104, 0.035)');
     alcoveShade.addColorStop(1, 'rgba(0, 0, 0, 0)');
     ctx.fillStyle = alcoveShade;
     ctx.fillRect(alcoveLeft, alcoveTop, alcoveWidth, alcoveHeight);
 
+    const backPanel = ctx.createLinearGradient(0, this.offsetY + 1.25 * ts, 0, this.offsetY + 6.7 * ts);
+    backPanel.addColorStop(0, 'rgba(255, 246, 226, 0.105)');
+    backPanel.addColorStop(0.5, 'rgba(226, 202, 160, 0.035)');
+    backPanel.addColorStop(1, 'rgba(92, 66, 42, 0.045)');
+    ctx.fillStyle = backPanel;
+    ctx.fillRect(throneCenterX - ts * 2.35, this.offsetY + 1.35 * ts, ts * 4.7, ts * 5.25);
+    ctx.strokeStyle = 'rgba(238, 204, 126, 0.24)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(throneCenterX - ts * 2.18, this.offsetY + 1.52 * ts, ts * 4.36, ts * 4.82);
+
+    ctx.fillStyle = 'rgba(255, 236, 150, 0.16)';
+    ctx.fillRect(throneCenterX - ts * 2.75, this.offsetY + 1.28 * ts, ts * 5.5, ts * 0.16);
+    ctx.fillRect(throneCenterX - ts * 2.75, this.offsetY + 6.48 * ts, ts * 5.5, ts * 0.16);
+    ctx.fillStyle = 'rgba(113, 88, 52, 0.10)';
+    ctx.fillRect(throneCenterX - ts * 2.9, this.offsetY + 6.72 * ts, ts * 5.8, ts * 0.26);
+    ctx.fillRect(throneCenterX - ts * 2.55, this.offsetY + 6.22 * ts, ts * 5.1, ts * 0.18);
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    const sovereignPool = ctx.createRadialGradient(throneCenterX, this.offsetY + 5.65 * ts, 0, throneCenterX, this.offsetY + 5.65 * ts, ts * 2.9);
+    sovereignPool.addColorStop(0, 'rgba(255, 229, 140, 0.15)');
+    sovereignPool.addColorStop(0.58, 'rgba(255, 206, 95, 0.045)');
+    sovereignPool.addColorStop(1, 'rgba(255, 206, 95, 0)');
+    ctx.fillStyle = sovereignPool;
+    ctx.fillRect(throneCenterX - ts * 3.0, this.offsetY + 3.9 * ts, ts * 6.0, ts * 4.2);
+    ctx.restore();
+
     const alcoveArch = new Path2D();
-    alcoveArch.moveTo(throneCenterX - ts * 3.2, this.offsetY + 4.7 * ts);
-    alcoveArch.lineTo(throneCenterX - ts * 2.9, this.offsetY + 1.7 * ts);
-    alcoveArch.ellipse(throneCenterX, this.offsetY + 1.8 * ts, ts * 2.9, ts * 1.35, 0, Math.PI, 0);
-    alcoveArch.lineTo(throneCenterX + ts * 3.2, this.offsetY + 4.7 * ts);
+    alcoveArch.moveTo(throneCenterX - ts * 3.55, this.offsetY + 4.85 * ts);
+    alcoveArch.lineTo(throneCenterX - ts * 3.2, this.offsetY + 1.8 * ts);
+    alcoveArch.ellipse(throneCenterX, this.offsetY + 1.85 * ts, ts * 3.2, ts * 1.38, 0, Math.PI, 0);
+    alcoveArch.lineTo(throneCenterX + ts * 3.55, this.offsetY + 4.85 * ts);
     alcoveArch.closePath();
     ctx.fillStyle = 'rgba(255, 248, 235, 0.05)';
     ctx.fill(alcoveArch);
-    ctx.strokeStyle = 'rgba(235, 198, 114, 0.18)';
+    ctx.strokeStyle = 'rgba(235, 198, 114, 0.24)';
     ctx.lineWidth = 3;
     ctx.stroke(alcoveArch);
 
     const daisPath = new Path2D();
-    daisPath.moveTo(throneCenterX - ts * 3.8, this.offsetY + 6.6 * ts);
-    daisPath.lineTo(throneCenterX - ts * 3.1, this.offsetY + 5.2 * ts);
-    daisPath.lineTo(throneCenterX - ts * 1.9, this.offsetY + 4.3 * ts);
-    daisPath.lineTo(throneCenterX + ts * 1.9, this.offsetY + 4.3 * ts);
-    daisPath.lineTo(throneCenterX + ts * 3.1, this.offsetY + 5.2 * ts);
-    daisPath.lineTo(throneCenterX + ts * 3.8, this.offsetY + 6.6 * ts);
-    daisPath.lineTo(throneCenterX + ts * 3.2, this.offsetY + 8.0 * ts);
-    daisPath.lineTo(throneCenterX - ts * 3.2, this.offsetY + 8.0 * ts);
+    daisPath.moveTo(throneCenterX - ts * 4.05, this.offsetY + 6.72 * ts);
+    daisPath.lineTo(throneCenterX - ts * 3.22, this.offsetY + 5.16 * ts);
+    daisPath.lineTo(throneCenterX - ts * 1.95, this.offsetY + 4.32 * ts);
+    daisPath.lineTo(throneCenterX + ts * 1.95, this.offsetY + 4.32 * ts);
+    daisPath.lineTo(throneCenterX + ts * 3.22, this.offsetY + 5.16 * ts);
+    daisPath.lineTo(throneCenterX + ts * 4.05, this.offsetY + 6.72 * ts);
+    daisPath.lineTo(throneCenterX + ts * 3.35, this.offsetY + 8.05 * ts);
+    daisPath.lineTo(throneCenterX - ts * 3.35, this.offsetY + 8.05 * ts);
     daisPath.closePath();
     ctx.fillStyle = 'rgba(255, 244, 221, 0.085)';
     ctx.fill(daisPath);
@@ -1543,6 +1571,12 @@ export default class RenderEngine {
       shadowWidth = this.tileSize * 0.9;
       shadowHeight = this.tileSize * 0.3;
       opacity = 0.20;
+    }
+
+    if (entity.type === 'npc' && data.stageRole === 'sovereign') {
+      shadowWidth = this.tileSize * 0.92;
+      shadowHeight = this.tileSize * 0.22;
+      opacity = 0.26;
     }
 
     if (isRoyalSentinel) {
@@ -2195,12 +2229,12 @@ export default class RenderEngine {
     ctx.globalCompositeOperation = 'screen';
 
     if (role === 'sovereign') {
-      const halo = ctx.createRadialGradient(baseX, py + height * 0.28, 0, baseX, py + height * 0.28, ts * 1.9);
-      halo.addColorStop(0, 'rgba(255, 246, 190, 0.30)');
-      halo.addColorStop(0.52, 'rgba(255, 211, 96, 0.13)');
+      const halo = ctx.createRadialGradient(baseX, py + height * 0.26, 0, baseX, py + height * 0.26, ts * 1.55);
+      halo.addColorStop(0, 'rgba(255, 246, 190, 0.20)');
+      halo.addColorStop(0.52, 'rgba(255, 211, 96, 0.08)');
       halo.addColorStop(1, 'rgba(255, 211, 96, 0)');
       ctx.fillStyle = halo;
-      ctx.fillRect(baseX - ts * 2.1, py - ts * 0.45, ts * 4.2, height + ts * 0.7);
+      ctx.fillRect(baseX - ts * 1.6, py - ts * 0.28, ts * 3.2, height + ts * 0.48);
     } else {
       const glow = ctx.createRadialGradient(baseX, baseY - ts * 0.42, 0, baseX, baseY - ts * 0.42, ts * 1.35);
       glow.addColorStop(0, 'rgba(255, 225, 130, 0.16)');
@@ -2230,10 +2264,9 @@ export default class RenderEngine {
     ctx.save();
     ctx.globalCompositeOperation = 'screen';
     if (npc.stageRole === 'sovereign') {
-      ctx.fillStyle = 'rgba(255, 247, 210, 0.55)';
-      ctx.fillRect(baseX - ts * 0.15, py + height * 0.08, ts * 0.3, 2);
-      ctx.fillStyle = 'rgba(105, 174, 255, 0.24)';
-      ctx.fillRect(baseX - ts * 0.13, py + height * 0.23, ts * 0.26, height * 0.12);
+      ctx.fillStyle = 'rgba(255, 247, 210, 0.34)';
+      ctx.fillRect(baseX - ts * 0.08, py + height * 0.05, ts * 0.16, 2);
+      ctx.fillRect(baseX - ts * 0.20, py + height * 0.12, ts * 0.40, 1.5);
     } else {
       const side = npc.id === 'guard_left' ? -1 : 1;
       ctx.strokeStyle = 'rgba(255, 238, 176, 0.45)';

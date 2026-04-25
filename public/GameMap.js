@@ -2,7 +2,7 @@
 import QuestManager from './QuestManager.js';
 
 export const AVATAR_SPRITE = 'assets/sprites/avatar.png';
-export const LORD_BRITISH_SPRITE_SHEET = 'assets/sprites/lord_british_v2_seated.png';
+export const LORD_BRITISH_SPRITE_SHEET = 'assets/sprites/lord_british.png?v=2';
 export const CASTLE_BRITANNIA_SENTINEL_SPRITE = 'assets/sprites/guard_captain.png?v=2';
 export const CHEST_SPRITE_SHEET = 'assets/sprites/chest.png';
 
@@ -96,7 +96,7 @@ export function createWorld() {
       
         // Majestic throne centerpiece
         { 
-          x: 14, y: 6,
+          x: 14.5, y: 6,
           sprite: 'throne', 
           width: 3.35, height: 3.45,
           anchorX: 0.5,
@@ -123,13 +123,13 @@ export function createWorld() {
           id: 'lord_british', name: 'Lord British', x: 14, y: 7,
           spriteSheet: LORD_BRITISH_SPRITE_SHEET,
           spriteFrame: 'player_south_1',
-          spriteTileWidth: 1.62,
-          spriteTileHeight: 1.82,
+          spriteTileWidth: 1.38,
+          spriteTileHeight: 1.56,
           spriteAnchorX: 0.5,
           spriteAnchorY: 1,
-          spriteOffsetTileY: -1.72,
+          spriteOffsetTileX: 0.5,
+          spriteOffsetTileY: -0.58,
           stageRole: 'sovereign',
-          shadow: false,
           color: '#ffdd00',
           behavior: 'static',
           job: 'I am but a steward of these Eight Virtues, Avatar. To rule is to serve, and to serve is to sacrifice.',
