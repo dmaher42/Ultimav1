@@ -2,7 +2,7 @@
 import CharacterCreator from './CharacterCreator.js';
 import Character from './Character.js';
 import { createWorld, TileInfo, LORD_BRITISH_SPRITE_SHEET } from './GameMap.js?v=14';
-import Renderer from './render.js?v=13';
+import Renderer from './render.js?v=14';
 import Player from './Player.js';
 import CombatEngine from './CombatEngine.js';
 import { createEnemy } from './Enemy.js';
@@ -17,7 +17,21 @@ const ctx = initCanvas('game');
 const renderer = new Renderer(ctx);
 const particles = createEmitter();
 renderer.setParticles(particles);
-const DEFAULT_PLAYER_SPRITE_SHEET = 'assets/sprites/avatar.png';
+const DEFAULT_PLAYER_SPRITE_SHEET = 'assets/sprites/player_champion_upgraded_walk_sheet_48x64.png?v=1';
+const PLAYER_CHAMPION_SPRITE_OPTIONS = {
+  columns: 4,
+  rows: 4,
+  directions: ['south', 'west', 'east', 'north'],
+  framePrefix: 'player_champion',
+  widthTiles: 1,
+  heightTiles: 64 / 48,
+  anchorX: 0.5,
+  anchorY: 1,
+  variants: {
+    attack: 'assets/sprites/player_champion_upgraded_attack_sheet_48x64.png?v=1',
+    cast: 'assets/sprites/player_champion_upgraded_cast_sheet_48x64.png?v=1'
+  }
+};
 
 const syncCanvasSize = () => {
   resize();
@@ -739,12 +753,16 @@ function changeMap(mapId, spawnTag, x, y) {
   if (!map) return;
   state.map = map;
   state.discoveredAreas.add(mapId);
+  const shouldFaceNorth = mapId === 'castle' && spawnTag === 'castle_gate' && !(x !== undefined && y !== undefined);
   
   if (x !== undefined && y !== undefined) {
     state.player.map = map;
     state.player.setPosition(x, y);
   } else {
     state.player.setMap(map, spawnTag);
+  }
+  if (shouldFaceNorth && state.player) {
+    state.player.facing = 'north';
   }
 
   state.pendingTransition = null;
@@ -1262,6 +1280,9 @@ function loadGame(manual = false) {
   } else {
       player.setMap(currentMap, 'castle_gate');
   }
+  if (currentMap.id === 'castle' && player) {
+    player.facing = 'north';
+  }
 
   state.character = character;
   state.player = player;
@@ -1370,7 +1391,7 @@ async function bootstrap() {
     try {
         const atlas = await loadAtlas(null, './assets/atlas.json');
         renderer.setAtlas(atlas);
-        await renderer.loadPlayerSprite(DEFAULT_PLAYER_SPRITE_SHEET);
+        await renderer.loadPlayerSprite(DEFAULT_PLAYER_SPRITE_SHEET, PLAYER_CHAMPION_SPRITE_OPTIONS);
     } catch (e) {
         console.warn('Failed to load assets:', e);
     }
@@ -1410,6 +1431,7 @@ async function bootstrap() {
         }
         state.map = state.world.startingMap;
         changeMap('castle', 'castle_gate');
+        state.player.facing = 'north';
         // Give starter items
         state.character.addItem(itemGenerator.createHealthPotion(1));
         renderGame();

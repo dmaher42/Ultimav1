@@ -1,0 +1,27 @@
+{
+  "frameWidth": 48,
+  "frameHeight": 64,
+  "sheetWidth": 192,
+  "sheetHeight": 256,
+  "columns": 4,
+  "rows": 4,
+  "rowOrder": [
+    "south",
+    "west",
+    "east",
+    "north"
+  ],
+  "columnFrames": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "animations": {
+    "walk_or_idle": "player_champion_upgraded_walk_sheet_48x64.png",
+    "attack": "player_champion_upgraded_attack_sheet_48x64.png",
+    "cast_or_interact": "player_champion_upgraded_cast_sheet_48x64.png",
+    "portrait": "player_champion_upgraded_portrait_192.png"
+  },
+  "note": "These processed files are first-pass game-ready test assets. Inspect in-game for alignment. The raw generated files are included for higher-quality manual cleanup if needed."
+}

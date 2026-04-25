@@ -354,6 +354,17 @@
       "anchor": [0.5, 1]
     },
     {
+      "name": "royal_plant",
+      "category": "props",
+      "kind": "foliage",
+      "src": "assets/tiles/props/royal_plant.png",
+      "atlas": "props",
+      "layer": "props",
+      "idRange": [0, 0],
+      "passable": false,
+      "anchor": [0.5, 1]
+    },
+    {
       "name": "bookshelf",
       "category": "props",
       "kind": "furniture",

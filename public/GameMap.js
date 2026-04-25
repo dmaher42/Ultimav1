@@ -108,6 +108,8 @@ export function createWorld() {
       // Braziers flanking the dais like the reference hall.
       { x: 10, y: 6, sprite: 'royal_brazier', width: 1, height: 2 },
       { x: 19, y: 6, sprite: 'royal_brazier', width: 1, height: 2 },
+      { x: 5, y: 11, sprite: 'royal_plant', passable: false },
+      { x: 24, y: 11, sprite: 'royal_plant', passable: false },
       
       // Royal Banners
       { x: 9, y: 2, sprite: 'banner', height: 4, shadow: false },
@@ -183,7 +185,7 @@ export function createWorld() {
         job: 'The King awaits your word.',
       },
       {
-        id: 'royal_torch_guard', name: 'Royal Torch Guard', x: 18, y: 10,
+        id: 'royal_torch_guard', name: 'Royal Torch Guard', x: 24, y: 13,
         spriteSheet: ROYAL_TORCH_GUARD_SPRITE,
         spriteSheetOptions: { columns: 3, rows: 4, directions: ['south', 'west', 'east', 'north'], framePrefix: 'player' },
         spriteFrame: 'player_south_1',
@@ -222,7 +224,7 @@ export function createWorld() {
     transitions: [
       { x: 0, y: 4, map: 'castle_bedroom', spawn: 'bedroom_door' }
     ],
-    spawnPoints: { 'castle_gate': { x: 14, y: 18 }, 'bedroom_door': { x: 2, y: 1 } }
+    spawnPoints: { 'castle_gate': { x: 14, y: 13 }, 'bedroom_door': { x: 2, y: 1 } }
   });
 
   // 2. LYCAEUM ENTRANCE (Formerly Athens Entrance)
@@ -659,11 +661,30 @@ export class GameMap {
     const info = TileInfo[tile];
     if (!info || info.passable === false) return false;
 
-    const obj = this.objects.find(o => o.x === x && o.y === y);
-    if (obj) {
-        if (obj.type === 'item') return true;
-        if (obj.passable) return true;
-        return false;
+    const tileLeft = x;
+    const tileTop = y;
+    const tileRight = x + 1;
+    const tileBottom = y + 1;
+    const blocksTile = (obj) => {
+      if (!obj) return false;
+      if (obj.type === 'item' || obj.passable) return false;
+      const width = Number.isFinite(obj.width) && obj.width > 0 ? obj.width : (Number.isFinite(obj.spriteTileWidth) && obj.spriteTileWidth > 0 ? obj.spriteTileWidth : 1);
+      const height = Number.isFinite(obj.height) && obj.height > 0 ? obj.height : (Number.isFinite(obj.spriteTileHeight) && obj.spriteTileHeight > 0 ? obj.spriteTileHeight : 1);
+      const anchorX = Number.isFinite(obj.anchorX) ? obj.anchorX : (Number.isFinite(obj.spriteAnchorX) ? obj.spriteAnchorX : 0.5);
+      const anchorY = Number.isFinite(obj.anchorY) ? obj.anchorY : (Number.isFinite(obj.spriteAnchorY) ? obj.spriteAnchorY : 1);
+      const offsetX = Number.isFinite(obj.spriteOffsetTileX) ? obj.spriteOffsetTileX : 0;
+      const offsetY = Number.isFinite(obj.spriteOffsetTileY) ? obj.spriteOffsetTileY : 0;
+      const baseX = obj.x + 0.5 + offsetX;
+      const baseY = obj.y + 1 + offsetY;
+      const left = baseX - width * anchorX;
+      const top = baseY - height * anchorY;
+      const right = left + width;
+      const bottom = top + height;
+      return left < tileRight && right > tileLeft && top < tileBottom && bottom > tileTop;
+    };
+
+    if (this.objects.some(blocksTile)) {
+      return false;
     }
     return true;
   }

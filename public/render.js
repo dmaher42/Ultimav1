@@ -21,7 +21,24 @@ const DIRECTION_KEYS = {
 };
 const DEFAULT_DIRECTION = 'south';
 
+const PLAYER_CHAMPION_PREFIX = 'player_champion';
 const PLAYER_ANIMATIONS = {
+  player_champion_south_idle: { frames: ['player_champion_south_1'], fps: 1 },
+  player_champion_west_idle: { frames: ['player_champion_west_1'], fps: 1 },
+  player_champion_east_idle: { frames: ['player_champion_east_1'], fps: 1 },
+  player_champion_north_idle: { frames: ['player_champion_north_1'], fps: 1 },
+  player_champion_south_walk: { frames: ['player_champion_south_0', 'player_champion_south_1', 'player_champion_south_2', 'player_champion_south_3'], fps: 8 },
+  player_champion_west_walk: { frames: ['player_champion_west_0', 'player_champion_west_1', 'player_champion_west_2', 'player_champion_west_3'], fps: 8 },
+  player_champion_east_walk: { frames: ['player_champion_east_0', 'player_champion_east_1', 'player_champion_east_2', 'player_champion_east_3'], fps: 8 },
+  player_champion_north_walk: { frames: ['player_champion_north_0', 'player_champion_north_1', 'player_champion_north_2', 'player_champion_north_3'], fps: 8 },
+  player_champion_south_attack: { frames: ['player_champion_south_0', 'player_champion_south_1', 'player_champion_south_2', 'player_champion_south_3'], fps: 10 },
+  player_champion_west_attack: { frames: ['player_champion_west_0', 'player_champion_west_1', 'player_champion_west_2', 'player_champion_west_3'], fps: 10 },
+  player_champion_east_attack: { frames: ['player_champion_east_0', 'player_champion_east_1', 'player_champion_east_2', 'player_champion_east_3'], fps: 10 },
+  player_champion_north_attack: { frames: ['player_champion_north_0', 'player_champion_north_1', 'player_champion_north_2', 'player_champion_north_3'], fps: 10 },
+  player_champion_south_cast: { frames: ['player_champion_south_0', 'player_champion_south_1', 'player_champion_south_2', 'player_champion_south_3'], fps: 9 },
+  player_champion_west_cast: { frames: ['player_champion_west_0', 'player_champion_west_1', 'player_champion_west_2', 'player_champion_west_3'], fps: 9 },
+  player_champion_east_cast: { frames: ['player_champion_east_0', 'player_champion_east_1', 'player_champion_east_2', 'player_champion_east_3'], fps: 9 },
+  player_champion_north_cast: { frames: ['player_champion_north_0', 'player_champion_north_1', 'player_champion_north_2', 'player_champion_north_3'], fps: 9 },
   idle_south: { frames: ['player_south_1'], fps: 1 },
   idle_north: { frames: ['player_north_1'], fps: 1 },
   idle_east: { frames: ['player_east_1'], fps: 1 },
@@ -137,6 +154,10 @@ function normaliseDirection(direction) {
 function animationKey(direction, moving) {
   const dir = normaliseDirection(direction);
   const base = moving ? 'walk' : 'idle';
+  const championKey = `${PLAYER_CHAMPION_PREFIX}_${dir}_${base}`;
+  if (PLAYER_ANIMATIONS[championKey]) {
+    return championKey;
+  }
   const key = `${base}_${dir}`;
   if (PLAYER_ANIMATIONS[key]) {
     return key;
@@ -181,6 +202,14 @@ export default class RenderEngine {
     this.objects = [];
     this.npcs = [];
     this.playerSprite = null;
+    this.playerSpriteSheets = { walk: null, attack: null, cast: null };
+    this.playerSpriteLayout = {
+      widthTiles: 1,
+      heightTiles: 1,
+      anchorX: 0.5,
+      anchorY: 1,
+      offsetTileY: 0
+    };
     this.spriteSheetCache = new Map();
     this.objectSignature = '';
 
@@ -209,8 +238,8 @@ export default class RenderEngine {
     this.flashLayer = createFlashLayer();
     this.timeOfDay = createTimeOfDay();
     this.hudOverlay = createHUD();
-    this.playerAnim = createAnimFSM(PLAYER_ANIMATIONS, 'idle_south');
-    this.animationState = 'idle_south';
+    this.playerAnim = createAnimFSM(PLAYER_ANIMATIONS, 'player_champion_south_idle');
+    this.animationState = 'player_champion_south_idle';
     this.hudData = { resources: {}, castleLevel: 1 };
     this.debugOverlay = false;
     this.fps = 0;
@@ -246,14 +275,35 @@ export default class RenderEngine {
   async loadPlayerSprite(url, options = {}) {
     if (!url) {
       this.playerSprite = null;
+      this.playerSpriteSheets = { walk: null, attack: null, cast: null };
       return null;
     }
     try {
       const sheet = await this.ensureSpriteSheet(url, options);
       this.playerSprite = sheet || null;
+      this.playerSpriteSheets = { walk: this.playerSprite, attack: null, cast: null };
+      const variants = options.variants || {};
+      await Promise.all(
+        ['attack', 'cast']
+          .filter((key) => variants[key])
+          .map((key) => this.ensureSpriteSheet(variants[key], options).then((variantSheet) => {
+            this.playerSpriteSheets[key] = variantSheet || null;
+          }))
+      );
+      const heightTiles = Number.isFinite(options.heightTiles) && options.heightTiles > 0
+        ? options.heightTiles
+        : Math.max(1, (sheet?.frameHeight || this.tileSize) / this.tileSize);
+      this.playerSpriteLayout = {
+        widthTiles: Number.isFinite(options.widthTiles) && options.widthTiles > 0 ? options.widthTiles : 1,
+        heightTiles,
+        anchorX: Number.isFinite(options.anchorX) ? options.anchorX : 0.5,
+        anchorY: Number.isFinite(options.anchorY) ? options.anchorY : 1,
+        offsetTileY: Number.isFinite(options.offsetTileY) ? options.offsetTileY : 0
+      };
       return this.playerSprite;
     } catch (error) {
       this.playerSprite = null;
+      this.playerSpriteSheets = { walk: null, attack: null, cast: null };
       throw error;
     }
   }
@@ -331,6 +381,37 @@ export default class RenderEngine {
     const py = Math.round(dy);
     ctx.drawImage(sheet.image, frame.sx, frame.sy, frame.sw, frame.sh, px, py, dw, dh);
     return true;
+  }
+
+  getPlayerSpriteSheetForState(state = this.animationState) {
+    if (state?.endsWith('_attack')) {
+      return this.playerSpriteSheets.attack || this.playerSpriteSheets.walk || this.playerSprite;
+    }
+    if (state?.endsWith('_cast')) {
+      return this.playerSpriteSheets.cast || this.playerSpriteSheets.walk || this.playerSprite;
+    }
+    return this.playerSpriteSheets.walk || this.playerSprite;
+  }
+
+  getPlayerSpritePlacement(player = this.player) {
+    const position = player?.position;
+    if (!position) return null;
+    const layout = this.playerSpriteLayout || {};
+    const width = this.tileSize * (Number.isFinite(layout.widthTiles) ? layout.widthTiles : 1);
+    const height = this.tileSize * (Number.isFinite(layout.heightTiles) ? layout.heightTiles : 1);
+    const anchorX = Number.isFinite(layout.anchorX) ? layout.anchorX : 0.5;
+    const anchorY = Number.isFinite(layout.anchorY) ? layout.anchorY : 1;
+    const offsetTileY = Number.isFinite(layout.offsetTileY) ? layout.offsetTileY : 0;
+    const baseX = this.offsetX + (position.x + 0.5) * this.tileSize;
+    const baseY = this.offsetY + (position.y + 1 + offsetTileY) * this.tileSize;
+    return {
+      width,
+      height,
+      px: baseX - width * anchorX,
+      py: baseY - height * anchorY,
+      baseX,
+      baseY
+    };
   }
 
   start() {
@@ -801,15 +882,20 @@ export default class RenderEngine {
     entities.forEach(entity => {
         const data = entity.data;
         const npcPlacement = entity.type === 'npc' ? this.getNpcSpritePlacement(data) : null;
+        const playerPlacement = entity.type === 'player' ? this.getPlayerSpritePlacement(data) : null;
         const x = entity.type === 'player' ? data.position.x : data.x;
         const y = entity.type === 'player' ? data.position.y : data.y;
         
         // Base of the entity
         const baseX = npcPlacement
           ? Math.floor((npcPlacement.baseX - this.offsetX) / this.tileSize)
+          : playerPlacement
+          ? Math.floor((playerPlacement.baseX - this.offsetX) / this.tileSize)
           : Math.floor(x + (data.width || 1) * 0.5);
         const baseY = npcPlacement
           ? Math.floor((npcPlacement.baseY - this.offsetY) / this.tileSize)
+          : playerPlacement
+          ? Math.floor((playerPlacement.baseY - this.offsetY) / this.tileSize)
           : Math.floor(y + (data.height || 1));
         
         // Check floor tile beneath
@@ -824,10 +910,10 @@ export default class RenderEngine {
             ctx.globalAlpha = opacity;
             ctx.globalCompositeOperation = 'screen';
             
-            const w = npcPlacement ? npcPlacement.width : (data.width || 1) * this.tileSize;
-            const h = npcPlacement ? npcPlacement.height : (data.height || 1) * this.tileSize;
-            const px = npcPlacement ? npcPlacement.px : this.offsetX + x * this.tileSize;
-            const py = npcPlacement ? npcPlacement.baseY : this.offsetY + (y + (data.height || 1)) * this.tileSize;
+            const w = npcPlacement ? npcPlacement.width : (playerPlacement ? playerPlacement.width : (data.width || 1) * this.tileSize);
+            const h = npcPlacement ? npcPlacement.height : (playerPlacement ? playerPlacement.height : (data.height || 1) * this.tileSize);
+            const px = npcPlacement ? npcPlacement.px : (playerPlacement ? playerPlacement.px : this.offsetX + x * this.tileSize);
+            const py = npcPlacement ? npcPlacement.baseY : (playerPlacement ? playerPlacement.baseY : this.offsetY + (y + (data.height || 1)) * this.tileSize);
 
             // Transformation: Flip vertically and squish slightly
             ctx.translate(px + w/2, py);
@@ -837,7 +923,10 @@ export default class RenderEngine {
             // Draw based on type
             if (entity.type === 'player') {
                 const frameKey = this.playerAnim.frame() || 'player_south_1';
-                drawSprite(ctx, this.atlas, frameKey, px, py - h, w, h);
+                const sheet = this.getPlayerSpriteSheetForState();
+                if (!sheet || !this.drawSpriteSheetFrame(ctx, sheet, frameKey, px, py - h, w, h)) {
+                  drawSprite(ctx, this.atlas, frameKey, px, py - h, w, h);
+                }
             } else if (entity.type === 'npc') {
                 if (data.spriteSheet) {
                     const sheetOptions = data.spriteSheetOptions || data.spriteOptions;
@@ -2388,21 +2477,22 @@ export default class RenderEngine {
 
   drawPlayer(ctx) {
     if (!this.player) return;
-    const position = this.player.position;
-    if (!position) return;
-    const px = this.offsetX + position.x * this.tileSize;
-    const py = this.offsetY + position.y * this.tileSize;
+    const placement = this.getPlayerSpritePlacement();
+    if (!placement) return;
     const frameKey = this.playerAnim.frame() || 'player_south_1';
-    if (this.playerSprite) {
-      const drawnSheet = this.drawSpriteSheetFrame(ctx, this.playerSprite, frameKey, px, py, this.tileSize, this.tileSize);
+    const sheet = this.getPlayerSpriteSheetForState();
+    if (sheet) {
+      const drawnSheet = this.drawSpriteSheetFrame(ctx, sheet, frameKey, placement.px, placement.py, placement.width, placement.height);
       if (drawnSheet) {
         return;
       }
     }
     if (!this.atlas) return;
-    const drawn = drawSprite(ctx, this.atlas, frameKey, px, py, this.tileSize, this.tileSize);
+    const fallbackX = this.offsetX + this.player.position.x * this.tileSize;
+    const fallbackY = this.offsetY + this.player.position.y * this.tileSize;
+    const drawn = drawSprite(ctx, this.atlas, frameKey, fallbackX, fallbackY, this.tileSize, this.tileSize);
     if (!drawn) {
-      drawSprite(ctx, this.atlas, 'player_south_1', px, py, this.tileSize, this.tileSize);
+      drawSprite(ctx, this.atlas, 'player_south_1', fallbackX, fallbackY, this.tileSize, this.tileSize);
     }
   }
 

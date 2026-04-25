@@ -33,6 +33,7 @@ const CORE_TILES = [
   { name: 'torch_wall', category: 'props', src: 'assets/tiles/props/torch_wall.png' },
   { name: 'fountain', category: 'props', src: 'assets/tiles/props/fountain.png' },
   { name: 'pillar', category: 'props', src: 'assets/tiles/pillar.png' },
+  { name: 'royal_plant', category: 'props', src: 'assets/tiles/props/royal_plant.png' },
   { name: 'garden', category: 'props', src: 'assets/tiles/props/garden.png' },
   { name: 'royal_bed', category: 'props', src: 'assets/tiles/royal_bed.png' }, // NEW
   { name: 'bookshelf', category: 'props', src: 'assets/tiles/bookshelf.png' },
