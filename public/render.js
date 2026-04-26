@@ -1141,14 +1141,14 @@ export default class RenderEngine {
     ctx.save();
     ctx.globalCompositeOperation = 'screen';
     const throneGlow = ctx.createRadialGradient(throneCenterX, throneCenterY, ts * 0.8, throneCenterX, throneCenterY, ts * 7.2);
-    throneGlow.addColorStop(0, 'rgba(255, 238, 180, 0.22)');
-    throneGlow.addColorStop(0.32, 'rgba(230, 183, 86, 0.12)');
+      throneGlow.addColorStop(0, 'rgba(255, 238, 180, 0.18)');
+      throneGlow.addColorStop(0.32, 'rgba(230, 183, 86, 0.08)');
     throneGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
     ctx.fillStyle = throneGlow;
     ctx.fillRect(hallLeft - ts, hallTop - ts * 0.4, hallWidth + ts * 2, hallHeight + ts * 1.6);
 
     const crestGlow = ctx.createRadialGradient(throneCenterX, this.offsetY + 1.9 * ts, ts * 0.3, throneCenterX, this.offsetY + 1.9 * ts, ts * 2.5);
-    crestGlow.addColorStop(0, 'rgba(255, 245, 210, 0.18)');
+      crestGlow.addColorStop(0, 'rgba(255, 245, 210, 0.14)');
     crestGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
     ctx.fillStyle = crestGlow;
     ctx.fillRect(throneCenterX - ts * 2.5, this.offsetY, ts * 5, ts * 4.5);
@@ -1162,18 +1162,18 @@ export default class RenderEngine {
     ctx.fillRect(hallLeft, hallTop, hallWidth, hallHeight);
 
     const wallRelief = ctx.createLinearGradient(0, this.offsetY + 1.0 * ts, 0, this.offsetY + 4.2 * ts);
-    wallRelief.addColorStop(0, 'rgba(255, 249, 240, 0.075)');
-    wallRelief.addColorStop(0.6, 'rgba(239, 229, 213, 0.038)');
-    wallRelief.addColorStop(1, 'rgba(214, 196, 168, 0.015)');
+    wallRelief.addColorStop(0, 'rgba(255, 249, 240, 0.085)');
+    wallRelief.addColorStop(0.6, 'rgba(239, 229, 213, 0.05)');
+    wallRelief.addColorStop(1, 'rgba(214, 196, 168, 0.02)');
     ctx.fillStyle = wallRelief;
     ctx.fillRect(hallLeft - ts * 0.05, this.offsetY + 1.0 * ts, hallWidth + ts * 0.1, ts * 3.25);
 
     const wallInlay = ctx.createLinearGradient(hallLeft, 0, hallLeft + hallWidth, 0);
-    wallInlay.addColorStop(0, 'rgba(107, 92, 76, 0.14)');
-    wallInlay.addColorStop(0.14, 'rgba(255, 252, 244, 0.02)');
-    wallInlay.addColorStop(0.5, 'rgba(255, 246, 230, 0.05)');
-    wallInlay.addColorStop(0.86, 'rgba(255, 252, 244, 0.02)');
-    wallInlay.addColorStop(1, 'rgba(107, 92, 76, 0.14)');
+    wallInlay.addColorStop(0, 'rgba(107, 92, 76, 0.18)');
+    wallInlay.addColorStop(0.14, 'rgba(255, 252, 244, 0.025)');
+    wallInlay.addColorStop(0.5, 'rgba(255, 246, 230, 0.06)');
+    wallInlay.addColorStop(0.86, 'rgba(255, 252, 244, 0.025)');
+    wallInlay.addColorStop(1, 'rgba(107, 92, 76, 0.18)');
     ctx.fillStyle = wallInlay;
     ctx.fillRect(hallLeft, this.offsetY + ts * 1.15, hallWidth, ts * 2.95);
 
@@ -1219,34 +1219,34 @@ export default class RenderEngine {
 
     const lowerFalloff = ctx.createLinearGradient(0, this.offsetY + 7.8 * ts, 0, this.offsetY + 18.8 * ts);
     lowerFalloff.addColorStop(0, 'rgba(0, 0, 0, 0)');
-    lowerFalloff.addColorStop(1, 'rgba(255, 246, 232, 0.006)');
+    lowerFalloff.addColorStop(1, 'rgba(255, 246, 232, 0.01)');
     ctx.fillStyle = lowerFalloff;
     ctx.fillRect(this.offsetX + 2 * ts, this.offsetY + 7.8 * ts, ts * 26, ts * 11);
 
     const alcoveShade = ctx.createLinearGradient(0, alcoveTop, 0, alcoveTop + alcoveHeight);
-    alcoveShade.addColorStop(0, 'rgba(116, 98, 80, 0.095)');
-    alcoveShade.addColorStop(0.52, 'rgba(145, 124, 104, 0.035)');
+    alcoveShade.addColorStop(0, 'rgba(116, 98, 80, 0.11)');
+    alcoveShade.addColorStop(0.52, 'rgba(145, 124, 104, 0.05)');
     alcoveShade.addColorStop(1, 'rgba(0, 0, 0, 0)');
     ctx.fillStyle = alcoveShade;
     ctx.fillRect(alcoveLeft, alcoveTop, alcoveWidth, alcoveHeight);
 
     const backPanel = ctx.createLinearGradient(0, this.offsetY + 1.25 * ts, 0, this.offsetY + 6.7 * ts);
-    backPanel.addColorStop(0, 'rgba(255, 246, 226, 0.105)');
-    backPanel.addColorStop(0.5, 'rgba(226, 202, 160, 0.035)');
-    backPanel.addColorStop(1, 'rgba(92, 66, 42, 0.045)');
+    backPanel.addColorStop(0, 'rgba(255, 246, 226, 0.12)');
+    backPanel.addColorStop(0.5, 'rgba(226, 202, 160, 0.05)');
+    backPanel.addColorStop(1, 'rgba(92, 66, 42, 0.07)');
     ctx.fillStyle = backPanel;
     ctx.fillRect(throneCenterX - ts * 2.35, this.offsetY + 1.35 * ts, ts * 4.7, ts * 5.25);
     ctx.strokeStyle = 'rgba(238, 204, 126, 0.24)';
     ctx.lineWidth = 2;
     ctx.strokeRect(throneCenterX - ts * 2.18, this.offsetY + 1.52 * ts, ts * 4.36, ts * 4.82);
 
-    ctx.fillStyle = 'rgba(255, 236, 150, 0.16)';
+    ctx.fillStyle = 'rgba(255, 236, 150, 0.18)';
     ctx.fillRect(throneCenterX - ts * 2.75, this.offsetY + 1.28 * ts, ts * 5.5, ts * 0.16);
     ctx.fillRect(throneCenterX - ts * 2.75, this.offsetY + 6.48 * ts, ts * 5.5, ts * 0.16);
-    ctx.fillStyle = 'rgba(113, 88, 52, 0.10)';
+    ctx.fillStyle = 'rgba(113, 88, 52, 0.12)';
     ctx.fillRect(throneCenterX - ts * 2.9, this.offsetY + 6.72 * ts, ts * 5.8, ts * 0.26);
     ctx.fillRect(throneCenterX - ts * 2.55, this.offsetY + 6.22 * ts, ts * 5.1, ts * 0.18);
-    ctx.fillStyle = 'rgba(62, 36, 18, 0.12)';
+    ctx.fillStyle = 'rgba(62, 36, 18, 0.14)';
     ctx.fillRect(throneCenterX - ts * 2.55, this.offsetY + 6.88 * ts, ts * 5.1, ts * 0.10);
     ctx.fillRect(throneCenterX - ts * 2.95, this.offsetY + 8.00 * ts, ts * 5.9, ts * 0.16);
 
@@ -1305,9 +1305,9 @@ export default class RenderEngine {
 
     const landingY = this.offsetY + 6.86 * ts;
     const landingGrad = ctx.createLinearGradient(0, landingY, 0, landingY + ts * 2.22);
-    landingGrad.addColorStop(0, 'rgba(255, 241, 206, 0.16)');
-    landingGrad.addColorStop(0.48, 'rgba(184, 148, 88, 0.105)');
-    landingGrad.addColorStop(1, 'rgba(86, 60, 34, 0.08)');
+    landingGrad.addColorStop(0, 'rgba(255, 241, 206, 0.18)');
+    landingGrad.addColorStop(0.48, 'rgba(184, 148, 88, 0.12)');
+    landingGrad.addColorStop(1, 'rgba(86, 60, 34, 0.1)');
     ctx.fillStyle = landingGrad;
     ctx.beginPath();
     ctx.moveTo(throneCenterX - ts * 2.75, landingY);
@@ -1339,23 +1339,23 @@ export default class RenderEngine {
     ctx.save();
     ctx.globalCompositeOperation = 'screen';
     const footlight = ctx.createRadialGradient(throneCenterX, landingY + ts * 1.32, 0, throneCenterX, landingY + ts * 1.32, ts * 2.0);
-    footlight.addColorStop(0, 'rgba(255, 236, 166, 0.16)');
-    footlight.addColorStop(0.54, 'rgba(255, 198, 94, 0.045)');
+    footlight.addColorStop(0, 'rgba(255, 236, 166, 0.14)');
+    footlight.addColorStop(0.54, 'rgba(255, 198, 94, 0.035)');
     footlight.addColorStop(1, 'rgba(255, 198, 94, 0)');
     ctx.fillStyle = footlight;
     ctx.fillRect(throneCenterX - ts * 2.2, landingY + ts * 0.1, ts * 4.4, ts * 2.4);
     ctx.restore();
 
     const floorSheen = ctx.createRadialGradient(throneCenterX, this.offsetY + 9.0 * ts, 0, throneCenterX, this.offsetY + 9.0 * ts, ts * 5.2);
-    floorSheen.addColorStop(0, 'rgba(255, 255, 255, 0.12)');
-    floorSheen.addColorStop(0.45, 'rgba(255, 247, 224, 0.045)');
+    floorSheen.addColorStop(0, 'rgba(255, 255, 255, 0.08)');
+    floorSheen.addColorStop(0.45, 'rgba(255, 247, 224, 0.032)');
     floorSheen.addColorStop(1, 'rgba(255, 247, 224, 0)');
     ctx.fillStyle = floorSheen;
     ctx.fillRect(throneCenterX - ts * 4.0, this.offsetY + 6.5 * ts, ts * 8.0, ts * 5.8);
 
     const stageShadow = ctx.createRadialGradient(throneCenterX, this.offsetY + 6.95 * ts, 0, throneCenterX, this.offsetY + 6.95 * ts, ts * 4.5);
-    stageShadow.addColorStop(0, 'rgba(58, 30, 12, 0.18)');
-    stageShadow.addColorStop(0.46, 'rgba(58, 30, 12, 0.08)');
+    stageShadow.addColorStop(0, 'rgba(58, 30, 12, 0.22)');
+    stageShadow.addColorStop(0.46, 'rgba(58, 30, 12, 0.1)');
     stageShadow.addColorStop(1, 'rgba(58, 30, 12, 0)');
     ctx.fillStyle = stageShadow;
     ctx.fillRect(throneCenterX - ts * 4.4, this.offsetY + 4.9 * ts, ts * 8.8, ts * 3.7);
@@ -1370,8 +1370,8 @@ export default class RenderEngine {
       const lx = this.offsetX + lamp.x * ts;
       const ly = this.offsetY + lamp.y * ts;
       const pool = ctx.createRadialGradient(lx, ly, 0, lx, ly, ts * lamp.r);
-      pool.addColorStop(0, 'rgba(255, 199, 92, 0.095)');
-      pool.addColorStop(0.45, 'rgba(255, 148, 60, 0.035)');
+      pool.addColorStop(0, 'rgba(255, 199, 92, 0.075)');
+      pool.addColorStop(0.45, 'rgba(255, 148, 60, 0.028)');
       pool.addColorStop(1, 'rgba(255, 128, 30, 0)');
       ctx.fillStyle = pool;
       ctx.fillRect(lx - ts * lamp.r, ly - ts * lamp.r, ts * lamp.r * 2, ts * lamp.r * 2);
@@ -1514,28 +1514,28 @@ export default class RenderEngine {
       ts * 12
     );
     roomDepth.addColorStop(0, 'rgba(255, 249, 238, 0)');
-    roomDepth.addColorStop(0.58, 'rgba(232, 218, 200, 0.015)');
-    roomDepth.addColorStop(1, 'rgba(70, 52, 34, 0.18)');
+    roomDepth.addColorStop(0.58, 'rgba(230, 216, 196, 0.02)');
+    roomDepth.addColorStop(1, 'rgba(64, 48, 32, 0.24)');
     ctx.fillStyle = roomDepth;
     ctx.fillRect(this.offsetX + ts, this.offsetY + ts, this.mapPixelWidth - ts * 2, this.mapPixelHeight - ts * 1.1);
 
     const lowerShadow = ctx.createLinearGradient(0, this.offsetY + ts * 10.2, 0, this.offsetY + ts * 19.2);
     lowerShadow.addColorStop(0, 'rgba(56, 38, 22, 0)');
-    lowerShadow.addColorStop(1, 'rgba(56, 38, 22, 0.14)');
+    lowerShadow.addColorStop(1, 'rgba(56, 38, 22, 0.18)');
     ctx.fillStyle = lowerShadow;
     ctx.fillRect(this.offsetX + ts, this.offsetY + ts * 10.2, this.mapPixelWidth - ts * 2, ts * 9);
 
     const sideShadowLeft = ctx.createLinearGradient(this.offsetX + ts * 2.2, 0, this.offsetX + ts * 4.8, 0);
-    sideShadowLeft.addColorStop(0, 'rgba(68, 52, 36, 0.16)');
+    sideShadowLeft.addColorStop(0, 'rgba(68, 52, 36, 0.22)');
     sideShadowLeft.addColorStop(1, 'rgba(68, 52, 36, 0)');
     ctx.fillStyle = sideShadowLeft;
-    ctx.fillRect(this.offsetX + ts * 2.2, this.offsetY + ts * 2.1, ts * 3.2, ts * 15.2);
+    ctx.fillRect(this.offsetX + ts * 2.1, this.offsetY + ts * 2.1, ts * 3.45, ts * 15.2);
 
     const sideShadowRight = ctx.createLinearGradient(this.offsetX + ts * 27.8, 0, this.offsetX + ts * 25.2, 0);
-    sideShadowRight.addColorStop(0, 'rgba(68, 52, 36, 0.16)');
+    sideShadowRight.addColorStop(0, 'rgba(68, 52, 36, 0.22)');
     sideShadowRight.addColorStop(1, 'rgba(68, 52, 36, 0)');
     ctx.fillStyle = sideShadowRight;
-    ctx.fillRect(this.offsetX + ts * 25.2, this.offsetY + ts * 2.1, ts * 3.2, ts * 15.2);
+    ctx.fillRect(this.offsetX + ts * 24.95, this.offsetY + ts * 2.1, ts * 3.45, ts * 15.2);
 
     for (let y = 1; y < grid.height - 1; y += 1) {
       for (let x = 1; x < grid.width - 1; x += 1) {
@@ -1555,28 +1555,28 @@ export default class RenderEngine {
             py + ts * 0.5,
             ts * 0.82
           );
-          cloud.addColorStop(0, `rgba(255, 252, 246, ${0.12 + (seed % 4) * 0.016})`);
-          cloud.addColorStop(0.58, 'rgba(238, 230, 220, 0.05)');
+          cloud.addColorStop(0, `rgba(255, 252, 246, ${0.10 + (seed % 4) * 0.014})`);
+          cloud.addColorStop(0.58, 'rgba(238, 230, 220, 0.045)');
           cloud.addColorStop(1, 'rgba(208, 198, 187, 0)');
           ctx.fillStyle = cloud;
           ctx.fillRect(px, py, ts, ts);
 
-          if ((seed & 5) === 1 || (seed & 11) === 3) {
+          if ((seed & 7) === 1 || (seed & 15) === 3) {
             ctx.save();
-            ctx.strokeStyle = 'rgba(94, 88, 81, 0.30)';
+            ctx.strokeStyle = 'rgba(94, 88, 81, 0.24)';
             ctx.lineWidth = 1;
             ctx.beginPath();
-            ctx.moveTo(px + ts * 0.18, py + ts * 0.22);
-            ctx.lineTo(px + ts * 0.44, py + ts * 0.34);
-            ctx.lineTo(px + ts * 0.37, py + ts * 0.62);
-            ctx.lineTo(px + ts * 0.73, py + ts * 0.82);
+            ctx.moveTo(px + ts * 0.14, py + ts * 0.20);
+            ctx.lineTo(px + ts * 0.42, py + ts * 0.30);
+            ctx.lineTo(px + ts * 0.35, py + ts * 0.58);
+            ctx.lineTo(px + ts * 0.72, py + ts * 0.80);
             ctx.stroke();
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.07)';
             ctx.beginPath();
-            ctx.moveTo(px + ts * 0.22, py + ts * 0.30);
-            ctx.lineTo(px + ts * 0.42, py + ts * 0.41);
-            ctx.lineTo(px + ts * 0.35, py + ts * 0.57);
-            ctx.lineTo(px + ts * 0.68, py + ts * 0.76);
+            ctx.moveTo(px + ts * 0.18, py + ts * 0.28);
+            ctx.lineTo(px + ts * 0.40, py + ts * 0.38);
+            ctx.lineTo(px + ts * 0.33, py + ts * 0.54);
+            ctx.lineTo(px + ts * 0.66, py + ts * 0.74);
             ctx.stroke();
             ctx.restore();
           }
@@ -1606,8 +1606,8 @@ export default class RenderEngine {
     }
 
     const daisFocus = ctx.createRadialGradient(throneFocus.centerX, throneFocus.baseY + ts * 0.52, 0, throneFocus.centerX, throneFocus.baseY + ts * 0.52, ts * 4.2);
-    daisFocus.addColorStop(0, 'rgba(42, 22, 8, 0.18)');
-    daisFocus.addColorStop(0.58, 'rgba(42, 22, 8, 0.06)');
+    daisFocus.addColorStop(0, 'rgba(42, 22, 8, 0.22)');
+    daisFocus.addColorStop(0.58, 'rgba(42, 22, 8, 0.08)');
     daisFocus.addColorStop(1, 'rgba(42, 22, 8, 0)');
     ctx.fillStyle = daisFocus;
     ctx.fillRect(throneFocus.centerX - ts * 4.6, throneFocus.baseY - ts * 0.4, ts * 9.2, ts * 5.8);
@@ -1618,11 +1618,11 @@ export default class RenderEngine {
       this.offsetX + ts * 16.4,
       0
     );
-    runnerFrame.addColorStop(0, 'rgba(191, 159, 84, 0.08)');
-    runnerFrame.addColorStop(0.5, 'rgba(232, 204, 126, 0.15)');
-    runnerFrame.addColorStop(1, 'rgba(191, 159, 84, 0.08)');
+    runnerFrame.addColorStop(0, 'rgba(191, 159, 84, 0.06)');
+    runnerFrame.addColorStop(0.5, 'rgba(232, 204, 126, 0.11)');
+    runnerFrame.addColorStop(1, 'rgba(191, 159, 84, 0.06)');
     ctx.fillStyle = runnerFrame;
-    ctx.fillRect(this.offsetX + ts * 12.65, this.offsetY + ts * 8.9, ts * 3.7, ts * 9.3);
+    ctx.fillRect(this.offsetX + ts * 12.76, this.offsetY + ts * 8.95, ts * 3.48, ts * 9.18);
 
     ctx.restore();
   }
@@ -1656,71 +1656,71 @@ export default class RenderEngine {
         const centerY = py + ts * 0.5;
 
           const pile = ctx.createLinearGradient(px, py, px + ts, py + ts);
-          pile.addColorStop(0, '#5c0813');
-          pile.addColorStop(0.46, '#a91b26');
-          pile.addColorStop(1, '#3f050c');
+          pile.addColorStop(0, '#560713');
+          pile.addColorStop(0.46, '#9e1822');
+          pile.addColorStop(1, '#39040b');
           ctx.fillStyle = pile;
           ctx.fillRect(px, py, ts, ts);
 
-          ctx.fillStyle = 'rgba(255, 208, 149, 0.055)';
-          ctx.fillRect(px + ts * 0.18, py + 2, ts * 0.05, ts - 4);
-          ctx.fillRect(px + ts * 0.77, py + 2, ts * 0.05, ts - 4);
-          ctx.fillStyle = 'rgba(255, 243, 208, 0.05)';
-          ctx.fillRect(px + ts * 0.48, py + ts * 0.22, ts * 0.05, ts * 0.56);
+        ctx.fillStyle = 'rgba(255, 208, 149, 0.03)';
+        ctx.fillRect(px + ts * 0.20, py + 2, ts * 0.03, ts - 4);
+        ctx.fillRect(px + ts * 0.77, py + 2, ts * 0.03, ts - 4);
+        ctx.fillStyle = 'rgba(255, 243, 208, 0.028)';
+        ctx.fillRect(px + ts * 0.49, py + ts * 0.28, ts * 0.03, ts * 0.44);
 
-          ctx.fillStyle = 'rgba(90, 9, 24, 0.62)';
-          if (!hasLeft) ctx.fillRect(px, py, ts * 0.12, ts);
-          if (!hasRight) ctx.fillRect(px + ts * 0.88, py, ts * 0.12, ts);
-          if (!hasTop) ctx.fillRect(px, py, ts, ts * 0.12);
-          if (!hasBottom) ctx.fillRect(px, py + ts * 0.88, ts, ts * 0.12);
+          ctx.fillStyle = 'rgba(90, 9, 24, 0.50)';
+          if (!hasLeft) ctx.fillRect(px, py, ts * 0.10, ts);
+          if (!hasRight) ctx.fillRect(px + ts * 0.90, py, ts * 0.10, ts);
+          if (!hasTop) ctx.fillRect(px, py, ts, ts * 0.10);
+          if (!hasBottom) ctx.fillRect(px, py + ts * 0.90, ts, ts * 0.10);
 
-          ctx.fillStyle = 'rgba(35, 3, 11, 0.10)';
-          if (!hasLeft) ctx.fillRect(px + 1, py + 1, ts * 0.10, ts - 2);
-          if (!hasRight) ctx.fillRect(px + ts * 0.90, py + 1, ts * 0.10, ts - 2);
-          if (!hasTop) ctx.fillRect(px + 1, py + 1, ts - 2, ts * 0.10);
-          if (!hasBottom) ctx.fillRect(px + 1, py + ts * 0.90, ts - 2, ts * 0.10);
+        ctx.fillStyle = 'rgba(35, 3, 11, 0.06)';
+        if (!hasLeft) ctx.fillRect(px + 1, py + 1, ts * 0.06, ts - 2);
+        if (!hasRight) ctx.fillRect(px + ts * 0.94, py + 1, ts * 0.06, ts - 2);
+        if (!hasTop) ctx.fillRect(px + 1, py + 1, ts - 2, ts * 0.06);
+        if (!hasBottom) ctx.fillRect(px + 1, py + ts * 0.94, ts - 2, ts * 0.06);
 
-          ctx.strokeStyle = 'rgba(255, 218, 113, 0.82)';
-          ctx.lineWidth = 1.8;
-          if (!hasLeft) {
-            ctx.beginPath();
-            ctx.moveTo(px + ts * 0.11, py + 2);
-            ctx.lineTo(px + ts * 0.11, py + ts - 2);
-            ctx.stroke();
-          }
-          if (!hasRight) {
-            ctx.beginPath();
-            ctx.moveTo(px + ts * 0.89, py + 2);
-            ctx.lineTo(px + ts * 0.89, py + ts - 2);
-            ctx.stroke();
-          }
-          if (!hasTop) {
-            ctx.beginPath();
-            ctx.moveTo(px + 2, py + ts * 0.11);
-            ctx.lineTo(px + ts - 2, py + ts * 0.11);
-            ctx.stroke();
-          }
-          if (!hasBottom) {
-            ctx.beginPath();
-            ctx.moveTo(px + 2, py + ts * 0.89);
-            ctx.lineTo(px + ts - 2, py + ts * 0.89);
-            ctx.stroke();
-          }
+        ctx.strokeStyle = 'rgba(255, 218, 113, 0.52)';
+        ctx.lineWidth = 1.0;
+        if (!hasLeft) {
+          ctx.beginPath();
+          ctx.moveTo(px + ts * 0.09, py + 2);
+          ctx.lineTo(px + ts * 0.09, py + ts - 2);
+          ctx.stroke();
+        }
+        if (!hasRight) {
+          ctx.beginPath();
+          ctx.moveTo(px + ts * 0.91, py + 2);
+          ctx.lineTo(px + ts * 0.91, py + ts - 2);
+          ctx.stroke();
+        }
+        if (!hasTop) {
+          ctx.beginPath();
+          ctx.moveTo(px + 2, py + ts * 0.09);
+          ctx.lineTo(px + ts - 2, py + ts * 0.09);
+          ctx.stroke();
+        }
+        if (!hasBottom) {
+          ctx.beginPath();
+          ctx.moveTo(px + 2, py + ts * 0.91);
+          ctx.lineTo(px + ts - 2, py + ts * 0.91);
+          ctx.stroke();
+        }
 
-          if ((y + x) % 4 === 0 || tileType === 'red_carpet_end') {
-            ctx.save();
-            ctx.translate(centerX, centerY);
-            ctx.strokeStyle = 'rgba(255, 224, 122, 0.58)';
-            ctx.lineWidth = 1.3;
-            ctx.beginPath();
-            ctx.ellipse(0, 0, ts * 0.16, ts * 0.22, 0, 0, Math.PI * 2);
-            ctx.moveTo(0, -ts * 0.18);
-            ctx.lineTo(0, ts * 0.18);
-            ctx.moveTo(-ts * 0.09, 0);
-            ctx.lineTo(ts * 0.09, 0);
-            ctx.stroke();
-            ctx.restore();
-          }
+        if ((y + x) % 8 === 0 || tileType === 'red_carpet_end') {
+          ctx.save();
+          ctx.translate(centerX, centerY);
+          ctx.strokeStyle = 'rgba(255, 224, 122, 0.34)';
+          ctx.lineWidth = 0.9;
+          ctx.beginPath();
+          ctx.ellipse(0, 0, ts * 0.10, ts * 0.15, 0, 0, Math.PI * 2);
+          ctx.moveTo(0, -ts * 0.11);
+          ctx.lineTo(0, ts * 0.11);
+          ctx.moveTo(-ts * 0.055, 0);
+          ctx.lineTo(ts * 0.055, 0);
+          ctx.stroke();
+          ctx.restore();
+        }
         }
     }
 
@@ -1735,31 +1735,31 @@ export default class RenderEngine {
       const width = (maxX - minX + 1) * ts;
       const height = (maxY - minY + 1) * ts;
 
-      ctx.strokeStyle = 'rgba(255, 224, 116, 0.96)';
-      ctx.lineWidth = 2.2;
-      ctx.strokeRect(px + ts * 0.20, py + ts * 0.20, width - ts * 0.40, height - ts * 0.40);
-      ctx.strokeStyle = 'rgba(95, 7, 24, 0.56)';
-      ctx.lineWidth = 1.2;
-      ctx.strokeRect(px + ts * 0.33, py + ts * 0.33, width - ts * 0.66, height - ts * 0.66);
-      ctx.fillStyle = 'rgba(44, 4, 13, 0.08)';
-      ctx.fillRect(px + ts * 0.36, py + ts * 0.36, width - ts * 0.72, height - ts * 0.72);
+      ctx.strokeStyle = 'rgba(255, 224, 116, 0.78)';
+      ctx.lineWidth = 1.8;
+      ctx.strokeRect(px + ts * 0.24, py + ts * 0.24, width - ts * 0.48, height - ts * 0.48);
+      ctx.strokeStyle = 'rgba(95, 7, 24, 0.48)';
+      ctx.lineWidth = 1.0;
+      ctx.strokeRect(px + ts * 0.36, py + ts * 0.36, width - ts * 0.72, height - ts * 0.72);
+      ctx.fillStyle = 'rgba(44, 4, 13, 0.05)';
+      ctx.fillRect(px + ts * 0.40, py + ts * 0.40, width - ts * 0.80, height - ts * 0.80);
 
       ctx.save();
       ctx.translate(px + width / 2, py + height * 0.56);
-      ctx.strokeStyle = 'rgba(255, 218, 108, 0.62)';
-      ctx.lineWidth = 1.4;
+        ctx.strokeStyle = 'rgba(255, 218, 108, 0.36)';
+        ctx.lineWidth = 0.9;
       for (let i = -2; i <= 2; i += 1) {
-        const y = i * ts * 1.18;
+        const y = i * ts * 1.28;
         ctx.beginPath();
-        ctx.ellipse(0, y, width * 0.16, ts * 0.38, 0, 0, Math.PI * 2);
-        ctx.moveTo(-width * 0.14, y);
-        ctx.bezierCurveTo(-width * 0.05, y - ts * 0.24, width * 0.05, y + ts * 0.24, width * 0.14, y);
-        ctx.moveTo(0, y - ts * 0.30);
-        ctx.lineTo(0, y + ts * 0.30);
-        ctx.moveTo(-width * 0.06, y - ts * 0.16);
-        ctx.lineTo(width * 0.06, y + ts * 0.16);
-        ctx.moveTo(width * 0.06, y - ts * 0.16);
-        ctx.lineTo(-width * 0.06, y + ts * 0.16);
+        ctx.ellipse(0, y, width * 0.13, ts * 0.30, 0, 0, Math.PI * 2);
+        ctx.moveTo(-width * 0.11, y);
+        ctx.bezierCurveTo(-width * 0.04, y - ts * 0.18, width * 0.04, y + ts * 0.18, width * 0.11, y);
+        ctx.moveTo(0, y - ts * 0.22);
+        ctx.lineTo(0, y + ts * 0.22);
+        ctx.moveTo(-width * 0.05, y - ts * 0.12);
+        ctx.lineTo(width * 0.05, y + ts * 0.12);
+        ctx.moveTo(width * 0.05, y - ts * 0.12);
+        ctx.lineTo(-width * 0.05, y + ts * 0.12);
         ctx.stroke();
       }
       ctx.restore();
@@ -2305,23 +2305,29 @@ export default class RenderEngine {
     ctx.save();
 
     // Broad pedestal so the throne feels anchored on a dais.
-    ctx.fillStyle = 'rgba(66, 44, 28, 0.96)';
+    ctx.fillStyle = 'rgba(58, 39, 24, 0.98)';
     ctx.fillRect(px + width * 0.12, baseY, width * 0.76, height * 0.16);
-    ctx.fillStyle = 'rgba(195, 163, 90, 0.90)';
+    ctx.fillStyle = 'rgba(201, 170, 96, 0.92)';
     ctx.fillRect(px + width * 0.10, baseY - height * 0.05, width * 0.80, height * 0.08);
+    ctx.fillStyle = 'rgba(255, 239, 194, 0.18)';
+    ctx.fillRect(px + width * 0.15, baseY + height * 0.04, width * 0.70, height * 0.03);
 
     // Side arms and back.
-    ctx.fillStyle = '#6a4125';
+    ctx.fillStyle = '#5c351f';
     ctx.fillRect(px + width * 0.12, py + height * 0.30, armWidth, height * 0.40);
     ctx.fillRect(px + width * 0.74, py + height * 0.30, armWidth, height * 0.40);
-    ctx.fillStyle = '#7b1f1f';
+    ctx.fillStyle = '#6f171c';
     ctx.fillRect(px + width * 0.24, py + height * 0.12, width * 0.52, height * 0.50);
+    ctx.fillStyle = 'rgba(255, 219, 139, 0.08)';
+    ctx.fillRect(px + width * 0.30, py + height * 0.16, width * 0.40, height * 0.38);
 
     // Seat cushion and back cushion.
-    ctx.fillStyle = '#4f1117';
+    ctx.fillStyle = '#431015';
     ctx.fillRect(px + width * 0.26, seatY, width * 0.48, height * 0.14);
-    ctx.fillStyle = '#8f1e22';
+    ctx.fillStyle = '#9d2226';
     ctx.fillRect(px + width * 0.28, py + height * 0.18, width * 0.44, height * 0.26);
+    ctx.fillStyle = 'rgba(255, 235, 184, 0.12)';
+    ctx.fillRect(px + width * 0.33, py + height * 0.22, width * 0.34, height * 0.18);
 
     // Crowned top and gold trim.
     ctx.fillStyle = '#c89a3b';
@@ -2331,12 +2337,15 @@ export default class RenderEngine {
     ctx.strokeStyle = '#d8b76c';
     ctx.lineWidth = rim;
     ctx.strokeRect(px + width * 0.20, py + height * 0.10, width * 0.60, height * 0.66);
+    ctx.strokeStyle = 'rgba(255, 244, 205, 0.18)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(px + width * 0.25, py + height * 0.15, width * 0.50, height * 0.55);
 
     // Highlight sweep down the back to make the silhouette readable at distance.
     const shine = ctx.createLinearGradient(px, py, px + width, py);
     shine.addColorStop(0, 'rgba(255,255,255,0.00)');
-    shine.addColorStop(0.45, 'rgba(255,240,190,0.22)');
-    shine.addColorStop(0.55, 'rgba(255,240,190,0.32)');
+    shine.addColorStop(0.45, 'rgba(255,240,190,0.18)');
+    shine.addColorStop(0.55, 'rgba(255,240,190,0.28)');
     shine.addColorStop(1, 'rgba(255,255,255,0.00)');
     ctx.fillStyle = shine;
     ctx.fillRect(px + width * 0.24, py + height * 0.08, width * 0.52, height * 0.60);
@@ -2398,9 +2407,9 @@ export default class RenderEngine {
     shaft.addColorStop(0.5, '#f6f2ea');
     shaft.addColorStop(1, '#b8b0a1');
 
-    ctx.fillStyle = '#7d7263';
+    ctx.fillStyle = '#6d6256';
     ctx.fillRect(shaftX - width * 0.10, py + height - baseH, shaftW + width * 0.20, baseH);
-    ctx.fillStyle = '#5f564b';
+    ctx.fillStyle = '#51473f';
     ctx.fillRect(shaftX - width * 0.14, py + height - baseH * 0.55, shaftW + width * 0.28, baseH * 0.22);
     ctx.fillStyle = shaft;
     ctx.fillRect(shaftX, py + capH, shaftW, height - capH - baseH);
@@ -2411,8 +2420,10 @@ export default class RenderEngine {
     ctx.fillRect(shaftX - width * 0.10, py + capH * 0.72, shaftW + width * 0.20, Math.max(2, height * 0.018));
     ctx.fillRect(shaftX - width * 0.10, py + height - baseH - capH * 0.08, shaftW + width * 0.20, Math.max(2, height * 0.018));
 
-    ctx.fillStyle = 'rgba(0,0,0,0.14)';
-    ctx.fillRect(shaftX + shaftW * 0.60, py + capH, shaftW * 0.10, height - capH - baseH);
+    ctx.fillStyle = 'rgba(0,0,0,0.20)';
+    ctx.fillRect(shaftX + shaftW * 0.58, py + capH, shaftW * 0.12, height - capH - baseH);
+    ctx.fillStyle = 'rgba(255,255,255,0.14)';
+    ctx.fillRect(shaftX + shaftW * 0.18, py + capH + 2, shaftW * 0.08, height - capH - baseH - 4);
     ctx.strokeStyle = 'rgba(130, 116, 98, 0.22)';
     ctx.lineWidth = 1;
     ctx.beginPath();
@@ -2426,6 +2437,8 @@ export default class RenderEngine {
     ctx.moveTo(shaftX + shaftW * 0.36, py + capH + height * 0.03);
     ctx.lineTo(shaftX + shaftW * 0.26, py + height - baseH - height * 0.03);
     ctx.stroke();
+    ctx.fillStyle = 'rgba(255, 224, 140, 0.18)';
+    ctx.fillRect(shaftX - width * 0.03, py + capH * 0.90, shaftW + width * 0.06, 2);
     ctx.restore();
   }
 

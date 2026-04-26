@@ -185,7 +185,7 @@ export function createWorld() {
         job: 'The King awaits your word.',
       },
       {
-        id: 'royal_torch_guard', name: 'Royal Torch Guard', x: 24, y: 13,
+        id: 'royal_torch_guard', name: 'Royal Torch Guard', x: 23.3, y: 13,
         spriteSheet: ROYAL_TORCH_GUARD_SPRITE,
         spriteSheetOptions: { columns: 3, rows: 4, directions: ['south', 'west', 'east', 'north'], framePrefix: 'player' },
         spriteFrame: 'player_south_1',
@@ -193,6 +193,7 @@ export function createWorld() {
         spriteTileHeight: 1.42,
         spriteAnchorX: 0.5,
         spriteAnchorY: 1,
+        spriteOffsetTileX: -0.05,
         spriteOffsetTileY: -0.42,
         color: '#f6d06b',
         behavior: 'static',
