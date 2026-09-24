@@ -1,15 +1,28 @@
 // Feature: Living World (NPC AI + Item Pickup)
 import CharacterCreator from './CharacterCreator.js';
 import Character from './Character.js';
-import { createWorld, TileInfo, LORD_BRITISH_SPRITE_SHEET } from './GameMap.js?v=16';
+import { createWorld, TileInfo } from './GameMap.js?v=16';
 import Renderer from './render.js?v=17';
 import Player from './Player.js';
 import CombatEngine from './CombatEngine.js';
 import { createEnemy } from './Enemy.js';
 import ItemGenerator from './ItemGenerator.js';
-import QuestManager from './QuestManager.js';
-import SaveManager, { formatTimestamp } from './SaveManager.js';
-import { initCanvas, resize, DPR } from './renderer/canvas.js';
+import QuestManager from './QuestManager.js?v=2';
+import SaveManager, { formatTimestamp } from './SaveManager.js?v=2';
+import {
+  ORB_QUEST_ID,
+  ORB_QUEST_STAGE,
+  ORB_QUEST_DECISION,
+  createOrbQuestState,
+  getOrbQuestStage,
+  advanceOrbQuest,
+  getOrbQuestStep,
+  getMissingRelics,
+  syncOrbQuestProgress,
+  migrateLegacyOrbQuest,
+  getOrbEnding
+} from './OrbQuest.js?v=1';
+import { initCanvas, resize } from './renderer/canvas.js';
 import { loadAtlas } from './renderer/atlas.js';
 import { createEmitter } from './renderer/particles.js';
 
@@ -56,16 +69,16 @@ dialogueEl.style.cssText = `
     border-radius: 18px;
     backdrop-filter: blur(12px);
 `;
-    dialogueEl.innerHTML = `
-        <div id="dialogue-text" style="margin-bottom: 16px; min-height: 1.2em; font-size: 1.1em; line-height: 1.5;"></div>
-        <div id="dialogue-keywords" style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px;"></div>
-        <div id="dialogue-input-container" class="hidden"></div>
-    `;
-    document.body.appendChild(dialogueEl);
-    
-    const dialogueText = dialogueEl.querySelector('#dialogue-text');
-    const dialogueKeywords = dialogueEl.querySelector('#dialogue-keywords');
-    const dialogueInputContainer = dialogueEl.querySelector('#dialogue-input-container');
+dialogueEl.innerHTML = `
+    <div id="dialogue-text" style="margin-bottom: 16px; min-height: 1.2em; font-size: 1.1em; line-height: 1.5;"></div>
+    <div id="dialogue-keywords" style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px;"></div>
+    <div id="dialogue-input-container" class="hidden"></div>
+`;
+document.body.appendChild(dialogueEl);
+
+const dialogueText = dialogueEl.querySelector('#dialogue-text');
+const dialogueKeywords = dialogueEl.querySelector('#dialogue-keywords');
+const dialogueInputContainer = dialogueEl.querySelector('#dialogue-input-container');
 
 // --- JOURNAL UI SETUP ---
 const journalEl = document.createElement('div');
@@ -89,6 +102,42 @@ if (uiLeftRail) {
 } else {
   document.body.appendChild(journalEl);
 }
+
+// --- VERTICAL SLICE ENDING UI ---
+const endingEl = document.createElement('div');
+endingEl.id = 'vertical-slice-ending';
+endingEl.className = 'panel hidden';
+endingEl.style.cssText = `
+    position: fixed; inset: 0; z-index: 240;
+    display: grid; place-items: center;
+    padding: 24px;
+    background: radial-gradient(circle at 50% 22%, rgba(83, 65, 126, 0.42), rgba(5, 8, 17, 0.94) 62%);
+    backdrop-filter: blur(12px);
+`;
+endingEl.innerHTML = `
+  <section style="width:min(760px, 100%); max-height:calc(100vh - 48px); overflow:auto; border:1px solid rgba(220,182,120,.55); border-radius:22px; padding:30px; color:#f5efdf; background:linear-gradient(180deg, rgba(20,27,47,.98), rgba(9,13,24,.98)); box-shadow:0 30px 80px rgba(0,0,0,.65);">
+    <div style="font-size:12px; letter-spacing:.2em; text-transform:uppercase; color:#dcb678;">The Stolen Orb</div>
+    <h1 style="margin:8px 0 4px; font-size:clamp(30px,5vw,52px);">Vertical Slice Complete</h1>
+    <h2 id="ending-title" style="margin:6px 0 18px; color:#f0cd83;"></h2>
+    <p id="ending-consequence" style="font-size:17px; line-height:1.65; color:#e9e4d8;"></p>
+    <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:12px; margin:22px 0;">
+      <div style="padding:14px; border-radius:12px; background:rgba(255,255,255,.055); border:1px solid rgba(255,255,255,.1);">
+        <strong style="display:block; color:#dcb678; margin-bottom:6px;">The Guardian</strong>
+        <span id="ending-guardian" style="line-height:1.45;"></span>
+      </div>
+      <div style="padding:14px; border-radius:12px; background:rgba(255,255,255,.055); border:1px solid rgba(255,255,255,.1);">
+        <strong style="display:block; color:#dcb678; margin-bottom:6px;">Your counsel</strong>
+        <span id="ending-counsel" style="line-height:1.45;"></span>
+      </div>
+    </div>
+    <p style="font-size:13px; color:#aeb8cf;">Your ending and quest decisions have been saved.</p>
+    <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:20px;">
+      <button data-ending-action="continue" style="padding:11px 16px; border-radius:10px; border:1px solid #dcb678; background:#dcb678; color:#15101d; font-weight:700; cursor:pointer;">Continue exploring</button>
+      <button data-ending-action="journal" style="padding:11px 16px; border-radius:10px; border:1px solid rgba(220,182,120,.65); background:transparent; color:#f3e5c6; font-weight:700; cursor:pointer;">Review journal</button>
+    </div>
+  </section>
+`;
+document.body.appendChild(endingEl);
 
 window.addEventListener('resize', syncCanvasSize);
 window.addEventListener('orientationchange', syncCanvasSize);
@@ -114,15 +163,13 @@ const panels = {
   menu: document.getElementById('menu-panel'),
   journal: journalEl,
   codex: document.getElementById('codex-panel'),
-  orb: document.getElementById('orb-panel')
+  orb: document.getElementById('orb-panel'),
+  ending: endingEl
 };
 
 const inventoryList = document.getElementById('inventory-list');
 const inventoryCapacity = document.getElementById('inventory-capacity');
 const characterSummary = document.getElementById('character-summary');
-const characterStatsTable = document.getElementById('character-stats');
-const statPointsEl = document.getElementById('stat-points');
-const statAllocation = document.getElementById('stat-allocation');
 const menuLastSave = document.getElementById('menu-last-save');
 const messageLogEl = document.getElementById('message-log');
 const tooltip = document.getElementById('tooltip');
@@ -151,6 +198,8 @@ const state = {
   lastSaveTimestamp: null,
   throneIntroTriggered: false,
   throneIntroComplete: false,
+  guardianDefeated: false,
+  orbQuest: createOrbQuestState(),
   currentConversationPartner: null,
   pendingTransition: null,
   fx: {
@@ -182,44 +231,27 @@ const activeMovementDirections = new Set();
 setInterval(() => {
   if (!state.map || state.inCombat || isPanelOpen()) return;
 
-  // NPC AI: Wandering
-  state.map.npcs.forEach(npc => {
-    if (npc.behavior === 'wander' && Math.random() < 0.2) { // 20% chance to move per tick
+  state.map.npcs.forEach((npc) => {
+    if (npc.behavior === 'wander' && Math.random() < 0.2) {
       const dirs = [[0, 1], [0, -1], [1, 0], [-1, 0]];
       const [dx, dy] = dirs[Math.floor(Math.random() * dirs.length)];
       attemptNPCMove(npc, dx, dy);
     }
   });
 
-  // Re-render to show NPC movement
   renderGame();
-}, 800); // Tick every 800ms
+}, 800);
 
 function attemptNPCMove(npc, dx, dy) {
   const targetX = npc.x + dx;
   const targetY = npc.y + dy;
-
-  // Check Bounds
   if (!state.map.inBounds(targetX, targetY)) return;
-
-  // Check Walkability (Walls/Objects)
   if (!state.map.isWalkable(targetX, targetY)) return;
-
-  // Check Player Collision
   if (state.player.position.x === targetX && state.player.position.y === targetY) return;
-
-  // Check Other NPC Collision
-  if (state.map.npcs.some(other => other !== npc && other.x === targetX && other.y === targetY)) return;
-
-  // Move
+  if (state.map.npcs.some((other) => other !== npc && other.x === targetX && other.y === targetY)) return;
   npc.x = targetX;
   npc.y = targetY;
-
-  // Update Facing (optional, simplistic)
-  /* if (dx === 1) npc.facing = 'east'; */
 }
-
-// ... (Existing Helper Functions: buildResourcePanel, log, updateHUD, etc.)
 
 function buildResourcePanel() {
   if (!state.character) return {};
@@ -236,21 +268,19 @@ function buildResourcePanel() {
     MP: `${currentMP}/${maxMP}`,
     XP: `${char.xp}/${char.xpThreshold}`,
     Load: `${backpackWeight}/${carryCapacity}`,
-    "Stat Pts": char.unspentStatPoints
+    'Stat Pts': char.unspentStatPoints
   };
 }
 
 function log(message) {
   const stamp = new Date().toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
   const now = Date.now();
-  if (state.lastLogMessage === message && now - (state.lastLogAt || 0) < 900) {
-    return;
-  }
+  if (state.lastLogMessage === message && now - (state.lastLogAt || 0) < 900) return;
   state.lastLogMessage = message;
   state.lastLogAt = now;
   state.messageLog.push(`${stamp} — ${message}`);
   if (state.messageLog.length > 12) state.messageLog.shift();
-  messageLogEl.innerHTML = state.messageLog.map(line => `<div>${line}</div>`).join('');
+  messageLogEl.innerHTML = state.messageLog.map((line) => `<div>${line}</div>`).join('');
   messageLogEl.scrollTop = messageLogEl.scrollHeight;
 }
 
@@ -281,72 +311,47 @@ function getObjectiveState() {
     const combatSnapshot = typeof combatEngine.getSnapshot === 'function' ? combatEngine.getSnapshot() : null;
     const combatAdvice = typeof combatEngine.getCurrentAdvice === 'function' ? combatEngine.getCurrentAdvice() : null;
     const isThroneAmbush = combatSnapshot?.onboarding || combatEngine.category === 'throne_ambush';
+    const isGuardianBattle = combatEngine.category === 'dungeon_boss';
     return {
       hidden: false,
       text: isThroneAmbush
         ? `Throne ambush: read ${combatAdvice?.intent || 'the intent'}, then use ${combatAdvice?.counter || 'the highlighted counter'}.`
-        : `Battle ${enemyName}. Use melee, bow, spell, defend, or an item to survive.`,
+        : isGuardianBattle
+          ? `The Guardian chose battle. Defeat it to reach the stolen relics.`
+          : `Battle ${enemyName}. Use melee, bow, spell, defend, or an item to survive.`,
       tip: isThroneAmbush
         ? `${combatAdvice?.defend || '4 Defend'} can turn the attack aside and create an opening. ${combatAdvice?.shortcuts || 'Use 1-6 for combat actions.'}`
         : 'Combat buttons are available during battle. Storm Cloak blocks Reaper lightning.'
     };
   }
 
-  const orbStage = state.character.getQuestStage('orb_quest');
-  const codexStage = state.character.getQuestStage('wisdom_of_lycaeum');
-
   if (!state.throneIntroComplete) {
     return {
       hidden: false,
       text: 'Clear the throne room ambush, then speak to Lord British.',
-      tip: 'In the ambush, read the Enemy Intent card. Use the highlighted counter, or press 4 Defend to create an opening.'
+      tip: 'Read the Enemy Intent card. Use the highlighted counter, or press 4 Defend to create an opening.'
     };
   }
 
-  if (orbStage === 0) {
-    return {
-      hidden: false,
-      text: 'Talk to Lord British in Castle Britannia to begin the Orb of the Moons quest.',
-      tip: 'Press T while facing an NPC to talk.'
-    };
+  const orbStage = getOrbQuestStage(state.character);
+  const step = getOrbQuestStep(orbStage);
+  let text = step.objective;
+  let tip = step.tip;
+
+  if (orbStage === ORB_QUEST_STAGE.RECOVER_RELICS) {
+    const missing = getMissingRelics(state.character);
+    text = missing.length
+      ? `Recover the remaining relic${missing.length > 1 ? 's' : ''}: ${missing.join(' and ')}.`
+      : step.objective;
   }
 
-  if (orbStage === 1) {
-    return {
-      hidden: false,
-      text: 'Travel east to the Dark Caverns and recover the Orb of Moons.',
-      tip: 'Use map exits or the Orb once it is unlocked.'
-    };
+  if (orbStage === ORB_QUEST_STAGE.COMPLETE) {
+    const ending = getOrbEnding(state);
+    text = `Vertical slice complete — ${ending.title}.`;
+    tip = 'Your ending is saved. Press J to review the journey.';
   }
 
-  if (orbStage === 2) {
-    return {
-      hidden: false,
-      text: 'Return the Orb of Moons to Lord British in Castle Britannia.',
-      tip: 'Press O to open the Orb travel menu when it is ready.'
-    };
-  }
-
-  if (state.character.getQuestStage('castle_crisis') < 4) {
-    return {
-      hidden: false,
-      text: 'Survive the attack and speak with Lord British in the throne room.',
-      tip: 'The journal (J) tracks quest progress.'
-    };
-  }
-  if (state.character.getQuestStage('wisdom_of_lycaeum') < 2) {
-    return {
-      hidden: false,
-      text: 'Visit Mariah in the Lycaeum and answer her challenge to gain strategic wisdom.',
-      tip: 'Look for the Lycaeum to the West of the castle.'
-    };
-  }
-
-  return {
-    hidden: false,
-    text: 'Use the Orb of Moons to travel between Castle Britannia, the Lycaeum, Britanny Bay, and the Dark Caverns.',
-    tip: 'I opens inventory, C opens the character sheet, X opens the Codex.'
-  };
+  return { hidden: false, text, tip };
 }
 
 function updateObjectivePanel() {
@@ -359,7 +364,7 @@ function updateObjectivePanel() {
 
 function getDungeonExitTransition() {
   if (!state.map || state.map.id !== 'dungeon_1') return null;
-  return state.map.transitions?.find((transition) => transition.map === 'village') || null;
+  return state.map.transitions?.find((transition) => transition.map === 'overworld') || null;
 }
 
 function getDungeonExitHint() {
@@ -370,10 +375,7 @@ function getDungeonExitHint() {
   const horizontal = dx > 0 ? 'east' : dx < 0 ? 'west' : '';
   const vertical = dy > 0 ? 'south' : dy < 0 ? 'north' : '';
   const direction = horizontal && vertical ? `${vertical}-${horizontal}` : (horizontal || vertical || 'here');
-  return {
-    direction,
-    onExit: dx === 0 && dy === 0
-  };
+  return { direction, onExit: dx === 0 && dy === 0 };
 }
 
 function updateDungeonNavigator() {
@@ -386,33 +388,37 @@ function updateDungeonNavigator() {
   }
   dungeonNavEl.classList.remove('hidden');
   const prompt = state.pendingTransition || hint.onExit
-    ? 'Press Enter to leave for Britanny Bay.'
+    ? 'Press Enter to leave for the Britannian Wilderness.'
     : `Exit is ${hint.direction}. Move carefully.`;
   dungeonNavEl.innerHTML = `<strong>Dark Caverns Exit</strong><div class="subtle">${prompt}</div>`;
 }
 
 function refreshQuestViews() {
   updateObjectivePanel();
-  if (!panels.journal.classList.contains('hidden')) {
-    renderJournal();
-  }
+  if (!panels.journal.classList.contains('hidden')) renderJournal();
 }
 
 function setQuestStageAndRefresh(questId, stage) {
-  if (!state.character) return;
-  state.character.setQuestStage(questId, stage);
+  if (!state.character) return false;
+  let changed = false;
+  if (questId === ORB_QUEST_ID) {
+    changed = advanceOrbQuest(state.character, stage);
+  } else if (state.character.getQuestStage(questId) !== stage) {
+    state.character.setQuestStage(questId, stage);
+    changed = true;
+  }
   refreshQuestViews();
+  return changed;
 }
 
 function isPanelOpen() {
-  return Object.values(panels).some(p => !p.classList.contains('hidden')) || !dialogueEl.classList.contains('hidden');
+  return Object.values(panels).some((panel) => panel && !panel.classList.contains('hidden'))
+    || !dialogueEl.classList.contains('hidden');
 }
 
 function closeAllPanels() {
-  if (typeof combatEngine?.closeItemMenu === 'function') {
-    combatEngine.closeItemMenu();
-  }
-  Object.values(panels).forEach(p => p.classList.add('hidden'));
+  if (typeof combatEngine?.closeItemMenu === 'function') combatEngine.closeItemMenu();
+  Object.values(panels).forEach((panel) => panel?.classList.add('hidden'));
   dialogueEl.classList.add('hidden');
   hideTooltip();
 }
@@ -424,9 +430,10 @@ function closeTopOverlay() {
   }
   if (!dialogueEl.classList.contains('hidden')) {
     dialogueEl.classList.add('hidden');
+    state.currentConversationPartner = null;
     return true;
   }
-  const openPanel = Object.entries(panels).find(([, panel]) => !panel.classList.contains('hidden'));
+  const openPanel = Object.entries(panels).find(([, panel]) => panel && !panel.classList.contains('hidden'));
   if (openPanel) {
     openPanel[1].classList.add('hidden');
     return true;
@@ -436,6 +443,10 @@ function closeTopOverlay() {
 
 function openPanel(name) {
   if (!panels[name]) return;
+  if (name === 'orb' && !state.character?.hasItem('orb_of_moons')) {
+    log('The Orb of Moons has not yet been recovered.');
+    return;
+  }
   if (name === 'inventory') renderInventory();
   if (name === 'character') renderCharacterSheet();
   if (name === 'menu') updateMenuStatus();
@@ -446,43 +457,48 @@ function openPanel(name) {
 }
 
 function renderJournal() {
-    const content = journalEl.querySelector('#journal-content');
-    content.innerHTML = '';
+  const content = journalEl.querySelector('#journal-content');
+  content.innerHTML = '';
+  if (!state.character) return;
 
-    const quests = state.character.quests;
-    let hasQuests = false;
+  const quests = state.character.quests;
+  let hasQuests = false;
 
-    Object.keys(quests).forEach(questId => {
-        const stage = quests[questId];
-        if (stage > 0) {
-            hasQuests = true;
-            const questData = QuestManager.getQuest(questId);
-            if (questData) {
-                const entry = document.createElement('div');
-                entry.className = 'quest-entry';
-                const stageText = questData.stages?.[stage] || questData.stages?.[0] || 'Unknown progress.';
-                const stageKeys = Object.keys(questData.stages || {}).map((key) => Number(key)).filter((key) => Number.isFinite(key));
-                const completionStage = stageKeys.length ? Math.max(...stageKeys) : 0;
-                entry.innerHTML = `
-                    <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start;">
-                      <div>
-                        <h3 style="margin: 0 0 4px 0; color: #4a2c10;">${questData.title}</h3>
-                        <p style="margin: 0; font-style: italic; color: #5a4326;">${questData.description}</p>
-                      </div>
-                      <span style="font-size: 11px; font-weight: bold; color: ${stage >= completionStage ? '#2f6b36' : '#7a5a22'};">${stage >= completionStage ? 'Completed' : 'Active'}</span>
-                    </div>
-                    <div style="margin-top: 8px; padding: 10px; border-radius: 8px; background: rgba(255,255,255,0.3); border: 1px solid rgba(92, 60, 30, 0.18); font-size: 0.92em; line-height: 1.45;">
-                      ${stageText}
-                    </div>
-                `;
-                content.appendChild(entry);
-            }
-        }
-    });
+  Object.keys(quests).forEach((questId) => {
+    const stage = quests[questId];
+    if (stage <= 0) return;
+    const questData = QuestManager.getQuest(questId);
+    if (!questData) return;
 
-    if (!hasQuests) {
-        content.innerHTML = '<p style="text-align: center; color: #666; margin-top: 32px;">No active quests.</p>';
+    hasQuests = true;
+    const entry = document.createElement('div');
+    entry.className = 'quest-entry';
+    const completionStage = QuestManager.getCompletionStage(questId);
+    let stageText = questData.stages?.[stage] || questData.stages?.[0] || 'Unknown progress.';
+
+    if (questId === ORB_QUEST_ID && stage >= ORB_QUEST_STAGE.COMPLETE) {
+      const ending = getOrbEnding(state);
+      stageText += `<br><br><strong>${ending.title}</strong><br>${ending.guardianSummary}<br>Final counsel: ${ending.counsel}.`;
     }
+
+    entry.innerHTML = `
+      <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start;">
+        <div>
+          <h3 style="margin:0 0 4px; color:#4a2c10;">${questData.title}</h3>
+          <p style="margin:0; font-style:italic; color:#5a4326;">${questData.description}</p>
+        </div>
+        <span style="font-size:11px; font-weight:bold; color:${stage >= completionStage ? '#2f6b36' : '#7a5a22'};">${stage >= completionStage ? 'Completed' : 'Active'}</span>
+      </div>
+      <div style="margin-top:8px; padding:10px; border-radius:8px; background:rgba(255,255,255,.3); border:1px solid rgba(92,60,30,.18); font-size:.92em; line-height:1.45;">
+        ${stageText}
+      </div>
+    `;
+    content.appendChild(entry);
+  });
+
+  if (!hasQuests) {
+    content.innerHTML = '<p style="text-align:center; color:#666; margin-top:32px;">No active quests.</p>';
+  }
 }
 
 function togglePanel(name) {
@@ -495,18 +511,22 @@ function togglePanel(name) {
   }
 }
 
+function showVerticalSliceEnding() {
+  if (!state.orbQuest?.complete) return;
+  const ending = getOrbEnding(state);
+  endingEl.querySelector('#ending-title').textContent = ending.title;
+  endingEl.querySelector('#ending-consequence').textContent = ending.consequence;
+  endingEl.querySelector('#ending-guardian').textContent = ending.guardianSummary;
+  endingEl.querySelector('#ending-counsel').textContent = ending.counsel;
+  closeAllPanels();
+  endingEl.classList.remove('hidden');
+}
+
 function renderGame() {
   if (!state.map || !state.player) return;
 
   if (state.lookHighlight && state.lookHighlight.expires < Date.now()) {
     state.lookHighlight = null;
-  }
-
-  // Check for item under player to show hint
-  const item = getItemAt(state.player.position.x, state.player.position.y);
-  if (item) {
-     // Optional: show a small "G" icon or text overlay?
-     // For now, we rely on the log or visual cue
   }
 
   renderer.render(state.map, state.player, {
@@ -552,7 +572,7 @@ function renderOrbChooser() {
             <span>${dest.mapId === state.map?.id ? 'Here' : 'Go'}</span>
           </div>
           <div style="font-size: 12px; color: #cdd9ff;">${dest.note}</div>
-          <button data-orb-destination="${dest.mapId}">Travel</button>
+          <button data-orb-destination="${dest.mapId}" ${dest.mapId === state.map?.id ? 'disabled' : ''}>Travel</button>
         </div>
       `).join('')}
     </div>
@@ -563,9 +583,9 @@ function getOrbDestinations() {
   const mapList = [
     { mapId: 'castle', label: 'Castle Britannia', spawn: 'castle_gate', note: 'Return to Lord British.' },
     { mapId: 'castle_bedroom', label: 'Royal Quarters', spawn: 'bedroom_door', note: 'Search the bedroom for supplies.' },
-    { mapId: 'village', label: 'Britanny Bay', spawn: 'castle_gate', note: 'Visit the village and the cave path.' },
+    { mapId: 'village', label: 'Britanny Bay', spawn: 'village_road', note: 'Visit the village and the cave path.' },
     { mapId: 'lycaeum_entrance', label: 'The Lycaeum', spawn: 'lycaeum_gateway', note: 'Speak with Mariah.' },
-    { mapId: 'dungeon_1', label: 'Dark Caverns', spawn: 'entry', note: 'Challenge the dungeon denizens.' }
+    { mapId: 'dungeon_1', label: 'Dark Caverns', spawn: 'entry', note: 'Return to the stolen relics.' }
   ];
   return mapList.filter((entry) => state.world.maps[entry.mapId]);
 }
@@ -584,7 +604,7 @@ function celebrateCastle(force = false) {
     const centerY = rect.y + (y + 0.5) * renderer.tileSize;
 
     renderer.shakeCamera(4, 0.2);
-    for (let i = 0; i < 20; i++) {
+    for (let i = 0; i < 20; i += 1) {
       particles.spawn(centerX, centerY, {
         vx: (Math.random() - 0.5) * 20,
         vy: -25 - Math.random() * 15,
@@ -596,16 +616,17 @@ function celebrateCastle(force = false) {
   });
 }
 
-// ... (Keep existing Inventory/Character helper functions: showTooltip, hideTooltip, getItemTooltip, renderInventory, renderCharacterSheet, updateMenuStatus, useConsumable)
-// Assuming these are standard; I will include abbreviated versions to save space, but ensure logic is preserved.
-
 function showTooltip(event, text) {
   tooltip.textContent = text;
   tooltip.classList.remove('hidden');
   tooltip.style.left = `${event.clientX + 10}px`;
   tooltip.style.top = `${event.clientY + 10}px`;
 }
-function hideTooltip() { tooltip.classList.add('hidden'); }
+
+function hideTooltip() {
+  tooltip.classList.add('hidden');
+}
+
 function getItemTooltip(item) {
   const lines = [item.name, item.type];
   if (item.stats) {
@@ -625,9 +646,16 @@ function renderInventory() {
   state.character.inventory.forEach((item) => {
     const div = document.createElement('div');
     div.className = 'inventory-item';
-    const equipped = state.character.equipment[item.type] && state.character.equipment[item.type].id === item.id;
+    const equipped = state.character.equipment[item.type]
+      && state.character.equipment[item.type].id === item.id;
     const canEquip = ['weapon', 'armor', 'accessory'].includes(item.type);
-    const canUse = Boolean(item.effect?.type || item.useAction || item.type === 'consumable' || item.id === 'orb_of_moons' || item.id === 'tactics_codex');
+    const canUse = Boolean(
+      item.effect?.type
+      || item.useAction
+      || item.type === 'consumable'
+      || item.id === 'orb_of_moons'
+      || item.id === 'tactics_codex'
+    );
     div.innerHTML = `
       <div class="inventory-item-header">
         <strong>${item.name}</strong>
@@ -723,9 +751,7 @@ function handleInventoryAction(action, itemId) {
   }
 
   if (item.effect?.type === 'heal' || item.effect?.type === 'restore_mana') {
-    if (useConsumable(item)) {
-      return;
-    }
+    if (useConsumable(item)) return;
   }
 
   if (item.id === 'storm_cloak' || item.type === 'accessory') {
@@ -746,24 +772,49 @@ function handleInventoryAction(action, itemId) {
   log('Nothing happens.');
 }
 
-// ... (Map Management)
+function removeMapObjectByItemId(map, itemId) {
+  if (!map?.objects) return;
+  map.objects = map.objects.filter((object) => object.data?.id !== itemId);
+}
+
+function removeGuardianFromDungeon() {
+  const dungeon = state.world.maps.dungeon_1;
+  if (!dungeon?.npcs) return;
+  dungeon.npcs = dungeon.npcs.filter((npc) => npc.id !== 'gargoyle_guardian');
+}
+
+function applyOrbQuestWorldState() {
+  if (!state.character) return;
+  const dungeon = state.world.maps.dungeon_1;
+  if (!dungeon) return;
+
+  if (state.character.hasItem('orb_of_moons')) {
+    removeMapObjectByItemId(dungeon, 'orb_of_moons');
+  }
+  if (state.character.hasItem('gargoyle_tablet')) {
+    removeMapObjectByItemId(dungeon, 'gargoyle_tablet');
+  }
+  if (state.orbQuest?.guardianResolution === 'combat') {
+    removeGuardianFromDungeon();
+  }
+}
 
 function changeMap(mapId, spawnTag, x, y) {
   const map = state.world.maps[mapId];
-  if (!map) return;
+  if (!map || !state.player) return;
   state.map = map;
   state.discoveredAreas.add(mapId);
-  const shouldFaceNorth = mapId === 'castle' && spawnTag === 'castle_gate' && !(x !== undefined && y !== undefined);
-  
+  const shouldFaceNorth = mapId === 'castle'
+    && spawnTag === 'castle_gate'
+    && !(x !== undefined && y !== undefined);
+
   if (x !== undefined && y !== undefined) {
     state.player.map = map;
     state.player.setPosition(x, y);
   } else {
     state.player.setMap(map, spawnTag);
   }
-  if (shouldFaceNorth && state.player) {
-    state.player.facing = 'north';
-  }
+  if (shouldFaceNorth) state.player.facing = 'north';
 
   state.pendingTransition = null;
   activeMovementDirections.clear();
@@ -774,13 +825,13 @@ function changeMap(mapId, spawnTag, x, y) {
 }
 
 function getNPCAt(x, y) {
-  if (!state.map || !state.map.npcs) return null;
-  return state.map.npcs.find(npc => npc.x === x && npc.y === y);
+  if (!state.map?.npcs) return null;
+  return state.map.npcs.find((npc) => npc.x === x && npc.y === y) || null;
 }
 
 function getItemAt(x, y) {
-    if (!state.map || !state.map.objects) return null;
-    return state.map.objects.find(obj => obj.type === 'item' && obj.x === x && obj.y === y);
+  if (!state.map?.objects) return null;
+  return state.map.objects.find((object) => object.type === 'item' && object.x === x && object.y === y) || null;
 }
 
 function attemptMove(dx, dy) {
@@ -790,13 +841,11 @@ function attemptMove(dx, dy) {
   const targetX = state.player.position.x + dx;
   const targetY = state.player.position.y + dy;
 
-  // Check Bounds (Edge Warping)
   if (!state.map.inBounds(targetX, targetY)) {
-      handleEdgeWarp(dx, dy);
-      return;
+    handleEdgeWarp(dx, dy);
+    return;
   }
 
-  // Check NPC Collision
   const npc = getNPCAt(targetX, targetY);
   if (npc) {
     const now = Date.now();
@@ -804,7 +853,6 @@ function attemptMove(dx, dy) {
       log(`Blocked by: ${npc.name}.`);
       state.lastBlockedLog = now;
     }
-    // Update facing
     if (dx === 1) state.player.facing = 'east';
     if (dx === -1) state.player.facing = 'west';
     if (dy === 1) state.player.facing = 'south';
@@ -822,60 +870,52 @@ function attemptMove(dx, dy) {
     return;
   }
 
-  // Check if standing on item
   const item = getItemAt(targetX, targetY);
   if (item) {
-      log(`You see ${item.data ? item.data.name : 'an item'} here. (Press G to get)`);
+    log(`You see ${item.data ? item.data.name : 'an item'} here. (Press G to get)`);
   }
 
-  if (!dialogueEl.classList.contains('hidden')) dialogueEl.classList.add('hidden');
+  if (!dialogueEl.classList.contains('hidden')) {
+    dialogueEl.classList.add('hidden');
+    state.currentConversationPartner = null;
+  }
   renderGame();
   updateHUD();
   handleTileEvents();
 }
 
 function handleEdgeWarp(dx, dy) {
-    let direction = null;
-    if (dy === -1) direction = 'north';
-    if (dy === 1) direction = 'south';
-    if (dx === -1) direction = 'west';
-    if (dx === 1) direction = 'east';
+  let direction = null;
+  if (dy === -1) direction = 'north';
+  if (dy === 1) direction = 'south';
+  if (dx === -1) direction = 'west';
+  if (dx === 1) direction = 'east';
 
-    const adj = state.map.adjacencies?.[direction];
-    if (!adj) return;
+  const adj = state.map.adjacencies?.[direction];
+  if (!adj) return;
 
-    // Support both legacy string IDs and new object configurations
-    const targetMapId = typeof adj === 'string' ? adj : adj.map;
-    const xOffset = adj.xOffset || 0;
-    const yOffset = adj.yOffset || 0;
+  const targetMapId = typeof adj === 'string' ? adj : adj.map;
+  const xOffset = typeof adj === 'string' ? 0 : (adj.xOffset || 0);
+  const yOffset = typeof adj === 'string' ? 0 : (adj.yOffset || 0);
+  const targetMap = state.world.maps[targetMapId];
+  if (!targetMap) return;
 
-    const targetMap = state.world.maps[targetMapId];
-    if (!targetMap) return;
+  let newX = state.player.position.x + xOffset;
+  let newY = state.player.position.y + yOffset;
 
-    let newX = state.player.position.x + xOffset;
-    let newY = state.player.position.y + yOffset;
+  if (direction === 'north') newY = targetMap.height - 1;
+  if (direction === 'south') newY = 0;
+  if (direction === 'west') newX = targetMap.width - 1;
+  if (direction === 'east') newX = 0;
 
-    // Boundary warping logic
-    if (direction === 'north') {
-        newY = targetMap.height - 1;
-    } else if (direction === 'south') {
-        newY = 0;
-    } else if (direction === 'west') {
-        newX = targetMap.width - 1;
-    } else if (direction === 'east') {
-        newX = 0;
-    }
+  newX = Math.max(0, Math.min(targetMap.width - 1, newX));
+  newY = Math.max(0, Math.min(targetMap.height - 1, newY));
 
-    // Safety clamping
-    newX = Math.max(0, Math.min(targetMap.width - 1, newX));
-    newY = Math.max(0, Math.min(targetMap.height - 1, newY));
+  if (typeof adj === 'string' || !adj.silent) {
+    log(`You travel ${direction} towards ${targetMap.name || targetMapId}.`);
+  }
 
-    // Optional: Suppress log for seamless feel
-    if (!adj.silent) {
-        log(`You travel ${direction} towards ${targetMap.name || targetMapId}.`);
-    }
-    
-    changeMap(targetMapId, null, newX, newY);
+  changeMap(targetMapId, null, newX, newY);
 }
 
 function handleTalk() {
@@ -883,230 +923,364 @@ function handleTalk() {
   const offset = DIRECTION_OFFSETS[state.player.facing || 'south'];
   const targetX = state.player.position.x + offset.dx;
   const targetY = state.player.position.y + offset.dy;
-
   const npc = getNPCAt(targetX, targetY);
   if (npc) {
     showDialogue(npc);
   } else {
-    log("There is no one there.");
+    log('There is no one there.');
   }
 }
 
 function handleGet() {
-    if (!state.player) return;
-    const { x, y } = state.player.position;
+  if (!state.player || !state.map?.objects) return;
+  const { x, y } = state.player.position;
+  const objIndex = state.map.objects.findIndex(
+    (object) => object.type === 'item' && object.x === x && object.y === y
+  );
+  if (objIndex === -1) {
+    log('There is nothing here to take.');
+    return;
+  }
 
-    // Find item at feet
-    const objIndex = state.map.objects.findIndex(o => o.type === 'item' && o.x === x && o.y === y);
-    if (objIndex === -1) {
-        log("There is nothing here to take.");
-        return;
+  const object = state.map.objects[objIndex];
+  const itemData = object.data || { name: 'Unknown Item', type: 'misc', weight: 1 };
+  const isOrbRelic = itemData.id === 'orb_of_moons' || itemData.id === 'gargoyle_tablet';
+
+  if (isOrbRelic && !state.orbQuest?.guardianResolution) {
+    log('The Guardian bars access to the relics. Resolve the confrontation first.');
+    if (getOrbQuestStage(state.character) >= ORB_QUEST_STAGE.REACH_CAVERNS) {
+      setQuestStageAndRefresh(ORB_QUEST_ID, ORB_QUEST_STAGE.FACE_GUARDIAN);
     }
+    return;
+  }
 
-    const obj = state.map.objects[objIndex];
-    const itemData = obj.data || { name: 'Unknown Item', type: 'misc', weight: 1 };
+  const added = state.character.addItem(itemData);
+  if (!added) {
+    log('You cannot carry that.');
+    return;
+  }
 
-    // Handle Quest Item Logic
-    if (itemData.id === 'orb_of_moons') {
-         setQuestStageAndRefresh('orb_quest', 2);
-         log("Journal Updated! You found the Orb.");
-         autoSave('quest-progress');
-    }
+  state.map.objects.splice(objIndex, 1);
+  log(`You picked up: ${itemData.name}`);
 
-    if (itemData.id === 'gargoyle_tablet') {
-         setQuestStageAndRefresh('orb_quest', 3);
-         log("Journal Updated! You found a cryptic Gargoyle Tablet.");
-         autoSave('quest-progress');
-    }
-
-    // Add to inventory
-    const added = state.character.addItem(itemData);
-    if (added) {
-        log(`You picked up: ${itemData.name}`);
-        // Remove from map
-        state.map.objects.splice(objIndex, 1);
-        renderGame();
-        updateHUD();
-        renderInventory(); // update if open
-        updateObjectivePanel();
+  if (isOrbRelic) {
+    syncOrbQuestProgress(state);
+    const missing = getMissingRelics(state.character);
+    if (missing.length) {
+      log(`Journal Updated: recover ${missing.join(' and ')}.`);
     } else {
-        log("You cannot carry that.");
+      log('Journal Updated: both relics recovered. Return to Mariah.');
     }
+    autoSave('orb-relic-recovered');
+  } else {
+    autoSave('item-picked-up');
+  }
+
+  renderGame();
+  updateHUD();
+  renderInventory();
+  refreshQuestViews();
+}
+
+function getDialogueOpening(npc) {
+  const orbStage = getOrbQuestStage(state.character);
+
+  if (npc.id === 'mariah') {
+    if (orbStage === ORB_QUEST_STAGE.SEEK_MARIAH) {
+      return 'Lord British sent you? Then ask me of the PROPHECY. We must understand why the Gargoyles risked so much for the Orb.';
+    }
+    if (orbStage === ORB_QUEST_STAGE.TRANSLATE_TABLET && state.character.hasItem('gargoyle_tablet')) {
+      return 'You carry the Gargoyle Tablet. Speak the keyword TABLET, and I shall attempt its translation.';
+    }
+    if (orbStage >= ORB_QUEST_STAGE.RETURN_TO_LORD_BRITISH) {
+      return 'The warning is now known. Lord British must hear what the Gargoyles believe the False Prophet will do.';
+    }
+
+    const wisdomStage = state.character.getQuestStage('wisdom_of_lycaeum');
+    if (wisdomStage >= 2) {
+      return 'The scrolls of Truth contain mysteries yet to be unraveled. Bring me any evidence of the Gargoyles’ purpose.';
+    }
+    return "I am Mariah. Many in the Lycaeum speak of your arrival. Tell me, what lies at the heart of our wisdom?";
+  }
+
+  if (npc.id === 'lord_british') {
+    if (orbStage === ORB_QUEST_STAGE.NOT_STARTED) {
+      return 'The throne room is safe, but Britannia faces a deeper crisis. Ask me of the ORB.';
+    }
+    if (orbStage === ORB_QUEST_STAGE.SEEK_MARIAH) {
+      return 'Go to the Lycaeum, Avatar. Ask Mariah about the PROPHECY behind this theft.';
+    }
+    if (orbStage >= ORB_QUEST_STAGE.REACH_CAVERNS && orbStage < ORB_QUEST_STAGE.RETURN_TO_LORD_BRITISH) {
+      return 'Follow the truth wherever it leads. Return when the Orb and the Gargoyles’ purpose are understood.';
+    }
+    if (orbStage === ORB_QUEST_STAGE.RETURN_TO_LORD_BRITISH) {
+      return 'You have returned with grave knowledge. Tell me of this MISUNDERSTANDING.';
+    }
+    if (orbStage === ORB_QUEST_STAGE.CHOOSE_RESPONSE) {
+      return 'Britannia must now decide. Counsel PEACE, CAUTION, or DEFENCE.';
+    }
+    if (orbStage === ORB_QUEST_STAGE.COMPLETE) {
+      const ending = getOrbEnding(state);
+      return `Your counsel has shaped our first response. ${ending.consequence}`;
+    }
+  }
+
+  if (npc.id === 'gargoyle_guardian') {
+    if (state.orbQuest?.guardianResolution === 'diplomacy') {
+      return 'You listened when another might have struck. Take the relics, but do not forget that two worlds now watch your choices.';
+    }
+    if (state.orbQuest?.guardianResolution === 'combat') {
+      return 'The Guardian no longer stands here.';
+    }
+    return 'Stay back, False Prophet! Seek UNDERSTANDING of our plight, or choose to FIGHT for the Orb.';
+  }
+
+  if (typeof npc.dialogue === 'function') return npc.dialogue(state);
+  return npc.dialogue || 'Greetings traveler.';
 }
 
 function showDialogue(npc) {
+  if (!npc || !state.character) return;
   state.currentConversationPartner = npc;
   dialogueEl.classList.remove('hidden');
   dialogueInputContainer.classList.remove('hidden');
-  
-  let initialText = '...';
-  if (npc.id === 'mariah') {
-      const stage = state.character.getQuestStage('wisdom_of_lycaeum');
-      if (stage >= 2) {
-          if (state.character.hasItem('gargoyle_tablet')) {
-              initialText = "I see you have found a relic from the Dark Caverns. Use the keyword TABLET and I shall translate it for you.";
-          } else {
-              initialText = 'The scrolls of Truth contain mysteries yet to be unraveled. Seek evidence of the Gargoyles\' purpose.';
-          }
-      } else {
-          initialText = "I am Mariah. Many in the Lycaeum speak of your arrival. It is said the 'False Prophet' has come to Britannia... but I see only an Avatar who seeks Truth. Tell me, what lies at the heart of our wisdom?";
-      }
-  } else if (typeof npc.dialogue === 'function') {
-      initialText = npc.dialogue(state);
-  } else {
-      initialText = npc.dialogue || 'Greetings traveler.';
+
+  if (
+    npc.id === 'gargoyle_guardian'
+    && !state.orbQuest?.guardianResolution
+    && getOrbQuestStage(state.character) >= ORB_QUEST_STAGE.REACH_CAVERNS
+  ) {
+    setQuestStageAndRefresh(ORB_QUEST_ID, ORB_QUEST_STAGE.FACE_GUARDIAN);
   }
 
-  dialogueText.innerHTML = `"${initialText}"`;
+  dialogueText.textContent = `“${getDialogueOpening(npc)}”`;
   updateDialogueKeywords(npc);
 }
 
+function getContextualDialogueKeywords(npc) {
+  const orbStage = getOrbQuestStage(state.character);
+  const contextual = [];
+
+  if (npc.id === 'lord_british') {
+    if (orbStage === ORB_QUEST_STAGE.NOT_STARTED) contextual.push('ORB');
+    if (orbStage === ORB_QUEST_STAGE.RETURN_TO_LORD_BRITISH) contextual.push('MISUNDERSTANDING');
+    if (orbStage === ORB_QUEST_STAGE.CHOOSE_RESPONSE) contextual.push('PEACE', 'CAUTION', 'DEFENCE');
+  }
+
+  if (npc.id === 'mariah') {
+    if (orbStage === ORB_QUEST_STAGE.SEEK_MARIAH) contextual.push('PROPHECY');
+    if (orbStage === ORB_QUEST_STAGE.TRANSLATE_TABLET && state.character.hasItem('gargoyle_tablet')) {
+      contextual.push('TABLET');
+    }
+  }
+
+  if (npc.id === 'gargoyle_guardian' && !state.orbQuest?.guardianResolution) {
+    contextual.push('UNDERSTANDING', 'FIGHT');
+  }
+
+  return contextual;
+}
+
 function updateDialogueKeywords(npc) {
-    dialogueKeywords.innerHTML = '';
-    const defaults = ['NAME', 'JOB', 'BYE'];
-    const npcKeywords = npc.responses ? Object.keys(npc.responses) : [];
-    
-    [...defaults, ...npcKeywords].forEach(kw => {
-        const btn = document.createElement('button');
-        btn.textContent = kw;
-        btn.style.cssText = `
-            background: rgba(74, 60, 42, 0.6);
-            color: #dcb678;
-            border: 1px solid rgba(220,182,120,0.4);
-            padding: 4px 10px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 0.85em;
-            font-family: inherit;
-            transition: all 0.2s;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        `;
-        btn.onmouseover = () => {
-            btn.style.background = 'rgba(220,182,120,0.2)';
-            btn.style.borderColor = 'rgba(220,182,120,0.8)';
-        };
-        btn.onmouseout = () => {
-            btn.style.background = 'rgba(74, 60, 42, 0.6)';
-            btn.style.borderColor = 'rgba(220,182,120,0.4)';
-        };
-        btn.onclick = () => {
-            handleDialogueSubmit(kw);
-        };
-        dialogueKeywords.appendChild(btn);
-    });
+  dialogueKeywords.innerHTML = '';
+  const defaults = ['NAME', 'JOB'];
+  const npcKeywords = npc.responses ? Object.keys(npc.responses) : [];
+  const keywords = [...new Set([
+    ...defaults,
+    ...getContextualDialogueKeywords(npc),
+    ...npcKeywords,
+    'BYE'
+  ])];
+
+  keywords.forEach((keyword) => {
+    const button = document.createElement('button');
+    button.textContent = keyword;
+    button.style.cssText = `
+      background: rgba(74, 60, 42, 0.6);
+      color: #dcb678;
+      border: 1px solid rgba(220,182,120,0.4);
+      padding: 4px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.85em;
+      font-family: inherit;
+      transition: all 0.2s;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    `;
+    button.onmouseover = () => {
+      button.style.background = 'rgba(220,182,120,0.2)';
+      button.style.borderColor = 'rgba(220,182,120,0.8)';
+    };
+    button.onmouseout = () => {
+      button.style.background = 'rgba(74, 60, 42, 0.6)';
+      button.style.borderColor = 'rgba(220,182,120,0.4)';
+    };
+    button.onclick = () => handleDialogueSubmit(keyword);
+    dialogueKeywords.appendChild(button);
+  });
+}
+
+function completeOrbQuest(decision) {
+  if (!Object.values(ORB_QUEST_DECISION).includes(decision)) return false;
+  if (getOrbQuestStage(state.character) !== ORB_QUEST_STAGE.CHOOSE_RESPONSE) return false;
+
+  state.orbQuest.finalDecision = decision;
+  state.orbQuest.complete = true;
+  setQuestStageAndRefresh(ORB_QUEST_ID, ORB_QUEST_STAGE.COMPLETE);
+  autoSave('vertical-slice-complete');
+  log('The Stolen Orb is complete. Your counsel has been recorded.');
+  showVerticalSliceEnding();
+  return true;
 }
 
 function handleDialogueSubmit(selectedKeyword) {
-    const npc = state.currentConversationPartner;
-    const input = (selectedKeyword || '').toUpperCase();
-    if (!npc || !input) return;
+  const npc = state.currentConversationPartner;
+  const input = (selectedKeyword || '').trim().toUpperCase();
+  if (!npc || !input || !state.character) return;
 
-    let response = "I do not know of that.";
+  if (input === 'BYE') {
+    dialogueEl.classList.add('hidden');
+    state.currentConversationPartner = null;
+    return;
+  }
 
-    // Universal Keywords
-    if (input === 'BYE') {
-        dialogueEl.classList.add('hidden');
-        state.currentConversationPartner = null;
+  let response = 'I do not know of that.';
+  if (input === 'NAME') {
+    response = `I am called ${npc.name}.`;
+  } else if (input === 'JOB') {
+    response = npc.job || 'I have no specific trade to speak of.';
+  } else if (npc.responses?.[input]) {
+    response = npc.responses[input];
+  }
+
+  const orbStage = getOrbQuestStage(state.character);
+
+  if (npc.id === 'mariah') {
+    const wisdomStage = state.character.getQuestStage('wisdom_of_lycaeum');
+    if (wisdomStage < 2 && (input === 'TRUTH' || input === 'KNOWING NOTHING')) {
+      response = 'Indeed. Truth is the bedrock of our virtue. Take this Codex of Wisdom.';
+      completeMariahQuest();
+    }
+
+    if (input === 'PROPHECY' && orbStage === ORB_QUEST_STAGE.SEEK_MARIAH) {
+      state.orbQuest.mariahBriefed = true;
+      setQuestStageAndRefresh(ORB_QUEST_ID, ORB_QUEST_STAGE.REACH_CAVERNS);
+      response = 'The Gargoyles name a False Prophet who enters through a red moongate and brings ruin. Find their Guardian in the Dark Caverns, but listen before you decide what their fear means.';
+      log('Journal Updated: seek the Gargoyle Guardian in the Dark Caverns.');
+      autoSave('orb-mariah-briefing');
+    }
+
+    if (
+      input === 'TABLET'
+      && orbStage === ORB_QUEST_STAGE.TRANSLATE_TABLET
+      && state.character.hasItem('gargoyle_tablet')
+    ) {
+      state.orbQuest.tabletTranslated = true;
+      syncOrbQuestProgress(state);
+      if (state.character.getQuestStage('wisdom_of_lycaeum') < 3) {
+        state.character.setQuestStage('wisdom_of_lycaeum', 3);
+      }
+      response = "The runes warn that the 'False Prophet' will take their light and doom their world. They stole the Orb not for conquest, but to prevent us from reaching them. Lord British must hear this.";
+      log("Journal Updated: the 'False Prophet' warning has been translated.");
+      autoSave('orb-tablet-translated');
+    }
+  }
+
+  if (npc.id === 'lord_british') {
+    const crisisStage = state.character.getQuestStage('castle_crisis');
+    if (crisisStage === 2) {
+      setQuestStageAndRefresh('castle_crisis', 4);
+      log("Lord British nods. 'I am deeply in your debt, Avatar.'");
+      state.character.applyStatPoints({ STR: 1, DEX: 1 });
+      log('Gained +1 Strength and +1 Dexterity for your valor!');
+    }
+
+    if (
+      ['ORB', 'QUEST', 'GARGOYLES'].includes(input)
+      && orbStage === ORB_QUEST_STAGE.NOT_STARTED
+    ) {
+      setQuestStageAndRefresh(ORB_QUEST_ID, ORB_QUEST_STAGE.SEEK_MARIAH);
+      response = 'The Orb of Moons was taken during the attack. Go first to the Lycaeum and ask Mariah about the PROPHECY behind the theft.';
+      log('Quest started: The Stolen Orb. Seek Mariah at the Lycaeum.');
+      autoSave('orb-quest-start');
+    }
+
+    if (input === 'MISUNDERSTANDING' && orbStage === ORB_QUEST_STAGE.RETURN_TO_LORD_BRITISH) {
+      setQuestStageAndRefresh(ORB_QUEST_ID, ORB_QUEST_STAGE.CHOOSE_RESPONSE);
+      response = 'Then Justice requires more than victory. Should Britannia seek PEACE, proceed with CAUTION, or strengthen its DEFENCE?';
+      log('Final decision: counsel Lord British on Britannia’s response.');
+      autoSave('orb-final-choice-opened');
+    }
+
+    if (orbStage === ORB_QUEST_STAGE.CHOOSE_RESPONSE) {
+      const decisionByKeyword = {
+        PEACE: ORB_QUEST_DECISION.PEACE,
+        CAUTION: ORB_QUEST_DECISION.CAUTION,
+        DEFENCE: ORB_QUEST_DECISION.DEFENCE,
+        DEFENSE: ORB_QUEST_DECISION.DEFENCE
+      };
+      const decision = decisionByKeyword[input];
+      if (decision) {
+        response = 'Your counsel is heard. Britannia will act, and history will judge what follows.';
+        dialogueText.textContent = `“${response}”`;
+        completeOrbQuest(decision);
         return;
+      }
     }
-    if (input === 'NAME') {
-        response = `I am called ${npc.name}.`;
-    } else if (input === 'JOB') {
-        response = npc.job || "I have no specific trade to speak of.";
-    } else if (npc.responses && npc.responses[input]) {
-        response = npc.responses[input];
+  }
+
+  if (npc.id === 'gargoyle_guardian' && !state.orbQuest?.guardianResolution) {
+    if (input === 'UNDERSTANDING' || input === 'PROPHET') {
+      state.orbQuest.guardianResolution = 'diplomacy';
+      state.guardianDefeated = true;
+      setQuestStageAndRefresh(ORB_QUEST_ID, ORB_QUEST_STAGE.RECOVER_RELICS);
+      response = 'Then hear this: our world is fading, and your people’s stones draw away its light. Take the Orb and Tablet, but carry our warning to your king.';
+      log('Path of Understanding: the Guardian allows you to pass without bloodshed.');
+      autoSave('guardian-diplomacy');
+    } else if (input === 'FIGHT') {
+      dialogueEl.classList.add('hidden');
+      state.currentConversationPartner = null;
+      log('The Guardian raises its weapon. The dispute will be settled in battle.');
+      autoSave('guardian-combat-start');
+      void startSpecialEncounter('dungeon_boss');
+      return;
     }
+  }
 
-    // Quest Specific Transitions
-    if (npc.id === 'mariah') {
-        const stage = state.character.getQuestStage('wisdom_of_lycaeum');
-        if (stage < 2 && (input === 'TRUTH' || input === 'KNOWING NOTHING')) {
-            response = "Indeed. Truth is the bedrock of our virtue. You have proven your commitment to understanding. Take this Codex of Wisdom.";
-            completeMariahQuest();
-        }
-        
-        if (input === 'TABLET' && state.character.hasItem('gargoyle_tablet')) {
-            response = "Let me see... 'Dune-sa-Sacrifice... The Book of Light... The Prophet brings death.' Good heavens, Avatar. They believe you are here to destroy their world! They stole the Orb only to prevent us from reaching their home.";
-            setQuestStageAndRefresh('orb_quest', 4);
-            setQuestStageAndRefresh('wisdom_of_lycaeum', 3);
-            log("Journal Updated: The 'False Prophet' prophecy revealed.");
-        }
-    }
-
-    // Quest Milestone Starters (Traditional Ultima Style)
-    if (npc.id === 'lord_british') {
-        const crisisStage = state.character.getQuestStage('castle_crisis');
-        if (crisisStage === 2) {
-            setQuestStageAndRefresh('castle_crisis', 4); // Saved LB
-            log("Lord British nods. 'I am deeply in your debt, Avatar.'");
-            state.character.applyStatPoints({ STR: 1, DEX: 1 });
-            log("Gained +1 Strength and +1 Dexterity for your valor!");
-        }
-
-        if (input === 'ORB' || input === 'QUEST' || input === 'GARGOYLES') {
-            const stage = state.character.getQuestStage('orb_quest');
-            if (stage === 0) {
-                setQuestStageAndRefresh('orb_quest', 1);
-                log("Quest Objective Updated: Seek the Lycaeum.");
-                autoSave('quest-start');
-                response = "The Orb of Moons is a sacred relic, yet it was taken by creatures of muscle and wing. Go to the Lycaeum and speak with Mariah; she may interpret the purpose behind this theft.";
-            }
-        }
-
-        if (input === 'MISUNDERSTANDING') {
-            const stage = state.character.getQuestStage('orb_quest');
-            if (stage === 4) {
-                setQuestStageAndRefresh('orb_quest', 5);
-                log("Quest Objective Updated: Contemplate the future of Britannia.");
-                autoSave('quest-doubt');
-            }
-        }
-    }
-
-    if (npc.id === 'gargoyle_guardian') {
-        if (input === 'PROPHET' || input === 'UNDERSTANDING') {
-            const stage = state.character.getQuestStage('orb_quest');
-            if (stage < 3) {
-                setQuestStageAndRefresh('orb_quest', 3);
-                state.guardianDefeated = true; // Non-violent resolution
-                log("The Guardian lowers their weapon. 'Perhaps you are not the one the scrolls foretold.'");
-                log("Moral Achievement: Path of Understanding.");
-                response = "If you speak the Truth, then take the Orb. But know that our world bleeds as yours does. We only wish to stop the fading of our sun. Look to the TABLET for the full tale.";
-            }
-        }
-    }
-
-    dialogueText.innerHTML = `"${response}"`;
+  dialogueText.textContent = `“${response}”`;
+  updateDialogueKeywords(npc);
+  refreshQuestViews();
 }
 
 function completeMariahQuest() {
-    log("Mariah smiles. 'The path to Truth is yours to walk.'");
-    setQuestStageAndRefresh('wisdom_of_lycaeum', 2);
-    state.character.applyStatPoints({ INT: 2 });
+  log("Mariah smiles. 'The path to Truth is yours to walk.'");
+  setQuestStageAndRefresh('wisdom_of_lycaeum', 2);
+  state.character.applyStatPoints({ INT: 2 });
+  if (!state.character.hasItem('tactics_codex')) {
     const codex = itemGenerator.createTacticsCodex();
     state.character.addItem(codex);
     log(`Received: ${codex.name}`);
-    log("Gained +2 Intelligence!");
-    updateHUD();
-    renderCharacterSheet();
-    renderInventory();
-    autoSave('quest-complete');
+  }
+  log('Gained +2 Intelligence!');
+  updateHUD();
+  renderCharacterSheet();
+  renderInventory();
+  autoSave('wisdom-quest-complete');
 }
-
-// Dialogue is now keyword-driven via button chips
-
-
-
 
 function handleTileEvents() {
   const { x, y } = state.player.position;
 
-  // Castle Crisis Stage 1 Trigger (Throne Room Ambush)
-  if (state.map.id === 'castle' && state.character.getQuestStage('castle_crisis') === 0 && x === 14 && y === 11) {
+  if (
+    state.map.id === 'castle'
+    && state.character.getQuestStage('castle_crisis') === 0
+    && x === 14
+    && y === 11
+  ) {
     setQuestStageAndRefresh('castle_crisis', 1);
     log('A gargoyle bursts into the throne room!');
-    startSpecialEncounter('throne_ambush');
+    void startSpecialEncounter('throne_ambush');
     return;
   }
 
@@ -1126,26 +1300,31 @@ function handleTileEvents() {
     updateDungeonNavigator();
   }
 
-  // Boss Trigger for Orb Quest (Moral Crack: The Guardian)
-  if (state.map.id === 'dungeon_1' && x === 6 && y === 8 && state.character.getQuestStage('orb_quest') === 1) {
-      if (!state.guardianDefeated) {
-          log("The air turns cold... The Guardian blocks your path!");
-          log("You may attempt to TALK or FIGHT.");
-          startSpecialEncounter('dungeon_boss');
-          return;
-      }
+  const orbStage = getOrbQuestStage(state.character);
+  if (
+    state.map.id === 'dungeon_1'
+    && x === 6
+    && y === 8
+    && orbStage >= ORB_QUEST_STAGE.REACH_CAVERNS
+    && orbStage <= ORB_QUEST_STAGE.FACE_GUARDIAN
+    && !state.orbQuest?.guardianResolution
+  ) {
+    setQuestStageAndRefresh(ORB_QUEST_ID, ORB_QUEST_STAGE.FACE_GUARDIAN);
+    const guardian = state.map.npcs.find((npc) => npc.id === 'gargoyle_guardian');
+    log('The Guardian blocks the passage. Choose UNDERSTANDING or FIGHT.');
+    autoSave('guardian-confrontation');
+    if (guardian) showDialogue(guardian);
+    return;
   }
 
   if (!state.map.safe && Math.random() < state.map.getEncounterChance(x, y)) {
-    startEncounter();
+    void startEncounter();
   }
 }
 
 async function startEncounter(category = null) {
   if (state.inCombat) return;
-  if (isPanelOpen()) {
-    closeAllPanels();
-  }
+  if (isPanelOpen()) closeAllPanels();
   if (activeMovementDirections.size) {
     activeMovementDirections.clear();
     renderer.stopAllMovement();
@@ -1163,14 +1342,6 @@ async function startEncounter(category = null) {
       onUpdate: updateObjectivePanel
     });
     await resolveCombat(result, enemy, category);
-
-    // Flag guardian as defeated if victory
-    if (category === 'dungeon_boss' && result.outcome === 'victory') {
-        state.guardianDefeated = true;
-    }
-    if (category === 'throne_ambush' && result.outcome === 'victory') {
-        state.throneIntroComplete = true;
-    }
   } catch (error) {
     console.error('Combat encounter failed:', error);
   } finally {
@@ -1183,24 +1354,26 @@ async function startEncounter(category = null) {
 }
 
 async function startSpecialEncounter(category) {
-    if (category === 'throne_ambush') {
-      log('Combat lesson: read the Enemy Intent, use the highlighted counter, or press 4 to defend and create an opening.');
-      updateObjectivePanel();
-    }
-    await startEncounter(category);
+  if (category === 'throne_ambush') {
+    log('Combat lesson: read the Enemy Intent, use the highlighted counter, or press 4 to defend and create an opening.');
+    updateObjectivePanel();
+  }
+  await startEncounter(category);
 }
 
 async function resolveCombat(result, enemy, category = null) {
-  if (!state.character) return;
+  if (!state.character || !result || !enemy) return;
+
   if (result.outcome === 'victory') {
-    const xp = result.xp || enemy.xpReward;
+    const xp = result.xp || enemy.xpReward || 0;
     const { leveledUp } = state.character.gainXP(xp);
-    log(`Gained ${xp} experience.`);
+    if (xp > 0) log(`Gained ${xp} experience.`);
+
     if (result.loot?.length) {
       result.loot.forEach((item) => {
         if (item.type === 'currency') {
-            state.character.gainGold(item.quantity || 0);
-            log(`Found ${item.quantity} ${item.name}.`);
+          state.character.gainGold(item.quantity || 0);
+          log(`Found ${item.quantity} ${item.name}.`);
         } else if (state.character.addItem(item, item.quantity || 1)) {
           log(`Found ${item.name}.`);
         } else {
@@ -1208,47 +1381,56 @@ async function resolveCombat(result, enemy, category = null) {
         }
       });
     }
-    updateHUD();
-    renderInventory();
-    renderCharacterSheet();
+
     if (leveledUp) {
       log(`Level up! You reached level ${state.character.level}.`);
       autoSave('level-up');
     }
+
     if (enemy.id === 'gargoyle' && state.map?.id === 'castle') {
+      state.throneIntroComplete = true;
       setQuestStageAndRefresh('castle_crisis', 2);
       log('The throne room is clear. You should speak with Lord British.');
       renderGame();
       autoSave('throne-ambush');
     }
-    
+
     if (enemy.id === 'gargoyle_guardian' || category === 'dungeon_boss') {
-        state.guardianDefeated = true;
-        setQuestStageAndRefresh('orb_quest', 3);
-        log('The Guardian falls. The Orb is within reach.');
+      state.orbQuest.guardianResolution = 'combat';
+      state.guardianDefeated = true;
+      setQuestStageAndRefresh(ORB_QUEST_ID, ORB_QUEST_STAGE.RECOVER_RELICS);
+      removeGuardianFromDungeon();
+      log('The Guardian falls. The Orb and Tablet are now within reach.');
+      autoSave('guardian-combat-victory');
     }
   } else if (result.outcome === 'defeat') {
     log('You awaken at the village, bruised but alive.');
     state.character.applyDeathPenalty();
-    state.character.currentHP = Math.max(state.character.currentHP, Math.floor(state.character.maxHP * 0.6));
-    state.character.currentMP = Math.max(state.character.currentMP, Math.floor(state.character.maxMP * 0.4));
-    changeMap(state.map?.id === 'castle' ? 'castle' : 'village', 'castle_gate');
+    state.character.currentHP = Math.max(
+      state.character.currentHP,
+      Math.floor(state.character.maxHP * 0.6)
+    );
+    state.character.currentMP = Math.max(
+      state.character.currentMP,
+      Math.floor(state.character.maxMP * 0.4)
+    );
+    changeMap(state.map?.id === 'castle' ? 'castle' : 'village', state.map?.id === 'castle' ? 'castle_gate' : 'village_road');
   } else if (result.outcome === 'fled') {
     log('You fled from battle.');
   }
+
   updateHUD();
+  renderInventory();
+  renderCharacterSheet();
 }
 
 function saveGame(reason = 'manual', silent = false) {
   if (!state.character || !state.player || !state.map) return false;
-  
   const success = SaveManager.save(state);
-  
+
   if (success) {
     state.lastSaveTimestamp = Date.now();
-    if (!silent) {
-      log(`Game saved (${reason}).`);
-    }
+    if (!silent) log(`Game saved (${reason}).`);
   } else if (!silent) {
     log('Saving failed.');
   }
@@ -1259,44 +1441,61 @@ function autoSave(reason) {
   saveGame(reason, true);
 }
 
+function restoreOrbQuestState(data, character) {
+  const savedQuestState = data.questState?.orbQuest;
+  if (savedQuestState) {
+    return createOrbQuestState(savedQuestState);
+  }
+  return migrateLegacyOrbQuest(character, data.flags || {});
+}
+
 function loadGame(manual = false) {
   const data = SaveManager.load();
   if (!data) {
     if (manual) log('No saved game found.');
     return false;
   }
-  
+
   const character = new Character(data.character);
   const player = new Player(character);
-  
   const mapId = data.mapId;
   const currentMap = state.world.maps[mapId] || state.world.startingMap;
+  const position = data.playerPosition;
 
-  // Handle position restoration
-  const pos = data.playerPosition;
-  if (pos && currentMap.isWalkable(pos.x, pos.y)) {
-      player.setPosition(pos.x, pos.y);
-      player.map = currentMap; // Ensure map reference is set!
+  if (position && currentMap.isWalkable(position.x, position.y)) {
+    player.setPosition(position.x, position.y);
+    player.map = currentMap;
   } else {
-      player.setMap(currentMap, 'castle_gate');
+    player.setMap(currentMap, currentMap.id === 'castle' ? 'castle_gate' : undefined);
   }
-  if (currentMap.id === 'castle' && player) {
-    player.facing = 'north';
-  }
+  if (currentMap.id === 'castle') player.facing = 'north';
 
   state.character = character;
   state.player = player;
   state.map = currentMap;
-  state.guardianDefeated = data.flags?.guardianDefeated || false;
+  state.orbQuest = restoreOrbQuestState(data, character);
+  syncOrbQuestProgress(state);
+  state.guardianDefeated = Boolean(data.flags?.guardianDefeated || state.orbQuest.guardianResolution);
+  state.throneIntroComplete = Boolean(
+    data.flags?.throneIntroComplete
+    || character.getQuestStage('castle_crisis') >= 2
+  );
+  state.lastSaveTimestamp = data.timestamp || null;
+  state.discoveredAreas.add(currentMap.id);
 
+  applyOrbQuestWorldState();
   activeMovementDirections.clear();
   renderer.stopAllMovement();
   renderInventory();
   renderCharacterSheet();
   updateHUD();
   renderGame();
-  celebrateCastle();
+  if (currentMap.id === 'castle') celebrateCastle();
   log(manual ? 'Save data loaded.' : 'Journey resumed from last save.');
+
+  if (state.orbQuest.complete) {
+    requestAnimationFrame(showVerticalSliceEnding);
+  }
   return true;
 }
 
@@ -1306,11 +1505,12 @@ function setupEventListeners() {
     const key = event.key.toLowerCase();
 
     if (!dialogueEl.classList.contains('hidden')) {
-        if (['escape',' ','enter'].includes(key)) {
-            event.preventDefault();
-            dialogueEl.classList.add('hidden');
-        }
-        return;
+      if (['escape', ' ', 'enter'].includes(key)) {
+        event.preventDefault();
+        dialogueEl.classList.add('hidden');
+        state.currentConversationPartner = null;
+      }
+      return;
     }
 
     if (state.inCombat) {
@@ -1319,17 +1519,13 @@ function setupEventListeners() {
         combatEngine.closeItemMenu();
         return;
       }
-      if (combatEngine.handleKeyAction(key)) {
-        event.preventDefault();
-      }
+      if (combatEngine.handleKeyAction(key)) event.preventDefault();
       return;
     }
 
     if (key === 'escape') {
       event.preventDefault();
-      if (closeTopOverlay()) {
-        return;
-      }
+      closeTopOverlay();
       return;
     }
 
@@ -1342,37 +1538,49 @@ function setupEventListeners() {
     }
 
     if (KEY_TO_DIRECTION[key]) {
-        event.preventDefault();
-        const dir = KEY_TO_DIRECTION[key];
-        renderer.setPlayerMovement(dir, true);
-        const { dx, dy } = DIRECTION_OFFSETS[dir];
-        attemptMove(dx, dy);
-        return;
+      event.preventDefault();
+      const direction = KEY_TO_DIRECTION[key];
+      renderer.setPlayerMovement(direction, true);
+      const { dx, dy } = DIRECTION_OFFSETS[direction];
+      attemptMove(dx, dy);
+      return;
     }
 
     switch (key) {
       case 't': handleTalk(); break;
-      case 'g': handleGet(); break; // NEW COMMAND
+      case 'g': handleGet(); break;
       case 'i': togglePanel('inventory'); break;
       case 'c': togglePanel('character'); break;
       case 'm': togglePanel('menu'); break;
       case 'j': togglePanel('journal'); break;
       case 'o': togglePanel('orb'); break;
       case 'x': togglePanel('codex'); break;
+      default: break;
     }
   });
 
-  document.addEventListener('keyup', (e) => {
-      const dir = KEY_TO_DIRECTION[e.key.toLowerCase()];
-      if (dir) renderer.setPlayerMovement(dir, false);
+  document.addEventListener('keyup', (event) => {
+    const direction = KEY_TO_DIRECTION[event.key.toLowerCase()];
+    if (direction) renderer.setPlayerMovement(direction, false);
   });
 
   document.addEventListener('click', (event) => {
+    const endingAction = event.target.closest('[data-ending-action]');
+    if (endingAction) {
+      endingEl.classList.add('hidden');
+      if (endingAction.dataset.endingAction === 'journal') {
+        closeAllPanels();
+        openPanel('journal');
+      }
+      return;
+    }
+
     const closeButton = event.target.closest('[data-close]');
     if (closeButton) {
       closeAllPanels();
       return;
     }
+
     const orbButton = event.target.closest('button[data-orb-destination]');
     if (orbButton && !orbButton.disabled) {
       const mapId = orbButton.dataset.orbDestination;
@@ -1385,57 +1593,74 @@ function setupEventListeners() {
   });
 }
 
-// ... (Bootstrap)
-window.gameApp = { state, renderer, creator, itemGenerator, SaveManager, combatEngine, startEncounter, startSpecialEncounter };
-async function bootstrap() {
-    try {
-        const atlas = await loadAtlas(null, './assets/atlas.json');
-        renderer.setAtlas(atlas);
-        await renderer.loadPlayerSprite(DEFAULT_PLAYER_SPRITE_SHEET, PLAYER_CHAMPION_SPRITE_OPTIONS);
-    } catch (e) {
-        console.warn('Failed to load assets:', e);
-    }
-    renderer.start();
-    setupEventListeners();
-    
-    if (loadGame(false)) {
-        return;
-    }
+window.gameApp = {
+  state,
+  renderer,
+  creator,
+  itemGenerator,
+  SaveManager,
+  combatEngine,
+  startEncounter,
+  startSpecialEncounter,
+  resolveCombat,
+  changeMap,
+  renderGame,
+  showDialogue,
+  handleDialogueSubmit,
+  handleGet,
+  getObjectiveState,
+  applyOrbQuestWorldState,
+  showVerticalSliceEnding,
+  syncOrbQuestProgress
+};
 
-    // Default Start
-    const char = await creator.open();
-    if(char) {
-        state.character = char;
-        state.player = new Player(char);
-        let starterWeapon = null;
-        for (let i = 0; i < 8 && !starterWeapon; i += 1) {
-          const candidate = itemGenerator.createWeapon(1);
-          if (state.character.canEquip(candidate)) {
-            starterWeapon = candidate;
-          }
-        }
-        if (!starterWeapon) {
-          starterWeapon = {
-            id: 'starter-rusty-blade',
-            name: 'Rusty Blade',
-            type: 'weapon',
-            stats: { attack: 4, str_req: 8 },
-            value: 0,
-            stackable: false,
-            weight: 1.4
-          };
-        }
-        if (state.character.addItem(starterWeapon)) {
-          state.character.equipItem(starterWeapon.id);
-          log(`You begin with ${starterWeapon.name}.`);
-        }
-        state.map = state.world.startingMap;
-        changeMap('castle', 'castle_gate');
-        state.player.facing = 'north';
-        // Give starter items
-        state.character.addItem(itemGenerator.createHealthPotion(1));
-        renderGame();
-    }
+async function bootstrap() {
+  try {
+    const atlas = await loadAtlas(null, './assets/atlas.json');
+    renderer.setAtlas(atlas);
+    await renderer.loadPlayerSprite(DEFAULT_PLAYER_SPRITE_SHEET, PLAYER_CHAMPION_SPRITE_OPTIONS);
+  } catch (error) {
+    console.warn('Failed to load assets:', error);
+  }
+
+  renderer.start();
+  setupEventListeners();
+
+  if (loadGame(false)) return;
+
+  const character = await creator.open();
+  if (!character) return;
+
+  state.character = character;
+  state.player = new Player(character);
+  state.orbQuest = createOrbQuestState();
+
+  let starterWeapon = null;
+  for (let i = 0; i < 8 && !starterWeapon; i += 1) {
+    const candidate = itemGenerator.createWeapon(1);
+    if (state.character.canEquip(candidate)) starterWeapon = candidate;
+  }
+  if (!starterWeapon) {
+    starterWeapon = {
+      id: 'starter-rusty-blade',
+      name: 'Rusty Blade',
+      type: 'weapon',
+      stats: { attack: 4, str_req: 8 },
+      value: 0,
+      stackable: false,
+      weight: 1.4
+    };
+  }
+  if (state.character.addItem(starterWeapon)) {
+    state.character.equipItem(starterWeapon.id);
+    log(`You begin with ${starterWeapon.name}.`);
+  }
+
+  state.map = state.world.startingMap;
+  changeMap('castle', 'castle_gate');
+  state.player.facing = 'north';
+  state.character.addItem(itemGenerator.createHealthPotion(1));
+  renderGame();
 }
 
 bootstrap();
@@ -1444,7 +1669,11 @@ window.render_game_to_text = () => {
   const player = state.player;
   const enemy = combatEngine.enemy;
   const objective = state.character ? getObjectiveState() : null;
-  const combatSnapshot = typeof combatEngine.getSnapshot === 'function' ? combatEngine.getSnapshot() : null;
+  const combatSnapshot = typeof combatEngine.getSnapshot === 'function'
+    ? combatEngine.getSnapshot()
+    : null;
+  const orbStage = state.character ? getOrbQuestStage(state.character) : ORB_QUEST_STAGE.NOT_STARTED;
+
   return JSON.stringify({
     origin: 'top-left',
     mapId: state.map?.id || null,
@@ -1477,7 +1706,18 @@ window.render_game_to_text = () => {
       tip: objective.tip
     } : null,
     quests: state.character?.quests || {},
-    inventory: state.character?.inventory?.map((item) => ({ id: item.id, name: item.name, type: item.type, quantity: item.quantity || 1 })) || []
+    orbQuest: state.character ? {
+      stage: orbStage,
+      ...state.orbQuest,
+      ending: state.orbQuest?.complete ? getOrbEnding(state) : null
+    } : null,
+    verticalSliceComplete: Boolean(state.orbQuest?.complete),
+    inventory: state.character?.inventory?.map((item) => ({
+      id: item.id,
+      name: item.name,
+      type: item.type,
+      quantity: item.quantity || 1
+    })) || []
   });
 };
 
