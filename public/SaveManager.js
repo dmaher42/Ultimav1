@@ -3,20 +3,26 @@
  */
 export default class SaveManager {
     static STORAGE_KEY = 'ultima_athens_save';
+    static SAVE_VERSION = 2;
 
     /**
      * Serializes and saves the game state.
      * @param {Object} state - The global game state.
      */
     static save(state) {
-        if (!state || !state.character) return;
+        if (!state || !state.character || !state.map || !state.player) return false;
 
         const saveData = {
+            version: this.SAVE_VERSION,
             character: state.character.toJSON(),
             mapId: state.map.id,
-            playerPosition: state.player.position,
+            playerPosition: { ...state.player.position },
+            questState: {
+                orbQuest: state.orbQuest ? { ...state.orbQuest } : null
+            },
             flags: {
-                guardianDefeated: state.guardianDefeated || false,
+                guardianDefeated: Boolean(state.guardianDefeated || state.orbQuest?.guardianResolution),
+                throneIntroComplete: Boolean(state.throneIntroComplete),
                 worldTime: state.worldTime || 0
             },
             timestamp: Date.now()
