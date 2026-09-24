@@ -198,6 +198,10 @@ export default class Character {
     return this.inventory.find((entry) => entry.id === itemId) || null;
   }
 
+  hasItem(itemId) {
+    return Boolean(this.findItem(itemId));
+  }
+
   equipItem(itemId) {
     const entry = this.inventory.find((it) => it.id === itemId);
     if (!entry) return { success: false, reason: 'Item not found' };
