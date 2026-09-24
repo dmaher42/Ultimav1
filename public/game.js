@@ -1,6 +1,6 @@
 // Feature: Living World (NPC AI + Item Pickup)
 import CharacterCreator from './CharacterCreator.js';
-import Character from './Character.js';
+import Character from './Character.js?v=2';
 import { createWorld, TileInfo } from './GameMap.js?v=16';
 import Renderer from './render.js?v=17';
 import Player from './Player.js';
@@ -106,7 +106,7 @@ if (uiLeftRail) {
 // --- VERTICAL SLICE ENDING UI ---
 const endingEl = document.createElement('div');
 endingEl.id = 'vertical-slice-ending';
-endingEl.className = 'panel hidden';
+endingEl.className = 'hidden';
 endingEl.style.cssText = `
     position: fixed; inset: 0; z-index: 240;
     display: grid; place-items: center;
@@ -317,7 +317,7 @@ function getObjectiveState() {
       text: isThroneAmbush
         ? `Throne ambush: read ${combatAdvice?.intent || 'the intent'}, then use ${combatAdvice?.counter || 'the highlighted counter'}.`
         : isGuardianBattle
-          ? `The Guardian chose battle. Defeat it to reach the stolen relics.`
+          ? 'The Guardian chose battle. Defeat it to reach the stolen relics.'
           : `Battle ${enemyName}. Use melee, bow, spell, defend, or an item to survive.`,
       tip: isThroneAmbush
         ? `${combatAdvice?.defend || '4 Defend'} can turn the attack aside and create an opening. ${combatAdvice?.shortcuts || 'Use 1-6 for combat actions.'}`
@@ -987,7 +987,7 @@ function getDialogueOpening(npc) {
 
   if (npc.id === 'mariah') {
     if (orbStage === ORB_QUEST_STAGE.SEEK_MARIAH) {
-      return 'Lord British sent you? Then ask me of the PROPHECY. We must understand why the Gargoyles risked so much for the Orb.';
+      return 'Lord British sent you? Then ask me of the PROPHECY. We must understand why the Gargoyles took the Orb.';
     }
     if (orbStage === ORB_QUEST_STAGE.TRANSLATE_TABLET && state.character.hasItem('gargoyle_tablet')) {
       return 'You carry the Gargoyle Tablet. Speak the keyword TABLET, and I shall attempt its translation.';
