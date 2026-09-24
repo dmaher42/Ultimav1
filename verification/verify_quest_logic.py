@@ -201,7 +201,13 @@ def verify_quest_logic() -> None:
         syntax_check_browser_module(module)
 
     with sync_playwright() as playwright:
-        browser = playwright.chromium.launch(headless=True)
+        chromium_override = os.environ.get("PLAYWRIGHT_CHROMIUM_EXECUTABLE")
+        if not chromium_override and Path("/usr/bin/chromium").exists():
+            chromium_override = "/usr/bin/chromium"
+        launch_options = {"headless": True}
+        if chromium_override:
+            launch_options["executable_path"] = chromium_override
+        browser = playwright.chromium.launch(**launch_options)
         diplomatic_page = browser.new_page()
         diplomatic_page.on(
             "pageerror", lambda error: print(f"Diplomatic path page error: {error}")
