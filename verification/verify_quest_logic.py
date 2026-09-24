@@ -214,6 +214,7 @@ def verify_combat_resolution_path(page: Page) -> None:
 def verify_quest_logic() -> None:
     for module in (
         "public/Character.js",
+        "public/CharacterCreator.js",
         "public/OrbQuest.js",
         "public/QuestManager.js",
         "public/SaveManager.js",
