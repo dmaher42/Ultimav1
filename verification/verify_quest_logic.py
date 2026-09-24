@@ -1,3 +1,4 @@
+import base64
 import os
 from pathlib import Path
 import subprocess
@@ -13,6 +14,25 @@ def syntax_check_browser_module(relative_path: str) -> None:
     subprocess.run(
         ["node", "--input-type=module", "--check"],
         input=source,
+        text=True,
+        check=True,
+    )
+
+
+def verify_character_inventory_helper() -> None:
+    source = (REPO_ROOT / "public/Character.js").read_text(encoding="utf-8")
+    encoded = base64.b64encode(source.encode("utf-8")).decode("ascii")
+    script = f"""
+      const {{ default: Character }} = await import('data:text/javascript;base64,{encoded}');
+      const character = new Character({{ name: 'Test', stats: {{ STR: 10, DEX: 10, INT: 10, VIT: 10, LUK: 10 }} }});
+      if (character.hasItem('orb_of_moons')) throw new Error('Empty inventory reported an item');
+      if (!character.addItem({{ id: 'orb_of_moons', name: 'Orb of Moons', type: 'quest' }})) throw new Error('Could not add quest item');
+      if (!character.hasItem('orb_of_moons')) throw new Error('Added item was not found');
+      character.removeItem('orb_of_moons');
+      if (character.hasItem('orb_of_moons')) throw new Error('Removed item remained present');
+    """
+    subprocess.run(
+        ["node", "--input-type=module", "-e", script],
         text=True,
         check=True,
     )
@@ -193,12 +213,15 @@ def verify_combat_resolution_path(page: Page) -> None:
 
 def verify_quest_logic() -> None:
     for module in (
+        "public/Character.js",
         "public/OrbQuest.js",
         "public/QuestManager.js",
         "public/SaveManager.js",
         "public/game.js",
     ):
         syntax_check_browser_module(module)
+
+    verify_character_inventory_helper()
 
     with sync_playwright() as playwright:
         chromium_override = os.environ.get("PLAYWRIGHT_CHROMIUM_EXECUTABLE")
