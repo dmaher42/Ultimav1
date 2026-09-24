@@ -1,4 +1,4 @@
-import Character from './Character.js';
+import Character from './Character.js?v=2';
 
 const STAT_LABELS = {
   STR: 'Strength',
