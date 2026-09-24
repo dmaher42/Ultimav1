@@ -1,102 +1,223 @@
-from playwright.sync_api import sync_playwright, expect
-import time
+import os
+from pathlib import Path
+import subprocess
 
-def verify_quest_logic():
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        page = browser.new_page()
+from playwright.sync_api import Page, sync_playwright
 
-        # Capture console logs
-        page.on("console", lambda msg: print(f"Console: {msg.text}"))
-        page.on("pageerror", lambda err: print(f"Page Error: {err}"))
+BASE_URL = os.environ.get("ULTIMA_BASE_URL", "http://127.0.0.1:3000")
+REPO_ROOT = Path(__file__).resolve().parents[1]
 
-        # Load the game
-        page.goto("http://localhost:3000")
-        page.wait_for_selector("#game")
-        time.sleep(2)
 
-        # Check if Character Creator is open
-        if page.is_visible("#character-creator"):
-            print("Character creator detected. Creating character...")
-            page.fill("#character-name", "TestHero")
-            page.click("button[type='submit']")
-            time.sleep(1)
-            print("Character created.")
+def syntax_check_browser_module(relative_path: str) -> None:
+    source = (REPO_ROOT / relative_path).read_text(encoding="utf-8")
+    subprocess.run(
+        ["node", "--input-type=module", "--check"],
+        input=source,
+        text=True,
+        check=True,
+    )
 
-        # 1. Verify Quest starts at 0 (or undefined)
-        initial_stage = page.evaluate("window.state.character.getQuestStage('orb_quest')")
-        print(f"Initial Stage: {initial_stage}")
-        assert initial_stage == 0
 
-        # 2. Teleport to Lord British and Talk
-        # Lord British is at (9, 3).
-        # We teleport adjacent to him: (9, 4), facing north.
-        page.evaluate("""
-            state.player.position.x = 9;
-            state.player.position.y = 4;
-            state.player.facing = 'north';
-            renderGame();
-        """)
-        time.sleep(1)
+def create_fresh_hero(page: Page, name: str) -> None:
+    page.add_init_script("localStorage.clear();")
+    page.goto(BASE_URL, wait_until="domcontentloaded")
+    page.wait_for_selector("#game")
 
-        # Press T to talk
-        page.keyboard.press("t")
-        time.sleep(1)
+    if page.locator("#character-creator").is_visible():
+        page.fill("#character-name", name)
+        page.click("#character-creator button[type='submit']")
 
-        # Verify Quest Stage is now 1
-        stage_after_talk = page.evaluate("window.state.character.getQuestStage('orb_quest')")
-        print(f"Stage after talk: {stage_after_talk}")
-        assert stage_after_talk == 1
+    page.wait_for_function(
+        "window.gameApp && window.gameApp.state && window.gameApp.state.character"
+    )
 
-        # Close dialogue (Space)
-        page.keyboard.press(" ")
-        time.sleep(1)
+    page.evaluate(
+        """
+        const { state } = window.gameApp;
+        state.throneIntroComplete = true;
+        state.character.setQuestStage('castle_crisis', 4);
+        """
+    )
 
-        # 3. Get the Orb
-        # Orb is in dungeon_1 (ID: 'dungeon_1') at 15,15.
-        page.evaluate("""
-            const orbMap = state.world.maps['dungeon_1'];
-            state.map = orbMap;
-            state.player.setMap(orbMap, 'entry');
-            state.player.position.x = 15;
-            state.player.position.y = 15;
-            state.player.facing = 'south';
-            renderGame();
-        """)
-        time.sleep(1)
 
-        # Press G to get
-        page.keyboard.press("g")
-        time.sleep(1)
+def assert_stage(page: Page, expected: int) -> None:
+    actual = page.evaluate(
+        "window.gameApp.state.character.getQuestStage('orb_quest')"
+    )
+    assert actual == expected, f"Expected Orb stage {expected}, received {actual}"
 
-        # Verify Quest Stage is now 2
-        stage_after_pickup = page.evaluate("window.state.character.getQuestStage('orb_quest')")
-        print(f"Stage after pickup: {stage_after_pickup}")
-        assert stage_after_pickup == 2
 
-        # 4. Return to Lord British and Complete
-        page.evaluate("""
-            const castleMap = state.world.maps['castle'];
-            state.map = castleMap;
-            state.player.setMap(castleMap, 'castle_gate');
-            state.player.position.x = 9;
-            state.player.position.y = 4;
-            state.player.facing = 'north';
-            renderGame();
-        """)
-        time.sleep(1)
+def open_npc_dialogue(page: Page, map_id: str, npc_id: str, spawn: str) -> None:
+    page.evaluate(
+        """
+        ({ mapId, npcId, spawn }) => {
+          const app = window.gameApp;
+          app.changeMap(mapId, spawn);
+          const npc = app.state.map.npcs.find((candidate) => candidate.id === npcId);
+          if (!npc) throw new Error(`NPC not found: ${npcId}`);
+          app.showDialogue(npc);
+        }
+        """,
+        {"mapId": map_id, "npcId": npc_id, "spawn": spawn},
+    )
 
-        # Talk to Lord British
-        page.keyboard.press("t")
-        time.sleep(1)
 
-        # Verify Quest Stage is now 3
-        stage_final = page.evaluate("window.state.character.getQuestStage('orb_quest')")
-        print(f"Final Stage: {stage_final}")
-        assert stage_final == 3
+def submit_keyword(page: Page, keyword: str) -> None:
+    page.evaluate(
+        "keyword => window.gameApp.handleDialogueSubmit(keyword)", keyword
+    )
 
-        print("Verification Successful!")
+
+def pick_up_relic(page: Page, x: int, y: int) -> None:
+    page.evaluate(
+        """
+        ({ x, y }) => {
+          const app = window.gameApp;
+          app.state.player.map = app.state.map;
+          app.state.player.setPosition(x, y);
+          app.handleGet();
+        }
+        """,
+        {"x": x, "y": y},
+    )
+
+
+def begin_orb_quest(page: Page) -> None:
+    open_npc_dialogue(page, "castle", "lord_british", "castle_gate")
+    submit_keyword(page, "ORB")
+    assert_stage(page, 1)
+    objective = page.evaluate("window.gameApp.getObjectiveState().text")
+    assert "Mariah" in objective
+
+    open_npc_dialogue(page, "lycaeum_entrance", "mariah", "lycaeum_gateway")
+    submit_keyword(page, "PROPHECY")
+    assert_stage(page, 2)
+    objective = page.evaluate("window.gameApp.getObjectiveState().text")
+    assert "Dark Caverns" in objective
+
+
+def recover_relics(page: Page, tablet_first: bool) -> None:
+    page.evaluate(
+        "window.gameApp.changeMap('dungeon_1', 'entry')"
+    )
+    locations = [(23, 7), (25, 7)] if tablet_first else [(25, 7), (23, 7)]
+
+    pick_up_relic(page, *locations[0])
+    assert_stage(page, 4)
+    pick_up_relic(page, *locations[1])
+    assert_stage(page, 5)
+
+    inventory = page.evaluate(
+        "window.gameApp.state.character.inventory.map(item => item.id)"
+    )
+    assert "orb_of_moons" in inventory
+    assert "gargoyle_tablet" in inventory
+
+
+def translate_and_finish(page: Page, final_keyword: str) -> None:
+    open_npc_dialogue(page, "lycaeum_entrance", "mariah", "lycaeum_gateway")
+    submit_keyword(page, "TABLET")
+    assert_stage(page, 6)
+
+    open_npc_dialogue(page, "castle", "lord_british", "castle_gate")
+    submit_keyword(page, "MISUNDERSTANDING")
+    assert_stage(page, 7)
+    submit_keyword(page, final_keyword)
+    assert_stage(page, 8)
+
+    assert page.evaluate("window.gameApp.state.orbQuest.complete") is True
+    assert page.locator("#vertical-slice-ending").is_visible()
+
+
+def verify_diplomatic_path_and_reload(page: Page) -> None:
+    create_fresh_hero(page, "Diplomat")
+    begin_orb_quest(page)
+
+    open_npc_dialogue(page, "dungeon_1", "gargoyle_guardian", "entry")
+    assert_stage(page, 3)
+    submit_keyword(page, "UNDERSTANDING")
+    assert_stage(page, 4)
+
+    resolution = page.evaluate("window.gameApp.state.orbQuest.guardianResolution")
+    assert resolution == "diplomacy"
+
+    recover_relics(page, tablet_first=True)
+    translate_and_finish(page, "PEACE")
+
+    stored = page.evaluate(
+        "JSON.parse(localStorage.getItem('ultima_athens_save'))"
+    )
+    assert stored["version"] == 2
+    assert stored["questState"]["orbQuest"]["guardianResolution"] == "diplomacy"
+    assert stored["questState"]["orbQuest"]["finalDecision"] == "peace"
+    assert stored["questState"]["orbQuest"]["complete"] is True
+
+    page.reload(wait_until="domcontentloaded")
+    page.wait_for_function(
+        "window.gameApp?.state?.orbQuest?.complete === true"
+    )
+    assert_stage(page, 8)
+    assert page.evaluate("window.gameApp.state.orbQuest.finalDecision") == "peace"
+    assert page.locator("#vertical-slice-ending").is_visible()
+
+
+def verify_combat_resolution_path(page: Page) -> None:
+    create_fresh_hero(page, "Fighter")
+    begin_orb_quest(page)
+
+    page.evaluate(
+        """
+        async () => {
+          const app = window.gameApp;
+          app.changeMap('dungeon_1', 'entry');
+          app.state.character.setQuestStage('orb_quest', 3);
+          await app.resolveCombat(
+            { outcome: 'victory', xp: 0, loot: [] },
+            { id: 'gargoyle_guardian', name: 'Guardian', xpReward: 0 },
+            'dungeon_boss'
+          );
+        }
+        """
+    )
+    assert_stage(page, 4)
+    assert page.evaluate("window.gameApp.state.orbQuest.guardianResolution") == "combat"
+    guardian_present = page.evaluate(
+        "window.gameApp.state.world.maps.dungeon_1.npcs.some(npc => npc.id === 'gargoyle_guardian')"
+    )
+    assert guardian_present is False
+
+    recover_relics(page, tablet_first=False)
+    translate_and_finish(page, "DEFENCE")
+    assert page.evaluate("window.gameApp.state.orbQuest.finalDecision") == "defence"
+
+
+def verify_quest_logic() -> None:
+    for module in (
+        "public/OrbQuest.js",
+        "public/QuestManager.js",
+        "public/SaveManager.js",
+        "public/game.js",
+    ):
+        syntax_check_browser_module(module)
+
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(headless=True)
+        diplomatic_page = browser.new_page()
+        diplomatic_page.on(
+            "pageerror", lambda error: print(f"Diplomatic path page error: {error}")
+        )
+        verify_diplomatic_path_and_reload(diplomatic_page)
+
+        combat_page = browser.new_page()
+        combat_page.on(
+            "pageerror", lambda error: print(f"Combat path page error: {error}")
+        )
+        verify_combat_resolution_path(combat_page)
+
         browser.close()
+
+    print("Orb quest diplomatic path, combat path, ending, and reload checks passed.")
+
 
 if __name__ == "__main__":
     verify_quest_logic()
