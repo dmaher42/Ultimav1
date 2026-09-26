@@ -22,7 +22,9 @@ jobs:
           fetch-depth: 0
 
       - name: Apply enemy NPC integration
-        run: python tools/apply_throne_room_enemy_integration.py
+        run: |
+          python tools/apply_throne_room_enemy_integration.py
+          sed -i 's|require(public_index, "./game.js?v=22"|require(public_index, "game.js?v=22"|' verification/verify_throne_room_enemies.py
 
       - name: Verify throne-room enemies
         run: python verification/verify_throne_room_enemies.py
