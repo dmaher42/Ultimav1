@@ -108,8 +108,20 @@ def verify_movement(page) -> None:
 
 
 def main() -> None:
-    syntax_check("public/renderCore.js")
-    syntax_check("public/render.js")
+    for relative_path in (
+        "public/renderCore.js",
+        "public/render.js",
+        "public/throneRoom/theme.js",
+        "public/throneRoom/pipeline.js",
+        "public/throneRoom/surfaceTiles.js",
+        "public/throneRoom/architecture.js",
+        "public/throneRoom/floorEffects.js",
+        "public/throneRoom/objectStructure.js",
+        "public/throneRoom/objectLighting.js",
+        "public/throneRoom/reflectionsActors.js",
+        "public/throneRoom/ornaments.js",
+    ):
+        syntax_check(relative_path)
 
     SCREENSHOT_PATH.parent.mkdir(parents=True, exist_ok=True)
     with sync_playwright() as playwright:
