@@ -7,6 +7,7 @@ import { objectStructureMethods } from './throneRoom/objectStructure.js';
 import { objectLightingMethods } from './throneRoom/objectLighting.js';
 import { reflectionsActorsMethods } from './throneRoom/reflectionsActors.js';
 import { ornamentsMethods } from './throneRoom/ornaments.js';
+import { characterVisualsMethods } from './throneRoom/characterVisuals.js';
 
 /**
  * Castle Britannia visual overhaul.
@@ -26,7 +27,8 @@ Object.assign(
   objectStructureMethods,
   objectLightingMethods,
   reflectionsActorsMethods,
-  ornamentsMethods
+  ornamentsMethods,
+  characterVisualsMethods
 );
 
 export default ThroneRoomRenderEngine;
