@@ -8,7 +8,9 @@
     "start": "node server.js",
     "dev": "vite --host 0.0.0.0 --port 8000",
     "verify:movement": "python verification/verify_movement_polish.py",
-    "verify:movement:browser": "python verification/verify_movement_polish.py --browser"
+    "verify:movement:browser": "python verification/verify_movement_polish.py --browser",
+    "verify:throne-enemies": "python verification/verify_throne_room_enemies.py",
+    "verify:throne-enemies:browser": "python verification/verify_throne_room_enemies.py --browser"
   },
   "dependencies": {
     "cors": "^2.8.5",
