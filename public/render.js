@@ -1,13 +1,13 @@
-import CoreRenderEngine from './renderCore.js';
-import { pipelineMethods } from './throneRoom/pipeline.js';
-import { surfaceTilesMethods } from './throneRoom/surfaceTiles.js';
-import { architectureMethods } from './throneRoom/architecture.js';
-import { floorEffectsMethods } from './throneRoom/floorEffects.js';
-import { objectStructureMethods } from './throneRoom/objectStructure.js';
-import { objectLightingMethods } from './throneRoom/objectLighting.js';
-import { reflectionsActorsMethods } from './throneRoom/reflectionsActors.js';
-import { ornamentsMethods } from './throneRoom/ornaments.js';
-import { characterVisualsMethods } from './throneRoom/characterVisuals.js';
+import CoreRenderEngine from './renderCore.js?v=2';
+import { pipelineMethods } from './throneRoom/pipeline.js?v=2';
+import { surfaceTilesMethods } from './throneRoom/surfaceTiles.js?v=2';
+import { architectureMethods } from './throneRoom/architecture.js?v=2';
+import { floorEffectsMethods } from './throneRoom/floorEffects.js?v=2';
+import { objectStructureMethods } from './throneRoom/objectStructure.js?v=2';
+import { objectLightingMethods } from './throneRoom/objectLighting.js?v=2';
+import { reflectionsActorsMethods } from './throneRoom/reflectionsActors.js?v=2';
+import { ornamentsMethods } from './throneRoom/ornaments.js?v=2';
+import { characterVisualsMethods } from './throneRoom/characterVisuals.js?v=2';
 
 /**
  * Castle Britannia visual overhaul.

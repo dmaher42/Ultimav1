@@ -224,6 +224,9 @@ export default class RenderEngine {
     this.currentDirection = DEFAULT_DIRECTION;
     this.activeDirections = new Set();
     this.isMoving = false;
+    this.movementVisualUntil = 0;
+    this.blockedNudge = null;
+    this.snapCameraOnNextFrame = true;
 
     this.lastTimestamp = 0;
     this.running = false;
@@ -234,7 +237,7 @@ export default class RenderEngine {
     this.viewportWidth = Math.round(this.canvas.width / DPR);
     this.viewportHeight = Math.round(this.canvas.height / DPR);
 
-    this.camera = createCamera({ w: this.viewportWidth, h: this.viewportHeight, lerp: 0.18 });
+    this.camera = createCamera({ w: this.viewportWidth, h: this.viewportHeight, lerp: 0.30 });
     this.flashLayer = createFlashLayer();
     this.timeOfDay = createTimeOfDay();
     this.hudOverlay = createHUD();
@@ -393,8 +396,53 @@ export default class RenderEngine {
     return this.playerSpriteSheets.walk || this.playerSprite;
   }
 
+  getPlayerRenderPosition(player = this.player, timestamp = performance.now()) {
+    if (!player) return null;
+    if (typeof player.getRenderPosition === 'function') {
+      return player.getRenderPosition(timestamp);
+    }
+    return player.position || null;
+  }
+
+  getNpcRenderPosition(npc, timestamp = performance.now()) {
+    if (typeof npc?.x !== 'number' || typeof npc?.y !== 'number') return null;
+    const motion = npc.motion;
+    if (!motion || !Number.isFinite(motion.startedAt) || !Number.isFinite(motion.durationMs)) {
+      return { x: npc.x, y: npc.y };
+    }
+
+    const raw = Math.min(1, Math.max(0, (timestamp - motion.startedAt) / Math.max(1, motion.durationMs)));
+    if (raw >= 1) {
+      npc.motion = null;
+      return { x: npc.x, y: npc.y };
+    }
+    const eased = raw * raw * (3 - 2 * raw);
+    return {
+      x: motion.fromX + (motion.toX - motion.fromX) * eased,
+      y: motion.fromY + (motion.toY - motion.fromY) * eased
+    };
+  }
+
+  getBlockedNudgeOffset(timestamp = performance.now()) {
+    const nudge = this.blockedNudge;
+    if (!nudge) return { x: 0, y: 0 };
+    const progress = Math.min(1, Math.max(0, (timestamp - nudge.startedAt) / nudge.durationMs));
+    if (progress >= 1) {
+      this.blockedNudge = null;
+      return { x: 0, y: 0 };
+    }
+    const strength = Math.sin(progress * Math.PI) * this.tileSize * 0.075;
+    const offsets = {
+      north: { x: 0, y: -strength },
+      south: { x: 0, y: strength },
+      west: { x: -strength, y: 0 },
+      east: { x: strength, y: 0 }
+    };
+    return offsets[nudge.direction] || { x: 0, y: 0 };
+  }
+
   getPlayerSpritePlacement(player = this.player) {
-    const position = player?.position;
+    const position = this.getPlayerRenderPosition(player);
     if (!position) return null;
     const layout = this.playerSpriteLayout || {};
     const width = this.tileSize * (Number.isFinite(layout.widthTiles) ? layout.widthTiles : 1);
@@ -402,8 +450,9 @@ export default class RenderEngine {
     const anchorX = Number.isFinite(layout.anchorX) ? layout.anchorX : 0.5;
     const anchorY = Number.isFinite(layout.anchorY) ? layout.anchorY : 1;
     const offsetTileY = Number.isFinite(layout.offsetTileY) ? layout.offsetTileY : 0;
-    const baseX = this.offsetX + (position.x + 0.5) * this.tileSize;
-    const baseY = this.offsetY + (position.y + 1 + offsetTileY) * this.tileSize;
+    const nudge = this.getBlockedNudgeOffset();
+    const baseX = this.offsetX + (position.x + 0.5) * this.tileSize + nudge.x;
+    const baseY = this.offsetY + (position.y + 1 + offsetTileY) * this.tileSize + nudge.y;
     return {
       width,
       height,
@@ -452,6 +501,7 @@ export default class RenderEngine {
 
     this.timeOfDay.update(deltaSeconds);
     this.flashLayer.update(deltaSeconds);
+    this.updatePlayerMovementState(performance.now());
 
     const target = this.getPlayerScreenCenter();
     this.camera.follow(target.x, target.y);
@@ -504,13 +554,15 @@ export default class RenderEngine {
 
       // Add NPCs
       this.npcs.forEach(npc => {
-         const y = (npc.y + 1) * this.tileSize;
+         const position = this.getNpcRenderPosition(npc) || npc;
+         const y = (position.y + 1) * this.tileSize;
          entities.push({ type: 'npc', y, data: npc });
       });
 
       // Add Player
       if (this.player && this.player.position) {
-         const y = (this.player.position.y + 1) * this.tileSize;
+         const position = this.getPlayerRenderPosition(this.player) || this.player.position;
+         const y = (position.y + 1) * this.tileSize;
          entities.push({ type: 'player', y, data: this.player });
       }
 
@@ -833,6 +885,10 @@ export default class RenderEngine {
 
     const target = this.getPlayerScreenCenter();
     this.camera.follow(target.x, target.y);
+    if (this.snapCameraOnNextFrame && typeof this.camera.snap === 'function') {
+      this.camera.snap(target.x, target.y);
+      this.snapCameraOnNextFrame = false;
+    }
   }
 
   drawTorchLight(ctx, torch) {
@@ -2470,7 +2526,7 @@ export default class RenderEngine {
     if (npc.spriteSheet) {
       const sheetOptions = this.getNpcSpriteSheetOptions(npc);
       const sheet = this.getSpriteSheetSync(npc.spriteSheet, sheetOptions);
-      const frameKey = npc.spriteFrame || 'player_south_1';
+      const frameKey = this.getNpcFrameKey(npc, sheet, sheetOptions);
       const placement = this.getNpcSpritePlacement(npc);
       if (!placement) return;
       const { px, py, width, height } = placement;
@@ -2498,10 +2554,14 @@ export default class RenderEngine {
         const fh = Math.floor(npc.__rawImage.naturalHeight / rows);
 
         // Approximate 'player_south_1' (Row 0, Col 1) for Guard/Lord facing South
-        let col = 1; let row = 0;
+        const frameMatch = frameKey.match(/_(\d+)$/);
+        let col = frameMatch ? Number(frameMatch[1]) : 1;
+        let row = 0;
         if (frameKey.includes('west')) row = 1;
         if (frameKey.includes('east')) row = 2;
         if (frameKey.includes('north')) row = 3;
+        col = Math.max(0, Math.min(columns - 1, col));
+        row = Math.max(0, Math.min(rows - 1, row));
 
         ctx.drawImage(npc.__rawImage, col * fw, row * fh, fw, fh, px, py, width, height);
         this.drawRoyalNpcAccent(ctx, npc, placement);
@@ -2511,15 +2571,37 @@ export default class RenderEngine {
 
     const sprite = npc?.sprite || npc?.type || 'npc';
     const color = npc?.color || '#cfa658';
-    this.drawAtlasTile(ctx, sprite, npc.x, npc.y, color);
+    const position = this.getNpcRenderPosition(npc) || npc;
+    const px = this.offsetX + position.x * this.tileSize;
+    const py = this.offsetY + position.y * this.tileSize;
+    drawTile(ctx, this.atlas, sprite, px, py, this.tileSize, this.tileSize, color);
   }
 
   getNpcSpriteSheetOptions(npc) {
     return npc?.spriteSheetOptions || npc?.spriteOptions || {};
   }
 
+  getNpcFrameKey(npc, sheet = null, options = {}) {
+    const fallback = npc?.spriteFrame || 'player_south_1';
+    if (!npc?.motion && !npc?.facing) return fallback;
+
+    const config = normaliseSpriteSheetOptions(options);
+    let direction = normaliseDirection(npc.facing || DEFAULT_DIRECTION);
+    if (!config.directions.includes(direction)) {
+      direction = config.directions.includes('south') ? 'south' : config.directions[0];
+    }
+    const moving = Boolean(npc.motion);
+    const frame = moving
+      ? Math.floor(performance.now() / 135) % Math.min(3, config.columns)
+      : Math.min(1, config.columns - 1);
+    const candidate = `${config.framePrefix}_${direction}_${frame}`;
+    if (!sheet || sheet.frames?.[candidate]) return candidate;
+    return fallback;
+  }
+
   getNpcSpritePlacement(npc) {
     if (typeof npc?.x !== 'number' || typeof npc?.y !== 'number') return null;
+    const position = this.getNpcRenderPosition(npc) || npc;
 
     const width = typeof npc.spriteTileWidth === 'number'
       ? npc.spriteTileWidth * this.tileSize
@@ -2540,16 +2622,16 @@ export default class RenderEngine {
       || typeof npc.spriteOffsetTileX === 'number'
       || typeof npc.spriteOffsetTileY === 'number';
 
-    let px = this.offsetX + npc.x * this.tileSize + offsetX;
-    let py = this.offsetY + npc.y * this.tileSize + offsetY;
-    let baseX = this.offsetX + (npc.x + 0.5) * this.tileSize + offsetX;
-    let baseY = this.offsetY + (npc.y + 1) * this.tileSize + offsetY;
+    let px = this.offsetX + position.x * this.tileSize + offsetX;
+    let py = this.offsetY + position.y * this.tileSize + offsetY;
+    let baseX = this.offsetX + (position.x + 0.5) * this.tileSize + offsetX;
+    let baseY = this.offsetY + (position.y + 1) * this.tileSize + offsetY;
 
     if (hasAnchoredPlacement) {
       const anchorX = typeof npc.spriteAnchorX === 'number' ? npc.spriteAnchorX : 0;
       const anchorY = typeof npc.spriteAnchorY === 'number' ? npc.spriteAnchorY : 0;
-      baseX = this.offsetX + (npc.x + 0.5) * this.tileSize + offsetX;
-      baseY = this.offsetY + (npc.y + 1) * this.tileSize + offsetY;
+      baseX = this.offsetX + (position.x + 0.5) * this.tileSize + offsetX;
+      baseY = this.offsetY + (position.y + 1) * this.tileSize + offsetY;
       px = baseX - anchorX * width;
       py = baseY - anchorY * height;
     }
@@ -2699,8 +2781,9 @@ export default class RenderEngine {
       }
     }
     if (!this.atlas) return;
-    const fallbackX = this.offsetX + this.player.position.x * this.tileSize;
-    const fallbackY = this.offsetY + this.player.position.y * this.tileSize;
+    const position = this.getPlayerRenderPosition(this.player) || this.player.position;
+    const fallbackX = this.offsetX + position.x * this.tileSize;
+    const fallbackY = this.offsetY + position.y * this.tileSize;
     const drawn = drawSprite(ctx, this.atlas, frameKey, fallbackX, fallbackY, this.tileSize, this.tileSize);
     if (!drawn) {
       drawSprite(ctx, this.atlas, 'player_south_1', fallbackX, fallbackY, this.tileSize, this.tileSize);
@@ -2712,13 +2795,14 @@ export default class RenderEngine {
   }
 
   getPlayerScreenCenter() {
-    if (!this.player || !this.player.position) {
+    const position = this.getPlayerRenderPosition(this.player);
+    if (!position) {
       const x = this.offsetX + this.mapPixelWidth / 2 || this.viewportWidth / 2;
       const y = this.offsetY + this.mapPixelHeight / 2 || this.viewportHeight / 2;
       return { x, y };
     }
-    const px = this.offsetX + (this.player.position.x + 0.5) * this.tileSize;
-    const py = this.offsetY + (this.player.position.y + 0.5) * this.tileSize;
+    const px = this.offsetX + (position.x + 0.5) * this.tileSize;
+    const py = this.offsetY + (position.y + 0.5) * this.tileSize;
     return { x: px, y: py };
   }
 
@@ -2735,8 +2819,10 @@ export default class RenderEngine {
   render(map, player, options = {}) {
     if (!this.assetsLoaded) return;
 
-    if (map !== this.map) {
+    const mapChanged = map !== this.map;
+    if (mapChanged) {
       this.map = map || null;
+      this.snapCameraOnNextFrame = true;
       if (!map) {
         this.stopAllMovement();
         this.gridWidth = 0;
@@ -2803,26 +2889,80 @@ export default class RenderEngine {
     if (!DIRECTION_KEYS[normalized]) return;
 
     if (active) {
-      if (!this.activeDirections.has(normalized)) {
-        this.activeDirections.add(normalized);
-      }
-      this.isMoving = true;
+      this.activeDirections.delete(normalized);
+      this.activeDirections.add(normalized);
       this.currentDirection = normalized;
     } else {
       this.activeDirections.delete(normalized);
-      if (this.activeDirections.size === 0) {
-        this.isMoving = false;
-      } else {
+      if (this.activeDirections.size > 0) {
         const directions = Array.from(this.activeDirections);
         this.currentDirection = directions[directions.length - 1];
+      } else if (this.player?.facing) {
+        this.currentDirection = normaliseDirection(this.player.facing);
       }
     }
+    this.updatePlayerMovementState(performance.now());
+  }
+
+  playBlockedStep(direction) {
+    this.currentDirection = normaliseDirection(direction);
+    this.blockedNudge = {
+      direction: this.currentDirection,
+      startedAt: performance.now(),
+      durationMs: 92
+    };
     this.syncAnimationState();
   }
 
-  stopAllMovement() {
+  beginPlayerStep(direction, durationMs = 118) {
+    const normalized = normaliseDirection(direction);
+    this.currentDirection = normalized;
+    this.movementVisualUntil = Math.max(
+      this.movementVisualUntil,
+      performance.now() + Math.max(1, durationMs)
+    );
+    if (!this.isMoving) {
+      this.isMoving = true;
+      this.syncAnimationState();
+    }
+  }
+
+  updatePlayerMovementState(timestamp = performance.now()) {
+    const playerMoving = Boolean(
+      this.player
+      && typeof this.player.isVisuallyMoving === 'function'
+      && this.player.isVisuallyMoving(timestamp)
+    );
+    const nextMoving = playerMoving || timestamp < this.movementVisualUntil;
+    if (nextMoving !== this.isMoving) {
+      this.isMoving = nextMoving;
+      if (!nextMoving && this.player?.facing) {
+        this.currentDirection = normaliseDirection(this.player.facing);
+      }
+      this.syncAnimationState();
+    }
+  }
+
+  snapCameraToPlayer() {
+    const target = this.getPlayerScreenCenter();
+    this.camera.follow(target.x, target.y);
+    if (typeof this.camera.snap === 'function') {
+      this.camera.snap(target.x, target.y);
+    }
+    this.snapCameraOnNextFrame = false;
+  }
+
+  stopAllMovement({ snapPlayer = true } = {}) {
     this.activeDirections.clear();
+    this.movementVisualUntil = 0;
+    this.blockedNudge = null;
+    if (snapPlayer && typeof this.player?.cancelMotion === 'function') {
+      this.player.cancelMotion();
+    }
     this.isMoving = false;
+    if (this.player?.facing) {
+      this.currentDirection = normaliseDirection(this.player.facing);
+    }
     this.syncAnimationState(true);
   }
 

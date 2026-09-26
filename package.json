@@ -6,7 +6,9 @@
   "type": "commonjs",
   "scripts": {
     "start": "node server.js",
-    "dev": "vite --host 0.0.0.0 --port 8000"
+    "dev": "vite --host 0.0.0.0 --port 8000",
+    "verify:movement": "python verification/verify_movement_polish.py",
+    "verify:movement:browser": "python verification/verify_movement_polish.py --browser"
   },
   "dependencies": {
     "cors": "^2.8.5",

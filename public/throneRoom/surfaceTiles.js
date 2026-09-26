@@ -1,4 +1,4 @@
-import CoreRenderEngine from '../renderCore.js';
+import CoreRenderEngine from '../renderCore.js?v=2';
 import { TileInfo } from '../GameMap.js';
 import { CASTLE_PALETTE, hash2D, isCastleFloorType, isCarpetType } from './theme.js';
 
