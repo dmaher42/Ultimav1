@@ -1,0 +1,118 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="320" viewBox="0 0 256 320" shape-rendering="crispEdges">
+  <defs>
+    <style>
+      .outline{stroke:#111726;stroke-width:3;stroke-linejoin:round;stroke-linecap:round}
+      .detail{stroke:#2a1c20;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+      .fine{stroke:#f4d779;stroke-width:1.5;stroke-linejoin:round;stroke-linecap:round}
+    </style>
+    <linearGradient id="kingCape" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#a82035"/>
+      <stop offset="0.55" stop-color="#721528"/>
+      <stop offset="1" stop-color="#3d1021"/>
+    </linearGradient>
+    <linearGradient id="kingBlue" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#315d9c"/>
+      <stop offset="0.55" stop-color="#173d76"/>
+      <stop offset="1" stop-color="#0d2449"/>
+    </linearGradient>
+    <linearGradient id="kingGold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff0a0"/>
+      <stop offset="0.45" stop-color="#d8a83f"/>
+      <stop offset="1" stop-color="#81501a"/>
+    </linearGradient>
+    <linearGradient id="kingSteel" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#edf3f7"/>
+      <stop offset="0.45" stop-color="#9eafbc"/>
+      <stop offset="1" stop-color="#455564"/>
+    </linearGradient>
+
+    <g id="king-south">
+      <ellipse cx="32" cy="73" rx="18" ry="4" fill="#090d17" opacity=".45"/>
+      <path d="M18 31 L13 60 L20 72 H44 L51 60 L46 31 Z" fill="url(#kingCape)" class="outline"/>
+      <path d="M20 29 L16 48 L21 57 L25 43 H39 L43 57 L48 48 L44 29 Z" fill="#74233c" class="detail"/>
+      <path d="M23 30 L20 56 L25 67 H39 L44 56 L41 30 Z" fill="url(#kingBlue)" class="outline"/>
+      <path d="M28 31 H36 V65 H28 Z" fill="url(#kingGold)"/>
+      <path d="M24 46 H40 V50 H24 Z" fill="#d7ad50" class="detail"/>
+      <path d="M19 29 Q32 21 45 29 L42 36 Q32 31 22 36 Z" fill="#f2ecdf" class="outline"/>
+      <path d="M23 26 Q32 18 41 26 L39 31 H25 Z" fill="#7f2336" class="detail"/>
+      <rect x="25" y="16" width="14" height="14" rx="3" fill="#d5a07a" class="outline"/>
+      <path d="M24 18 Q32 12 40 18 L38 22 H26 Z" fill="#4b271f"/>
+      <rect x="27" y="22" width="3" height="2" fill="#241617"/>
+      <rect x="34" y="22" width="3" height="2" fill="#241617"/>
+      <rect x="30" y="26" width="4" height="2" fill="#7c3f32"/>
+      <path d="M23 16 L26 8 L30 13 L33 6 L36 13 L40 8 L42 16 Z" fill="url(#kingGold)" class="outline"/>
+      <rect x="25" y="14" width="15" height="4" fill="#d8a83f" class="detail"/>
+      <circle cx="32.5" cy="13" r="2" fill="#e64d55"/>
+      <path d="M13 34 L7 49 L11 52 L20 39 Z" fill="#203f73" class="outline"/>
+      <path d="M51 34 L57 49 L53 52 L44 39 Z" fill="#203f73" class="outline"/>
+      <rect x="8" y="49" width="7" height="6" rx="2" fill="#d5a07a" class="detail"/>
+      <rect x="49" y="49" width="7" height="6" rx="2" fill="#d5a07a" class="detail"/>
+      <path d="M54 43 L58 61" stroke="#e7ca73" stroke-width="3"/>
+      <path d="M56 40 L60 45 L56 47 L52 43 Z" fill="#e64d55" class="detail"/>
+      <rect x="23" y="66" width="8" height="7" rx="2" fill="#3b2631" class="outline"/>
+      <rect x="33" y="66" width="8" height="7" rx="2" fill="#3b2631" class="outline"/>
+      <path d="M26 34 L32 39 L38 34" fill="none" class="fine"/>
+      <circle cx="32" cy="48" r="2.5" fill="#e34a50" stroke="#f8da78" stroke-width="1"/>
+    </g>
+
+    <g id="king-west">
+      <ellipse cx="31" cy="73" rx="17" ry="4" fill="#090d17" opacity=".45"/>
+      <path d="M21 31 L16 62 L24 72 H44 L47 56 L42 30 Z" fill="url(#kingCape)" class="outline"/>
+      <path d="M24 30 L21 59 L27 68 H38 L40 31 Z" fill="url(#kingBlue)" class="outline"/>
+      <path d="M29 31 H34 V66 H29 Z" fill="url(#kingGold)"/>
+      <path d="M20 29 Q29 22 40 27 L38 35 Q29 31 22 36 Z" fill="#f2ecdf" class="outline"/>
+      <rect x="24" y="16" width="13" height="14" rx="3" fill="#d5a07a" class="outline"/>
+      <path d="M23 18 Q29 12 38 18 L36 22 H25 Z" fill="#4b271f"/>
+      <rect x="27" y="22" width="3" height="2" fill="#241617"/>
+      <path d="M22 16 L25 8 L29 13 L32 6 L35 13 L39 9 L40 16 Z" fill="url(#kingGold)" class="outline"/>
+      <rect x="24" y="14" width="15" height="4" fill="#d8a83f" class="detail"/>
+      <path d="M22 34 L10 49 L14 54 L27 40 Z" fill="#203f73" class="outline"/>
+      <rect x="10" y="50" width="7" height="6" rx="2" fill="#d5a07a" class="detail"/>
+      <path d="M14 47 L8 64" stroke="#e7ca73" stroke-width="3"/>
+      <path d="M12 43 L16 48 L12 50 L8 46 Z" fill="#e64d55" class="detail"/>
+      <rect x="23" y="66" width="8" height="7" rx="2" fill="#3b2631" class="outline"/>
+      <rect x="34" y="66" width="8" height="7" rx="2" fill="#3b2631" class="outline"/>
+      <path d="M26 35 L31 39 L35 35" fill="none" class="fine"/>
+    </g>
+
+    <g id="king-east" transform="translate(64 0) scale(-1 1)">
+      <use href="#king-west"/>
+    </g>
+
+    <g id="king-north">
+      <ellipse cx="32" cy="73" rx="18" ry="4" fill="#090d17" opacity=".45"/>
+      <path d="M18 29 L13 61 L21 72 H43 L51 61 L46 29 Z" fill="url(#kingCape)" class="outline"/>
+      <path d="M22 28 Q32 20 42 28 L45 60 L40 68 H24 L19 60 Z" fill="#7e1930" class="detail"/>
+      <path d="M27 31 H37 V66 H27 Z" fill="#5e1729"/>
+      <path d="M19 28 Q32 20 45 28 L42 36 Q32 31 22 36 Z" fill="#f2ecdf" class="outline"/>
+      <rect x="25" y="15" width="14" height="14" rx="3" fill="#4b271f" class="outline"/>
+      <path d="M23 16 L26 8 L30 13 L33 6 L36 13 L40 8 L42 16 Z" fill="url(#kingGold)" class="outline"/>
+      <rect x="25" y="14" width="15" height="4" fill="#d8a83f" class="detail"/>
+      <path d="M14 34 L9 51 L14 55 L22 39 Z" fill="#203f73" class="outline"/>
+      <path d="M50 34 L55 51 L50 55 L42 39 Z" fill="#203f73" class="outline"/>
+      <rect x="23" y="66" width="8" height="7" rx="2" fill="#3b2631" class="outline"/>
+      <rect x="33" y="66" width="8" height="7" rx="2" fill="#3b2631" class="outline"/>
+      <path d="M23 36 Q32 42 41 36" fill="none" class="fine" opacity=".75"/>
+    </g>
+  </defs>
+
+  <use href="#king-south" transform="translate(0 1)"/>
+  <use href="#king-south" transform="translate(64 0)"/>
+  <use href="#king-south" transform="translate(128 1)"/>
+  <use href="#king-south" transform="translate(192 0)"/>
+
+  <use href="#king-west" transform="translate(0 81)"/>
+  <use href="#king-west" transform="translate(64 80)"/>
+  <use href="#king-west" transform="translate(128 81)"/>
+  <use href="#king-west" transform="translate(192 80)"/>
+
+  <use href="#king-east" transform="translate(0 161)"/>
+  <use href="#king-east" transform="translate(64 160)"/>
+  <use href="#king-east" transform="translate(128 161)"/>
+  <use href="#king-east" transform="translate(192 160)"/>
+
+  <use href="#king-north" transform="translate(0 241)"/>
+  <use href="#king-north" transform="translate(64 240)"/>
+  <use href="#king-north" transform="translate(128 241)"/>
+  <use href="#king-north" transform="translate(192 240)"/>
+</svg>
