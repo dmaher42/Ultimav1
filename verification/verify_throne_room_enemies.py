@@ -27,25 +27,25 @@ def require(source: str, fragment: str, label: str) -> None:
 def verify_enemy_data_module() -> None:
     source = (REPO_ROOT / "public/ThroneRoomEnemies.js").read_text(encoding="utf-8")
     encoded = base64.b64encode(source.encode("utf-8")).decode("ascii")
-    script = f"""
-      const mod = await import('data:text/javascript;base64,{encoded}');
-      const castle = {{ npcs: [{{ id: 'lord_british', name: 'Lord British' }}] }};
+    script = """
+      const mod = await import('data:text/javascript;base64,__MODULE__');
+      const castle = { npcs: [{ id: 'lord_british', name: 'Lord British' }] };
 
-      const first = mod.syncThroneAmbushNpcs(castle, {{
+      const first = mod.syncThroneAmbushNpcs(castle, {
         castleCrisisStage: 0,
         throneIntroComplete: false
-      }});
-      if (first.length !== 3) throw new Error(`Expected 3 hostiles, received ${{first.length}}`);
+      });
+      if (first.length !== 3) throw new Error(`Expected 3 hostiles, received ${first.length}`);
       if (castle.npcs.length !== 4) throw new Error('Permanent NPC was not preserved');
       if (new Set(first.map((npc) => npc.id)).size !== 3) throw new Error('Hostile IDs are not unique');
       if (!first.every((npc) => npc.hostile && npc.enemyGroup === mod.THRONE_AMBUSH_GROUP)) {
         throw new Error('Hostile metadata is incomplete');
       }
 
-      const second = mod.syncThroneAmbushNpcs(castle, {{
+      const second = mod.syncThroneAmbushNpcs(castle, {
         castleCrisisStage: 1,
         throneIntroComplete: false
-      }});
+      });
       if (second.length !== 3 || castle.npcs.length !== 4) {
         throw new Error('Repeated sync duplicated or removed NPCs');
       }
@@ -58,21 +58,21 @@ def verify_enemy_data_module() -> None:
         throw new Error('A distant player incorrectly triggered the ambush');
       }
 
-      const cleared = mod.syncThroneAmbushNpcs(castle, {{
+      const cleared = mod.syncThroneAmbushNpcs(castle, {
         castleCrisisStage: 2,
         throneIntroComplete: true
-      }});
+      });
       if (cleared.length !== 0) throw new Error('Cleared encounter returned hostile NPCs');
       if (castle.npcs.length !== 1 || castle.npcs[0].id !== 'lord_british') {
         throw new Error('Hostiles were not removed cleanly');
       }
 
-      console.log(JSON.stringify({{
+      console.log(JSON.stringify({
         firstCount: first.length,
         aggressor: aggressor.id,
         remainingAfterClear: castle.npcs.length
-      }}));
-    """
+      }));
+    """.replace("__MODULE__", encoded)
     subprocess.run(
         ["node", "--input-type=module", "-e", script],
         text=True,
@@ -106,7 +106,7 @@ def verify_runtime_integration() -> None:
     if package.get("scripts", {}).get("verify:throne-enemies") != "python verification/verify_throne_room_enemies.py":
         raise AssertionError("Missing verify:throne-enemies package script")
     require(index, "./public/game.js?v=22", "root cache bump")
-    require(public_index, "./game.js?v=22", "public cache bump")
+    require(public_index, "game.js?v=22", "public cache bump")
 
 
 def create_fresh_hero(page, name: str) -> None:
