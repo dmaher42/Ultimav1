@@ -95,17 +95,20 @@ buildCastleEntityList() {
   });
   this.npcs.forEach((npc) => {
     const placement = this.getNpcSpritePlacement(npc);
-    const y = placement
+    const baseDepth = placement
       ? placement.baseY - this.offsetY
       : (npc.y + 1) * this.tileSize;
-    entities.push({ type: 'npc', y, data: npc });
+    // Lord British occupies the throne's foreground plane. The depth bias keeps
+    // the taller sovereign sprite visible rather than buried behind the throne.
+    const depthBias = npc.id === 'lord_british' ? this.tileSize * 1.05 : 0;
+    entities.push({ type: 'npc', y: baseDepth + depthBias, data: npc });
   });
   if (this.player?.position) {
-    entities.push({
-      type: 'player',
-      y: (this.player.position.y + 1) * this.tileSize,
-      data: this.player
-    });
+    const placement = this.getPlayerSpritePlacement(this.player);
+    const y = placement
+      ? placement.baseY - this.offsetY
+      : (this.player.position.y + 1) * this.tileSize;
+    entities.push({ type: 'player', y, data: this.player });
   }
   return entities;
 }
