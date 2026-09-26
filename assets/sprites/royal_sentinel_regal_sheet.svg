@@ -1,0 +1,120 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="320" viewBox="0 0 256 320" shape-rendering="crispEdges">
+  <defs>
+    <style>
+      .outline{stroke:#0d1420;stroke-width:3;stroke-linejoin:round;stroke-linecap:round}
+      .detail{stroke:#263544;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+      .goldline{stroke:#f0cb67;stroke-width:1.5;stroke-linejoin:round;stroke-linecap:round}
+    </style>
+    <linearGradient id="sentinelSteel" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f3f6f8"/>
+      <stop offset="0.38" stop-color="#aebbc6"/>
+      <stop offset="0.72" stop-color="#667786"/>
+      <stop offset="1" stop-color="#34434f"/>
+    </linearGradient>
+    <linearGradient id="sentinelDarkSteel" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#a7b2bc"/>
+      <stop offset="1" stop-color="#35424d"/>
+    </linearGradient>
+    <linearGradient id="sentinelBlue" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3565a6"/>
+      <stop offset="0.55" stop-color="#1c467e"/>
+      <stop offset="1" stop-color="#102b52"/>
+    </linearGradient>
+    <linearGradient id="sentinelGold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffe391"/>
+      <stop offset="0.55" stop-color="#c99b38"/>
+      <stop offset="1" stop-color="#735018"/>
+    </linearGradient>
+
+    <g id="sentinel-south">
+      <ellipse cx="32" cy="74" rx="19" ry="4" fill="#080c13" opacity=".55"/>
+      <rect x="20" y="48" width="10" height="21" rx="3" fill="url(#sentinelDarkSteel)" class="outline"/>
+      <rect x="34" y="48" width="10" height="21" rx="3" fill="url(#sentinelDarkSteel)" class="outline"/>
+      <path d="M18 30 L22 24 H42 L46 30 L44 53 H20 Z" fill="url(#sentinelSteel)" class="outline"/>
+      <path d="M21 32 H43 L40 61 H24 Z" fill="url(#sentinelBlue)" class="outline"/>
+      <path d="M29 32 H35 V59 H29 Z" fill="url(#sentinelGold)"/>
+      <path d="M22 40 H42" class="goldline"/>
+      <path d="M25 48 L32 43 L39 48 L32 53 Z" fill="#c52a35" stroke="#f5d374" stroke-width="1.5"/>
+      <path d="M17 31 L10 45 L14 58 L22 49 L24 32 Z" fill="url(#sentinelSteel)" class="outline"/>
+      <path d="M47 31 L54 45 L50 58 L42 49 L40 32 Z" fill="url(#sentinelSteel)" class="outline"/>
+      <rect x="22" y="16" width="20" height="16" rx="5" fill="url(#sentinelSteel)" class="outline"/>
+      <path d="M21 23 H43 V29 H21 Z" fill="#24313d" class="detail"/>
+      <rect x="25" y="24" width="4" height="2" fill="#f0d779"/>
+      <rect x="35" y="24" width="4" height="2" fill="#f0d779"/>
+      <path d="M24 18 Q32 12 40 18" fill="none" stroke="#ffffff" stroke-opacity=".55" stroke-width="2"/>
+      <path d="M30 15 L32 5 L35 15 Z" fill="#b51f35" class="outline"/>
+      <path d="M29 8 Q32 3 36 8 L34 16 H30 Z" fill="#d63845"/>
+      <path d="M9 41 L5 64" stroke="#6f4b20" stroke-width="4" class="outline"/>
+      <path d="M5 29 L9 42 L13 29 L9 20 Z" fill="url(#sentinelGold)" class="outline"/>
+      <path d="M49 37 Q59 40 57 53 Q55 64 45 60 L44 42 Z" fill="url(#sentinelBlue)" class="outline"/>
+      <path d="M48 42 Q53 45 52 55" fill="none" class="goldline"/>
+      <rect x="19" y="68" width="12" height="6" rx="2" fill="#252f39" class="outline"/>
+      <rect x="33" y="68" width="12" height="6" rx="2" fill="#252f39" class="outline"/>
+    </g>
+
+    <g id="sentinel-west">
+      <ellipse cx="31" cy="74" rx="18" ry="4" fill="#080c13" opacity=".55"/>
+      <rect x="22" y="48" width="9" height="21" rx="3" fill="url(#sentinelDarkSteel)" class="outline"/>
+      <rect x="34" y="48" width="9" height="21" rx="3" fill="url(#sentinelDarkSteel)" class="outline"/>
+      <path d="M19 30 L23 24 H40 L44 31 L41 53 H20 Z" fill="url(#sentinelSteel)" class="outline"/>
+      <path d="M22 32 H39 L38 61 H25 Z" fill="url(#sentinelBlue)" class="outline"/>
+      <path d="M27 32 H33 V59 H27 Z" fill="url(#sentinelGold)"/>
+      <path d="M17 31 L8 45 L13 57 L24 48 L24 32 Z" fill="url(#sentinelSteel)" class="outline"/>
+      <rect x="22" y="16" width="18" height="16" rx="5" fill="url(#sentinelSteel)" class="outline"/>
+      <path d="M21 23 H41 V29 H21 Z" fill="#24313d" class="detail"/>
+      <rect x="25" y="24" width="4" height="2" fill="#f0d779"/>
+      <path d="M29 15 L31 5 L34 15 Z" fill="#b51f35" class="outline"/>
+      <path d="M28 8 Q31 3 35 8 L33 16 H29 Z" fill="#d63845"/>
+      <path d="M10 42 L5 65" stroke="#6f4b20" stroke-width="4" class="outline"/>
+      <path d="M5 29 L9 42 L13 29 L9 20 Z" fill="url(#sentinelGold)" class="outline"/>
+      <path d="M36 37 Q49 40 48 54 Q47 64 38 60 L35 42 Z" fill="url(#sentinelBlue)" class="outline"/>
+      <path d="M39 42 Q44 47 43 56" fill="none" class="goldline"/>
+      <rect x="20" y="68" width="12" height="6" rx="2" fill="#252f39" class="outline"/>
+      <rect x="33" y="68" width="12" height="6" rx="2" fill="#252f39" class="outline"/>
+    </g>
+
+    <g id="sentinel-east" transform="translate(64 0) scale(-1 1)">
+      <use href="#sentinel-west"/>
+    </g>
+
+    <g id="sentinel-north">
+      <ellipse cx="32" cy="74" rx="19" ry="4" fill="#080c13" opacity=".55"/>
+      <rect x="20" y="48" width="10" height="21" rx="3" fill="url(#sentinelDarkSteel)" class="outline"/>
+      <rect x="34" y="48" width="10" height="21" rx="3" fill="url(#sentinelDarkSteel)" class="outline"/>
+      <path d="M18 30 L22 24 H42 L46 30 L44 53 H20 Z" fill="url(#sentinelSteel)" class="outline"/>
+      <path d="M21 32 H43 L40 61 H24 Z" fill="#173765" class="outline"/>
+      <path d="M29 32 H35 V59 H29 Z" fill="#b5852d"/>
+      <path d="M17 31 L10 45 L14 58 L22 49 L24 32 Z" fill="url(#sentinelSteel)" class="outline"/>
+      <path d="M47 31 L54 45 L50 58 L42 49 L40 32 Z" fill="url(#sentinelSteel)" class="outline"/>
+      <rect x="22" y="16" width="20" height="16" rx="5" fill="url(#sentinelSteel)" class="outline"/>
+      <path d="M22 20 Q32 13 42 20" fill="none" stroke="#ffffff" stroke-opacity=".45" stroke-width="2"/>
+      <path d="M30 15 L32 5 L35 15 Z" fill="#b51f35" class="outline"/>
+      <path d="M29 8 Q32 3 36 8 L34 16 H30 Z" fill="#d63845"/>
+      <path d="M9 41 L5 64" stroke="#6f4b20" stroke-width="4" class="outline"/>
+      <path d="M5 29 L9 42 L13 29 L9 20 Z" fill="url(#sentinelGold)" class="outline"/>
+      <path d="M49 37 Q59 40 57 53 Q55 64 45 60 L44 42 Z" fill="#18345d" class="outline"/>
+      <rect x="19" y="68" width="12" height="6" rx="2" fill="#252f39" class="outline"/>
+      <rect x="33" y="68" width="12" height="6" rx="2" fill="#252f39" class="outline"/>
+    </g>
+  </defs>
+
+  <use href="#sentinel-south" transform="translate(0 1)"/>
+  <use href="#sentinel-south" transform="translate(64 0)"/>
+  <use href="#sentinel-south" transform="translate(128 1)"/>
+  <use href="#sentinel-south" transform="translate(192 0)"/>
+
+  <use href="#sentinel-west" transform="translate(0 81)"/>
+  <use href="#sentinel-west" transform="translate(64 80)"/>
+  <use href="#sentinel-west" transform="translate(128 81)"/>
+  <use href="#sentinel-west" transform="translate(192 80)"/>
+
+  <use href="#sentinel-east" transform="translate(0 161)"/>
+  <use href="#sentinel-east" transform="translate(64 160)"/>
+  <use href="#sentinel-east" transform="translate(128 161)"/>
+  <use href="#sentinel-east" transform="translate(192 160)"/>
+
+  <use href="#sentinel-north" transform="translate(0 241)"/>
+  <use href="#sentinel-north" transform="translate(64 240)"/>
+  <use href="#sentinel-north" transform="translate(128 241)"/>
+  <use href="#sentinel-north" transform="translate(192 240)"/>
+</svg>
