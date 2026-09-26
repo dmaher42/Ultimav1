@@ -2,7 +2,7 @@
 import CharacterCreator from './CharacterCreator.js';
 import Character from './Character.js?v=2';
 import { createWorld, TileInfo } from './GameMap.js?v=16';
-import Renderer from './render.js?v=18';
+import Renderer from './render.js?v=19';
 import Player from './Player.js?v=2';
 import MovementController from './MovementController.js?v=1';
 import CombatEngine from './CombatEngine.js';
@@ -23,6 +23,13 @@ import {
   migrateLegacyOrbQuest,
   getOrbEnding
 } from './OrbQuest.js?v=1';
+import {
+  THRONE_AMBUSH_GROUP,
+  findThroneAmbushAggressor,
+  getThroneAmbushStatus,
+  isThroneAmbushNpc,
+  syncThroneAmbushNpcs
+} from './ThroneRoomEnemies.js?v=1';
 import { initCanvas, resize } from './renderer/canvas.js';
 import { loadAtlas } from './renderer/atlas.js';
 import { createEmitter } from './renderer/particles.js';
@@ -261,6 +268,59 @@ function directionFromDelta(dx, dy) {
   return dy > 0 ? 'south' : 'north';
 }
 
+function getCastleCrisisStage() {
+  return state.character?.getQuestStage?.('castle_crisis') || 0;
+}
+
+function isThroneRoomAmbushPending() {
+  return Boolean(
+    state.character
+    && !state.throneIntroComplete
+    && getCastleCrisisStage() < 2
+  );
+}
+
+function syncThroneRoomEnemies() {
+  const castle = state.world.maps.castle;
+  if (!castle) return [];
+  return syncThroneAmbushNpcs(castle, {
+    castleCrisisStage: getCastleCrisisStage(),
+    throneIntroComplete: state.throneIntroComplete
+  });
+}
+
+function beginThroneRoomAmbush(aggressor = null, { reason = 'proximity' } = {}) {
+  if (
+    !state.character
+    || state.map?.id !== 'castle'
+    || state.inCombat
+    || !isThroneRoomAmbushPending()
+  ) {
+    return false;
+  }
+
+  resetMovementInput();
+  if (getCastleCrisisStage() === 0) {
+    setQuestStageAndRefresh('castle_crisis', 1);
+  }
+
+  const enemyName = aggressor?.name || 'Gargoyle raiders';
+  const battleCry = aggressor?.hostileLine || 'The Orb will leave this hall with us.';
+  log(`${enemyName}: “${battleCry}”`);
+  if (reason === 'collision') {
+    log('The raider blocks your path and lunges.');
+  } else if (reason === 'talk') {
+    log('Your challenge draws the whole raiding party into battle.');
+  } else {
+    log('Three gargoyle raiders close around the royal dais.');
+  }
+
+  renderer.playHostileAlert?.(aggressor);
+  autoSave('throne-ambush-start');
+  void startSpecialEncounter(THRONE_AMBUSH_GROUP);
+  return true;
+}
+
 // --- GAME LOOP FOR AI ---
 setInterval(() => {
   if (!state.map || state.inCombat || isPanelOpen()) return;
@@ -355,7 +415,7 @@ function getObjectiveState() {
     const enemyName = combatEngine.enemy?.name || 'your foe';
     const combatSnapshot = typeof combatEngine.getSnapshot === 'function' ? combatEngine.getSnapshot() : null;
     const combatAdvice = typeof combatEngine.getCurrentAdvice === 'function' ? combatEngine.getCurrentAdvice() : null;
-    const isThroneAmbush = combatSnapshot?.onboarding || combatEngine.category === 'throne_ambush';
+    const isThroneAmbush = combatSnapshot?.onboarding || combatEngine.category === THRONE_AMBUSH_GROUP;
     const isGuardianBattle = combatEngine.category === 'dungeon_boss';
     return {
       hidden: false,
@@ -371,10 +431,16 @@ function getObjectiveState() {
   }
 
   if (!state.throneIntroComplete) {
+    const raid = getThroneAmbushStatus(state.world.maps.castle);
+    const raiderLabel = raid.count === 1 ? 'raider blocks' : 'raiders block';
     return {
       hidden: false,
-      text: 'Clear the throne room ambush, then speak to Lord British.',
-      tip: 'Read the Enemy Intent card. Use the highlighted counter, or press 4 Defend to create an opening.'
+      text: raid.count
+        ? `${raid.count} gargoyle ${raiderLabel} the royal dais. Protect Lord British.`
+        : 'Clear the throne room ambush, then speak to Lord British.',
+      tip: raid.count
+        ? 'Move toward a raider or press T while facing one to engage. Combat still uses the Enemy Intent tutorial.'
+        : 'Read the Enemy Intent card. Use the highlighted counter, or press 4 Defend to create an opening.'
     };
   }
 
@@ -850,6 +916,7 @@ function changeMap(mapId, spawnTag, x, y) {
   const map = state.world.maps[mapId];
   if (!map || !state.player) return;
   resetMovementInput();
+  if (mapId === 'castle') syncThroneRoomEnemies();
   state.map = map;
   state.discoveredAreas.add(mapId);
   const shouldFaceNorth = mapId === 'castle'
@@ -896,6 +963,18 @@ function attemptMove(dx, dy, { direction = directionFromDelta(dx, dy), durationM
 
   const npc = getNPCAt(targetX, targetY);
   if (npc) {
+    if (isThroneAmbushNpc(npc) && isThroneRoomAmbushPending()) {
+      renderer.playBlockedStep?.(direction);
+      const encounterStarted = beginThroneRoomAmbush(npc, { reason: 'collision' });
+      renderGame();
+      return {
+        moved: false,
+        blocked: true,
+        reason: 'hostile',
+        encounterStarted
+      };
+    }
+
     const now = Date.now();
     if (!state.lastBlockedLog || now - state.lastBlockedLog > 900) {
       log(`Blocked by: ${npc.name}. Press T to talk.`);
@@ -973,6 +1052,10 @@ function handleTalk() {
   const targetX = state.player.position.x + offset.dx;
   const targetY = state.player.position.y + offset.dy;
   const npc = getNPCAt(targetX, targetY);
+  if (npc && isThroneAmbushNpc(npc) && isThroneRoomAmbushPending()) {
+    beginThroneRoomAmbush(npc, { reason: 'talk' });
+    return;
+  }
   if (npc) {
     showDialogue(npc);
   } else {
@@ -1090,6 +1173,10 @@ function getDialogueOpening(npc) {
 
 function showDialogue(npc) {
   if (!npc || !state.character) return;
+  if (isThroneAmbushNpc(npc) && isThroneRoomAmbushPending()) {
+    beginThroneRoomAmbush(npc, { reason: 'talk' });
+    return;
+  }
   resetMovementInput();
   state.currentConversationPartner = npc;
   dialogueEl.classList.remove('hidden');
@@ -1322,16 +1409,12 @@ function completeMariahQuest() {
 function handleTileEvents() {
   const { x, y } = state.player.position;
 
-  if (
-    state.map.id === 'castle'
-    && state.character.getQuestStage('castle_crisis') === 0
-    && x === 14
-    && y === 11
-  ) {
-    setQuestStageAndRefresh('castle_crisis', 1);
-    log('A gargoyle bursts into the throne room!');
-    void startSpecialEncounter('throne_ambush');
-    return;
+  if (state.map.id === 'castle' && isThroneRoomAmbushPending()) {
+    const aggressor = findThroneAmbushAggressor(state.map, x, y);
+    if (aggressor) {
+      beginThroneRoomAmbush(aggressor, { reason: 'proximity' });
+      return;
+    }
   }
 
   const transition = state.map.getTransition(x, y);
@@ -1400,7 +1483,7 @@ async function startEncounter(category = null) {
 }
 
 async function startSpecialEncounter(category) {
-  if (category === 'throne_ambush') {
+  if (category === THRONE_AMBUSH_GROUP) {
     log('Combat lesson: read the Enemy Intent, use the highlighted counter, or press 4 to defend and create an opening.');
     updateObjectivePanel();
   }
@@ -1433,10 +1516,16 @@ async function resolveCombat(result, enemy, category = null) {
       autoSave('level-up');
     }
 
-    if (enemy.id === 'gargoyle' && state.map?.id === 'castle') {
+    if (
+      category === THRONE_AMBUSH_GROUP
+      || (enemy.id === 'gargoyle' && state.map?.id === 'castle')
+    ) {
       state.throneIntroComplete = true;
       setQuestStageAndRefresh('castle_crisis', 2);
-      log('The throne room is clear. You should speak with Lord British.');
+      syncThroneRoomEnemies();
+      renderer.playHostileDefeat?.();
+      log('The gargoyle raiding party breaks. The throne room is clear.');
+      log('Speak with Lord British when you are ready.');
       renderGame();
       autoSave('throne-ambush');
     }
@@ -1529,6 +1618,7 @@ function loadGame(manual = false) {
   state.lastSaveTimestamp = data.timestamp || null;
   state.discoveredAreas.add(currentMap.id);
 
+  syncThroneRoomEnemies();
   applyOrbQuestWorldState();
   resetMovementInput();
   renderInventory();
@@ -1667,6 +1757,8 @@ window.gameApp = {
   attemptMove,
   resetMovementInput,
   getObjectiveState,
+  syncThroneRoomEnemies,
+  beginThroneRoomAmbush,
   applyOrbQuestWorldState,
   showVerticalSliceEnding,
   syncOrbQuestProgress
@@ -1775,6 +1867,13 @@ window.render_game_to_text = () => {
       ending: state.orbQuest?.complete ? getOrbEnding(state) : null
     } : null,
     verticalSliceComplete: Boolean(state.orbQuest?.complete),
+    hostileNpcs: state.map?.npcs?.filter((npc) => npc.hostile).map((npc) => ({
+      id: npc.id,
+      name: npc.name,
+      x: npc.x,
+      y: npc.y,
+      enemyGroup: npc.enemyGroup
+    })) || [],
     inventory: state.character?.inventory?.map((item) => ({
       id: item.id,
       name: item.name,
