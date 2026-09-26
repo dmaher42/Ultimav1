@@ -28,7 +28,6 @@ jobs:
           else
             echo "tools/apply_throne_room_enemy_integration.py is absent; assuming integration is already applied."
           fi
-          sed -i 's|require(public_index, "./game.js?v=22"|require(public_index, "game.js?v=22"|' verification/verify_throne_room_enemies.py
 
       - name: Verify throne-room enemies
         run: python verification/verify_throne_room_enemies.py
