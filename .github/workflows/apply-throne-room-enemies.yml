@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   apply:
-    if: github.actor != 'github-actions[bot]' && github.event.head_commit.author.name != 'github-actions[bot]' && github.event.head_commit.committer.name != 'github-actions[bot]'
+    if: github.actor != 'github-actions[bot]' && !startsWith(github.event.head_commit.message, 'Add visible enemy NPCs to the throne room')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout triggering revision
