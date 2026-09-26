@@ -19,15 +19,23 @@ jobs:
           ref: ${{ github.sha }}
           fetch-depth: 0
 
-      - name: Apply enemy NPC integration
+      - name: Detect integration script
+        id: integration_script
+        shell: bash
         run: |
           if [ -f tools/apply_throne_room_enemy_integration.py ]; then
-            python tools/apply_throne_room_enemy_integration.py
+            echo "present=true" >> "$GITHUB_OUTPUT"
           else
-            echo "tools/apply_throne_room_enemy_integration.py is absent; assuming integration is already applied."
+            echo "present=false" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Apply enemy NPC integration
+        if: steps.integration_script.outputs.present == 'true'
+        run: |
+          python tools/apply_throne_room_enemy_integration.py
+
       - name: Verify throne-room enemies
+        if: steps.integration_script.outputs.present == 'true'
         run: python verification/verify_throne_room_enemies.py
 
       - name: Commit verified enemy NPC integration
