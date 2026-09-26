@@ -50,7 +50,7 @@ export default class CharacterCreator {
         <button type="submit">Begin Adventure</button>
       </div>
       <div style="margin-top: 10px; font-size: 11px; color: #b8c4f2; line-height: 1.5;">
-        WASD move. T talks. G picks up. I opens inventory. O opens the Orb. X opens the Codex.
+        Hold WASD or Arrow keys to move. T talks. G picks up. I opens inventory. O opens the Orb. X opens the Codex.
       </div>`;
     this.root.appendChild(this.form);
     this.statsContainer = this.form.querySelector('.creator-stats');

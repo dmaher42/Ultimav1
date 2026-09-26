@@ -70,6 +70,14 @@ export function createCamera({ x = 0, y = 0, w = 800, h = 450, lerp = 0.15 } = {
     clampTarget();
   }
 
+  function snap(tx, ty) {
+    follow(tx, ty);
+    position.x = target.x;
+    position.y = target.y;
+    shakeOffset.x = 0;
+    shakeOffset.y = 0;
+  }
+
   function setViewport(width, height) {
     viewport.w = Math.max(1, width || viewport.w);
     viewport.h = Math.max(1, height || viewport.h);
@@ -141,6 +149,7 @@ export function createCamera({ x = 0, y = 0, w = 800, h = 450, lerp = 0.15 } = {
 
   return {
     follow,
+    snap,
     shake,
     update,
     apply,

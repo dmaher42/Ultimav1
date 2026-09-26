@@ -1,4 +1,4 @@
-import CoreRenderEngine from '../renderCore.js';
+import CoreRenderEngine from '../renderCore.js?v=2';
 import { CASTLE_PALETTE } from './theme.js';
 
 export const objectLightingMethods = {

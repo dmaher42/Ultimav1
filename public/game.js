@@ -2,8 +2,9 @@
 import CharacterCreator from './CharacterCreator.js';
 import Character from './Character.js?v=2';
 import { createWorld, TileInfo } from './GameMap.js?v=16';
-import Renderer from './render.js?v=17';
-import Player from './Player.js';
+import Renderer from './render.js?v=18';
+import Player from './Player.js?v=2';
+import MovementController from './MovementController.js?v=1';
 import CombatEngine from './CombatEngine.js';
 import { createEnemy } from './Enemy.js';
 import ItemGenerator from './ItemGenerator.js';
@@ -225,7 +226,40 @@ const DIRECTION_OFFSETS = {
   east: { dx: 1, dy: 0 }
 };
 
-const activeMovementDirections = new Set();
+const NPC_MOVE_DURATION_MS = 260;
+
+const movementController = new MovementController({
+  keyToDirection: KEY_TO_DIRECTION,
+  canMove: () => canAcceptMovementInput(),
+  attemptStep: (direction, { durationMs }) => performMovementStep(direction, durationMs),
+  onIntentChange: (direction, active) => renderer.setPlayerMovement(direction, active),
+  onIdle: () => renderer.updatePlayerMovementState?.()
+});
+
+function canAcceptMovementInput() {
+  return Boolean(
+    state.player
+    && state.map
+    && !state.inCombat
+    && !isPanelOpen()
+  );
+}
+
+function resetMovementInput({ snapPlayer = true } = {}) {
+  movementController.reset();
+  renderer.stopAllMovement({ snapPlayer });
+}
+
+function performMovementStep(direction, durationMs) {
+  const offset = DIRECTION_OFFSETS[direction];
+  if (!offset) return { moved: false };
+  return attemptMove(offset.dx, offset.dy, { direction, durationMs });
+}
+
+function directionFromDelta(dx, dy) {
+  if (Math.abs(dx) > Math.abs(dy)) return dx > 0 ? 'east' : 'west';
+  return dy > 0 ? 'south' : 'north';
+}
 
 // --- GAME LOOP FOR AI ---
 setInterval(() => {
@@ -249,6 +283,17 @@ function attemptNPCMove(npc, dx, dy) {
   if (!state.map.isWalkable(targetX, targetY)) return;
   if (state.player.position.x === targetX && state.player.position.y === targetY) return;
   if (state.map.npcs.some((other) => other !== npc && other.x === targetX && other.y === targetY)) return;
+
+  const from = renderer.getNpcRenderPosition?.(npc) || { x: npc.x, y: npc.y };
+  npc.facing = directionFromDelta(dx, dy);
+  npc.motion = {
+    fromX: from.x,
+    fromY: from.y,
+    toX: targetX,
+    toY: targetY,
+    startedAt: performance.now(),
+    durationMs: NPC_MOVE_DURATION_MS
+  };
   npc.x = targetX;
   npc.y = targetY;
 }
@@ -302,7 +347,7 @@ function getObjectiveState() {
     return {
       hidden: true,
       text: 'Create your hero to begin.',
-      tip: 'WASD to move. T to talk. G to get. O for Orb. X for Codex.'
+      tip: 'Hold WASD or Arrow keys to move. T to talk. G to get. O for Orb. X for Codex.'
     };
   }
 
@@ -443,6 +488,7 @@ function closeTopOverlay() {
 
 function openPanel(name) {
   if (!panels[name]) return;
+  resetMovementInput();
   if (name === 'orb' && !state.character?.hasItem('orb_of_moons')) {
     log('The Orb of Moons has not yet been recovered.');
     return;
@@ -513,6 +559,7 @@ function togglePanel(name) {
 
 function showVerticalSliceEnding() {
   if (!state.orbQuest?.complete) return;
+  resetMovementInput();
   const ending = getOrbEnding(state);
   endingEl.querySelector('#ending-title').textContent = ending.title;
   endingEl.querySelector('#ending-consequence').textContent = ending.consequence;
@@ -802,6 +849,7 @@ function applyOrbQuestWorldState() {
 function changeMap(mapId, spawnTag, x, y) {
   const map = state.world.maps[mapId];
   if (!map || !state.player) return;
+  resetMovementInput();
   state.map = map;
   state.discoveredAreas.add(mapId);
   const shouldFaceNorth = mapId === 'castle'
@@ -817,8 +865,6 @@ function changeMap(mapId, spawnTag, x, y) {
   if (shouldFaceNorth) state.player.facing = 'north';
 
   state.pendingTransition = null;
-  activeMovementDirections.clear();
-  renderer.stopAllMovement();
   updateHUD();
   renderGame();
   autoSave('area-transition');
@@ -834,41 +880,47 @@ function getItemAt(x, y) {
   return state.map.objects.find((object) => object.type === 'item' && object.x === x && object.y === y) || null;
 }
 
-function attemptMove(dx, dy) {
-  if (!state.player || state.inCombat) return;
-  if (isPanelOpen() && dialogueEl.classList.contains('hidden')) return;
+function attemptMove(dx, dy, { direction = directionFromDelta(dx, dy), durationMs = 118 } = {}) {
+  if (!state.player || !state.map || state.inCombat) return { moved: false };
+  if (isPanelOpen() && dialogueEl.classList.contains('hidden')) return { moved: false };
 
+  state.player.face(direction);
   const targetX = state.player.position.x + dx;
   const targetY = state.player.position.y + dy;
 
   if (!state.map.inBounds(targetX, targetY)) {
-    handleEdgeWarp(dx, dy);
-    return;
+    const transitioned = handleEdgeWarp(dx, dy);
+    if (!transitioned) renderGame();
+    return { moved: false, transitioned };
   }
 
   const npc = getNPCAt(targetX, targetY);
   if (npc) {
     const now = Date.now();
-    if (!state.lastBlockedLog || now - state.lastBlockedLog > 1000) {
-      log(`Blocked by: ${npc.name}.`);
+    if (!state.lastBlockedLog || now - state.lastBlockedLog > 900) {
+      log(`Blocked by: ${npc.name}. Press T to talk.`);
       state.lastBlockedLog = now;
     }
-    if (dx === 1) state.player.facing = 'east';
-    if (dx === -1) state.player.facing = 'west';
-    if (dy === 1) state.player.facing = 'south';
-    if (dy === -1) state.player.facing = 'north';
+    renderer.playBlockedStep?.(direction);
     renderGame();
-    return;
+    return { moved: false, blocked: true, reason: 'npc' };
   }
 
-  const moved = state.player.move(dx, dy);
+  const moved = state.player.move(dx, dy, { durationMs });
   if (!moved) {
     const tile = state.map.getTile(targetX, targetY);
     const def = TileInfo[tile];
-    if (def) log(`Blocked: ${def.name}`);
+    const now = Date.now();
+    if (def && (!state.lastBlockedLog || now - state.lastBlockedLog > 900)) {
+      log(`Blocked: ${def.name}`);
+      state.lastBlockedLog = now;
+    }
+    renderer.playBlockedStep?.(direction);
     renderGame();
-    return;
+    return { moved: false, blocked: true, reason: 'terrain' };
   }
+
+  renderer.beginPlayerStep?.(direction, durationMs);
 
   const item = getItemAt(targetX, targetY);
   if (item) {
@@ -882,23 +934,19 @@ function attemptMove(dx, dy) {
   renderGame();
   updateHUD();
   handleTileEvents();
+  return { moved: true };
 }
 
 function handleEdgeWarp(dx, dy) {
-  let direction = null;
-  if (dy === -1) direction = 'north';
-  if (dy === 1) direction = 'south';
-  if (dx === -1) direction = 'west';
-  if (dx === 1) direction = 'east';
-
+  const direction = directionFromDelta(dx, dy);
   const adj = state.map.adjacencies?.[direction];
-  if (!adj) return;
+  if (!adj) return false;
 
   const targetMapId = typeof adj === 'string' ? adj : adj.map;
   const xOffset = typeof adj === 'string' ? 0 : (adj.xOffset || 0);
   const yOffset = typeof adj === 'string' ? 0 : (adj.yOffset || 0);
   const targetMap = state.world.maps[targetMapId];
-  if (!targetMap) return;
+  if (!targetMap) return false;
 
   let newX = state.player.position.x + xOffset;
   let newY = state.player.position.y + yOffset;
@@ -916,6 +964,7 @@ function handleEdgeWarp(dx, dy) {
   }
 
   changeMap(targetMapId, null, newX, newY);
+  return true;
 }
 
 function handleTalk() {
@@ -1041,6 +1090,7 @@ function getDialogueOpening(npc) {
 
 function showDialogue(npc) {
   if (!npc || !state.character) return;
+  resetMovementInput();
   state.currentConversationPartner = npc;
   dialogueEl.classList.remove('hidden');
   dialogueInputContainer.classList.remove('hidden');
@@ -1325,10 +1375,7 @@ function handleTileEvents() {
 async function startEncounter(category = null) {
   if (state.inCombat) return;
   if (isPanelOpen()) closeAllPanels();
-  if (activeMovementDirections.size) {
-    activeMovementDirections.clear();
-    renderer.stopAllMovement();
-  }
+  resetMovementInput();
   state.inCombat = true;
   let result = null;
   let enemy = null;
@@ -1346,8 +1393,7 @@ async function startEncounter(category = null) {
     console.error('Combat encounter failed:', error);
   } finally {
     state.inCombat = false;
-    activeMovementDirections.clear();
-    renderer.stopAllMovement();
+    resetMovementInput();
     updateObjectivePanel();
     renderGame();
   }
@@ -1484,8 +1530,7 @@ function loadGame(manual = false) {
   state.discoveredAreas.add(currentMap.id);
 
   applyOrbQuestWorldState();
-  activeMovementDirections.clear();
-  renderer.stopAllMovement();
+  resetMovementInput();
   renderInventory();
   renderCharacterSheet();
   updateHUD();
@@ -1501,7 +1546,12 @@ function loadGame(manual = false) {
 
 function setupEventListeners() {
   document.addEventListener('keydown', (event) => {
-    if (event.target instanceof HTMLInputElement) return;
+    if (
+      event.target instanceof HTMLInputElement
+      || event.target instanceof HTMLTextAreaElement
+      || event.target instanceof HTMLSelectElement
+      || event.target?.isContentEditable
+    ) return;
     const key = event.key.toLowerCase();
 
     if (!dialogueEl.classList.contains('hidden')) {
@@ -1539,10 +1589,11 @@ function setupEventListeners() {
 
     if (KEY_TO_DIRECTION[key]) {
       event.preventDefault();
-      const direction = KEY_TO_DIRECTION[key];
-      renderer.setPlayerMovement(direction, true);
-      const { dx, dy } = DIRECTION_OFFSETS[direction];
-      attemptMove(dx, dy);
+      if (!canAcceptMovementInput()) {
+        movementController.reset();
+        return;
+      }
+      movementController.handleKeyDown(key, { repeated: event.repeat });
       return;
     }
 
@@ -1560,8 +1611,12 @@ function setupEventListeners() {
   });
 
   document.addEventListener('keyup', (event) => {
-    const direction = KEY_TO_DIRECTION[event.key.toLowerCase()];
-    if (direction) renderer.setPlayerMovement(direction, false);
+    movementController.handleKeyUp(event.key);
+  });
+
+  window.addEventListener('blur', () => resetMovementInput());
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) resetMovementInput();
   });
 
   document.addEventListener('click', (event) => {
@@ -1600,6 +1655,7 @@ window.gameApp = {
   itemGenerator,
   SaveManager,
   combatEngine,
+  movementController,
   startEncounter,
   startSpecialEncounter,
   resolveCombat,
@@ -1608,6 +1664,8 @@ window.gameApp = {
   showDialogue,
   handleDialogueSubmit,
   handleGet,
+  attemptMove,
+  resetMovementInput,
   getObjectiveState,
   applyOrbQuestWorldState,
   showVerticalSliceEnding,
@@ -1673,6 +1731,7 @@ window.render_game_to_text = () => {
     ? combatEngine.getSnapshot()
     : null;
   const orbStage = state.character ? getOrbQuestStage(state.character) : ORB_QUEST_STAGE.NOT_STARTED;
+  const renderPosition = player?.getRenderPosition?.() || player?.position || null;
 
   return JSON.stringify({
     origin: 'top-left',
@@ -1681,11 +1740,15 @@ window.render_game_to_text = () => {
     player: player ? {
       x: player.position.x,
       y: player.position.y,
+      renderX: renderPosition?.x ?? player.position.x,
+      renderY: renderPosition?.y ?? player.position.y,
       facing: player.facing,
+      moving: player.isVisuallyMoving?.() || false,
       hp: state.character?.currentHP ?? null,
       mp: state.character?.currentMP ?? null,
       level: state.character?.level ?? null
     } : null,
+    movement: movementController.getState(),
     combat: state.inCombat ? {
       active: true,
       enemy: enemy ? { name: enemy.name, hp: enemy.currentHP, maxHp: enemy.maxHP } : null,

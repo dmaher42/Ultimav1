@@ -1,4 +1,4 @@
-import CoreRenderEngine from '../renderCore.js';
+import CoreRenderEngine from '../renderCore.js?v=2';
 
 // Castle-only render loop. Other maps remain on renderCore.js.
 export const pipelineMethods = {
@@ -105,9 +105,10 @@ buildCastleEntityList() {
   });
   if (this.player?.position) {
     const placement = this.getPlayerSpritePlacement(this.player);
+    const position = this.getPlayerRenderPosition(this.player) || this.player.position;
     const y = placement
       ? placement.baseY - this.offsetY
-      : (this.player.position.y + 1) * this.tileSize;
+      : (position.y + 1) * this.tileSize;
     entities.push({ type: 'player', y, data: this.player });
   }
   return entities;

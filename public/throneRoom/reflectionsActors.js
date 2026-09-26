@@ -1,4 +1,4 @@
-import CoreRenderEngine from '../renderCore.js';
+import CoreRenderEngine from '../renderCore.js?v=2';
 import { isCastleFloorType, isCarpetType } from './theme.js';
 
 export const reflectionsActorsMethods = {
