@@ -1,0 +1,52 @@
+name: Apply throne-room enemy NPCs
+
+on:
+  push:
+    branches:
+      - feature/throne-room-enemy-npcs-v2
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout triggering revision
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+
+      - name: Detect integration script
+        id: integration_script
+        shell: bash
+        run: |
+          if [ -f tools/apply_throne_room_enemy_integration.py ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Apply enemy NPC integration
+        if: steps.integration_script.outputs.present == 'true'
+        run: |
+          python tools/apply_throne_room_enemy_integration.py
+
+      - name: Verify throne-room enemies
+        if: steps.integration_script.outputs.present == 'true'
+        run: python verification/verify_throne_room_enemies.py
+
+      - name: Commit verified enemy NPC integration
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git commit -m "Add visible enemy NPCs to the throne room"
+          git push origin HEAD:${{ github.ref_name }}
