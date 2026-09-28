@@ -32,6 +32,10 @@ jobs:
       - name: Apply enemy NPC integration
         if: steps.integration_script.outputs.present == 'true'
         run: |
+          if [ ! -f tools/apply_throne_room_enemy_integration.py ]; then
+            echo "Integration script missing at runtime; skipping apply step."
+            exit 0
+          fi
           python tools/apply_throne_room_enemy_integration.py
 
       - name: Verify throne-room enemies
